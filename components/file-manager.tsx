@@ -10,27 +10,7 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Progress } from "@/components/ui/progress"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import {
-  Upload,
-  File,
-  ImageIcon,
-  FileText,
-  Music,
-  Video,
-  Archive,
-  Link,
-  Download,
-  Trash2,
-  MoreHorizontal,
-  Search,
-  Grid,
-  List,
-  FolderOpen,
-  Eye,
-  Share,
-  Copy,
-} from "lucide-react"
-
+  import { Upload, File, ImageIcon, FileText, Music, Video, Archive, Link, Download, Trash2, MoreHorizontal, Search, Grid, List, FolderOpen, Eye, Share, Copy, Move, Scissors, Edit } from "lucide-react"
 interface FileManagerProps {
   selectedFolder: string | null
   folderTree?: any // Ajout de la structure des dossiers
@@ -66,6 +46,59 @@ const FILE_TYPES: {
 }
 
 export function FileManager({ selectedFolder, folderTree, onFolderSelect }: FileManagerProps) {
+  // Buffer pour copier/couper/coller
+  const [clipboard, setClipboard] = useState<{ action: "cut" | "copy"; folder: any } | null>(null);
+  // Actions kebab menu pour dossiers
+  const cutFolder = (folder: any) => {
+    setClipboard({ action: "cut", folder });
+    console.log("Couper dossier:", folder);
+  };
+
+  const copyFolder = (folder: any) => {
+    setClipboard({ action: "copy", folder });
+    console.log("Copier dossier:", folder);
+  };
+
+  const pasteFolder = (targetPath: string) => {
+    if (!clipboard) return;
+    // Logique de déplacement ou duplication à implémenter
+    console.log(`Coller dossier ${clipboard.folder.name} dans ${targetPath} (action: ${clipboard.action})`);
+    setClipboard(null);
+  };
+
+  const renameFolder = (folder: any) => {
+    // Logique de renommage à implémenter
+    console.log("Renommer dossier:", folder);
+  };
+
+  // Suppression réelle d’un dossier (filesystem + folders.json)
+  const deleteFolder = async (folder: any) => {
+    try {
+      // Suppression du dossier dans le filesystem via IPC (Electron)
+      if (typeof window !== "undefined" && window.electronAPI && window.electronAPI.deleteFolder && window.electronAPI.foldersSave && window.electronAPI.foldersLoad) {
+        console.log("Appel suppression dossier via Electron :", folder.path);
+        // Suppression physique du dossier
+        const res = await window.electronAPI.deleteFolder(folder.path);
+        if (res && res.success) {
+          // Charger folders.json, retirer le dossier, sauvegarder
+          const folders = await window.electronAPI.foldersLoad();
+          if (folders && Array.isArray(folders)) {
+            const updatedFolders = folders.filter((f: any) => f.path !== folder.path);
+            await window.electronAPI.foldersSave(updatedFolders);
+            console.log("Dossier supprimé du disque et de folders.json :", folder.path);
+          }
+        } else {
+          console.error("Erreur suppression dossier:", res?.error);
+        }
+      } else {
+        console.warn("API Electron deleteFolder/foldersSave/foldersLoad non disponible");
+      }
+      // Optionnel : feedback visuel ou reload
+      console.log("Dossier supprimé :", folder.path);
+    } catch (err) {
+      console.error("Erreur suppression dossier :", err);
+    }
+  };
   const [files, setFiles] = useState<FileItem[]>([
     {
       id: "1",
@@ -455,10 +488,40 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
                       className="p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md transition-shadow cursor-pointer"
                       onDoubleClick={() => onFolderSelect && onFolderSelect(folder.path)}
                     >
-                      {/* Badge couleur + icône */}
-                      <div className="flex items-center gap-2 mb-2">
-                        {folder.color && <span className="inline-block w-4 h-4 rounded-full" style={{ backgroundColor: folder.color }} />}
-                        {folder.icon && <span className="text-xl">{folder.icon}</span>}
+                      <div className="flex items-center gap-2 mb-2 w-full justify-between">
+                        <div className="flex items-center gap-2">
+                          {folder.color && <span className="inline-block w-4 h-4 rounded-full" style={{ backgroundColor: folder.color }} />}
+                          {folder.icon && <span className="text-xl">{folder.icon}</span>}
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => cutFolder(folder)}>
+                              <Scissors className="h-4 w-4 mr-2" />
+                              Couper
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => copyFolder(folder)}>
+                              <Copy className="h-4 w-4 mr-2" />
+                              Copier
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => pasteFolder(folder.path)} disabled={!clipboard}>
+                              <Move className="h-4 w-4 mr-2" />
+                              Coller ici
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => renameFolder(folder)}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Renommer
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => deleteFolder(folder)} className="text-destructive">
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Supprimer
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                       <h4 className="font-medium text-sm text-center truncate" title={folder.name}>{folder.name}</h4>
                       {folder.description && <p className="text-xs text-muted-foreground text-center line-clamp-2">{folder.description}</p>}
@@ -477,6 +540,35 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
                       {folder.icon && <span className="text-xl">{folder.icon}</span>}
                       <span className="font-medium text-sm truncate" title={folder.name}>{folder.name}</span>
                       {folder.description && <span className="text-xs text-muted-foreground truncate ml-2">{folder.description}</span>}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>
+                            <Move className="h-4 w-4 mr-2" />
+                            Déplacer
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Supprimer
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Scissors className="h-4 w-4 mr-2" />
+                            Couper
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Copy className="h-4 w-4 mr-2" />
+                            Copier
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Renommer
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   ))}
                 </div>

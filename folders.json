@@ -8,27 +8,5 @@
     "notes": [],
     "icon": "BookOpen",
     "path": "C:\\Users\\evolu\\Documents\\Notes\\Test"
-  },
-  {
-    "id": "1758357764836",
-    "name": "Sous-test",
-    "color": "bg-green-500",
-    "tags": [],
-    "createdAt": "2025-09-20T08:42:44.836Z",
-    "notes": [],
-    "icon": "BookOpen",
-    "parentId": "1758357632621",
-    "path": "C:\\Users\\evolu\\Documents\\Notes\\Test\\Sous-test"
-  },
-  {
-    "id": "1758357850815",
-    "name": "Sous-test2",
-    "color": "bg-red-500",
-    "tags": [],
-    "createdAt": "2025-09-20T08:44:10.815Z",
-    "notes": [],
-    "icon": "Calendar",
-    "parentId": "1758357632621",
-    "path": "Test\\Sous-test2"
   }
 ]

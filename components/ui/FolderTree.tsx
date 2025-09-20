@@ -2,7 +2,8 @@
 import React, { useState } from "react"
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { BookOpen, Folder, FileText, Star, Settings } from 'lucide-react';
+import { BookOpen, Folder, FileText, Star, Settings, MoreHorizontal } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const lucideIcons: Record<string, React.ReactNode> = {
   BookOpen: <BookOpen className="w-4 h-4 mr-1 align-middle" />,
@@ -109,6 +110,42 @@ export function FolderTree({ tree, onFolderSelect, selectedFolder }: { tree: Fol
               );
             })()}
           </span>
+          {/* Kebab menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="p-1 rounded hover:bg-muted/30 ml-1" aria-label="Actions dossier/fichier">
+                <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem>Déplacer</DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={async () => {
+                  console.log("[Sidebar] Suppression dossier:", node.path);
+                  if (typeof window !== "undefined" && window.electronAPI && window.electronAPI.deleteFolder && window.electronAPI.foldersSave && window.electronAPI.foldersLoad) {
+                    const res = await window.electronAPI.deleteFolder(node.path);
+                    if (res && res.success) {
+                      // Charger folders.json, retirer le dossier, sauvegarder
+                      const folders = await window.electronAPI.foldersLoad();
+                      if (folders && Array.isArray(folders)) {
+                        const updatedFolders = folders.filter((f: any) => f.path !== node.path);
+                        await window.electronAPI.foldersSave(updatedFolders);
+                        console.log("[Sidebar] Dossier supprimé du disque et de folders.json:", node.path);
+                        window.location.reload();
+                      }
+                    } else {
+                      console.error("[Sidebar] Erreur suppression dossier:", res?.error);
+                    }
+                  } else {
+                    console.warn("[Sidebar] API Electron deleteFolder/foldersSave/foldersLoad non disponible");
+                  }
+                }}
+              >Supprimer</DropdownMenuItem>
+              <DropdownMenuItem>Couper</DropdownMenuItem>
+              <DropdownMenuItem>Copier</DropdownMenuItem>
+              <DropdownMenuItem>Renommer</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         {/* Affichage enfants si expand */}
         {hasChildren && isExpanded && (

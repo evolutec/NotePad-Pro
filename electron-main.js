@@ -1,3 +1,4 @@
+
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -57,6 +58,20 @@ ipcMain.handle('config:load', async () => {
   }
 });
 
+
+// Handler pour supprimer un dossier du filesystem
+ipcMain.handle('folder:delete', async (_event, folderPath) => {
+  try {
+    if (fs.existsSync(folderPath)) {
+      fs.rmdirSync(folderPath, { recursive: true });
+      return { success: true };
+    } else {
+      return { success: false, error: 'Folder does not exist' };
+    }
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
 
 // Handler pour créer un dossier dans le chemin rootPath
 ipcMain.handle('folder:create', async (_event, folderName) => {

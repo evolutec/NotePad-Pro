@@ -9,4 +9,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   foldersSave: (folders) => ipcRenderer.invoke('folders:save', folders),
   folderCreate: (folderData) => ipcRenderer.invoke('folder:create', folderData),
   foldersScan: () => ipcRenderer.invoke('foldersScan'),
+  deleteFolder: (folderPath) => ipcRenderer.invoke('folder:delete', folderPath),
 });
