@@ -1,0 +1,186 @@
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const path = require('path');
+const fs = require('fs');
+
+function createWindow() {
+  const win = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      enableRemoteModule: false,
+      sandbox: true,
+      preload: path.join(__dirname, 'preload.js'),
+    },
+  });
+  win.loadURL('http://localhost:3000');
+}
+
+ipcMain.handle('dialog:openFolder', async (event) => {
+  const win = BrowserWindow.getFocusedWindow();
+  const result = await dialog.showOpenDialog(win, {
+    properties: ['openDirectory']
+  });
+  if (!result.canceled && result.filePaths.length > 0) {
+    event.sender.send('dialog:selectedFolder', result.filePaths[0]);
+    return result.filePaths[0];
+  }
+  event.sender.send('dialog:selectedFolder', '');
+  return '';
+});
+
+// Handler pour sauvegarder les paramètres
+// Handler pour sauvegarder la config
+ipcMain.handle('config:save', async (_event, config) => {
+  try {
+    const configPath = path.join(__dirname, 'config.json');
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+    return true;
+  } catch (err) {
+    return false;
+  }
+});
+
+// Handler pour charger la config
+ipcMain.handle('config:load', async () => {
+  try {
+    const configPath = path.join(__dirname, 'config.json');
+    if (fs.existsSync(configPath)) {
+      const data = fs.readFileSync(configPath, 'utf-8');
+      return JSON.parse(data);
+    } else {
+      return null;
+    }
+  } catch (err) {
+    return null;
+  }
+});
+
+
+// Handler pour créer un dossier dans le chemin rootPath
+ipcMain.handle('folder:create', async (_event, folderName) => {
+  try {
+    const configPath = path.join(__dirname, 'config.json');
+    if (!fs.existsSync(configPath)) {
+      console.log('[folder:create] Config not found:', configPath);
+      return { success: false, error: 'Config not found' };
+    }
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const rootPath = config.files?.rootPath;
+    if (!rootPath) {
+      console.log('[folder:create] rootPath not set in config:', config);
+      return { success: false, error: 'rootPath not set' };
+    }
+
+    // Récupérer le chemin du dossier parent si fourni
+    let folderNameValue = folderName;
+    let parentPath = rootPath;
+    if (typeof folderName === "object" && folderName !== null) {
+      folderNameValue = folderName.name;
+      parentPath = folderName.parentPath || rootPath;
+    }
+    console.log('[folder:create] folderNameValue:', folderNameValue);
+    console.log('[folder:create] parentPath:', parentPath);
+    const folderPath = path.join(parentPath, folderNameValue);
+    console.log('[folder:create] folderPath to create:', folderPath);
+    console.log('[folder:create] fs.existsSync(folderPath):', fs.existsSync(folderPath));
+    if (!fs.existsSync(folderPath)) {
+      try {
+        fs.mkdirSync(folderPath, { recursive: true });
+        console.log('[folder:create] Folder created:', folderPath);
+        return { success: true, path: folderPath };
+      } catch (mkdirErr) {
+        console.log('[folder:create] Error during mkdirSync:', mkdirErr);
+        return { success: false, error: mkdirErr.message };
+      }
+    } else {
+      console.log('[folder:create] Folder already exists:', folderPath);
+      return { success: false, error: 'Folder already exists' };
+    }
+  } catch (err) {
+    console.log('[folder:create] General error:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Handler pour sauvegarder les métadonnées des dossiers dans folders.json
+ipcMain.handle('folders:save', async (_event, folders) => {
+  try {
+    const foldersPath = path.join(__dirname, 'folders.json');
+    fs.writeFileSync(foldersPath, JSON.stringify(folders, null, 2), 'utf-8');
+    return true;
+  } catch (err) {
+    return false;
+  }
+});
+
+// Handler pour charger les métadonnées des dossiers depuis folders.json
+ipcMain.handle('folders:load', async () => {
+  try {
+    const foldersPath = path.join(__dirname, 'folders.json');
+    if (fs.existsSync(foldersPath)) {
+      const data = fs.readFileSync(foldersPath, 'utf-8');
+      return JSON.parse(data);
+    } else {
+      return [];
+    }
+  } catch (err) {
+    return [];
+  }
+});
+
+// Handler pour scanner le filesystem et reconstruire l'arborescence réelle
+ipcMain.handle('foldersScan', async () => {
+  try {
+    const configPath = path.join(__dirname, 'config.json');
+    if (!fs.existsSync(configPath)) return [];
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const rootPath = config.files?.rootPath || config.rootPath;
+    if (!rootPath || !fs.existsSync(rootPath)) return [];
+
+    function scanFolderTree(dirPath) {
+      const stats = fs.statSync(dirPath);
+      if (!stats.isDirectory()) return null;
+      const node = {
+        name: path.basename(dirPath),
+        path: dirPath,
+        type: 'folder',
+        children: [],
+        isDirectory: true,
+      };
+      const items = fs.readdirSync(dirPath);
+      for (const item of items) {
+        const itemPath = path.join(dirPath, item);
+        const itemStats = fs.statSync(itemPath);
+        if (itemStats.isDirectory()) {
+          node.children.push(scanFolderTree(itemPath));
+        } else {
+          node.children.push({
+            name: item,
+            path: itemPath,
+            type: 'file',
+            isDirectory: false,
+          });
+        }
+      }
+      return node;
+    }
+    const tree = scanFolderTree(rootPath);
+    return [tree];
+  } catch (err) {
+    console.error('[Electron] Erreur scan:', err);
+    return [];
+  }
+});
+
+app.whenReady().then(() => {
+  createWindow();
+  app.on('activate', function () {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
+});
+
+app.on('window-all-closed', function () {
+  if (process.platform !== 'darwin') app.quit();
+});

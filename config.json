@@ -1,0 +1,24 @@
+{
+  "stylus": {
+    "pressureSensitivity": 1,
+    "offsetX": 0,
+    "offsetY": 0,
+    "minPressure": 0.1,
+    "maxPressure": 1,
+    "smoothing": 0.5,
+    "palmRejection": true
+  },
+  "files": {
+    "rootPath": "C:\\Users\\evolu\\Documents\\Notes",
+    "autoSave": true,
+    "autoSaveInterval": 30,
+    "backupEnabled": true,
+    "maxFileSize": 50
+  },
+  "app": {
+    "theme": "system",
+    "language": "fr",
+    "startWithWindows": false,
+    "minimizeToTray": true
+  }
+}
