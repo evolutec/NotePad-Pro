@@ -150,16 +150,16 @@ export default function NoteTakingApp() {
           console.log('Delete:', node.path);
           
           try {
-            // Check if it's a note or folder based on the node type
-            const isNote = node.type === 'note';
-            
-            if (isNote) {
-              // Delete note file from filesystem
-              if (window.electronAPI?.fileDelete) {
-                const result = await window.electronAPI.fileDelete(node.path);
-                if (result.success) {
-                  console.log('Note deleted from filesystem:', node.path);
-                  
+            // Use fileDelete for both files and folders since it handles both
+            if (window.electronAPI?.fileDelete) {
+              const result = await window.electronAPI.fileDelete(node.path);
+              if (result.success) {
+                console.log('Item deleted from filesystem:', node.path);
+                
+                // Check if it's a note or folder based on the node type
+                const isNote = node.type === 'note';
+                
+                if (isNote) {
                   // Remove note from notes.json
                   if (window.electronAPI?.notesLoad && window.electronAPI?.notesSave) {
                     const notes = await window.electronAPI.notesLoad();
@@ -168,16 +168,6 @@ export default function NoteTakingApp() {
                     console.log('Note removed from notes.json');
                   }
                 } else {
-                  console.error('Failed to delete note:', result.error);
-                }
-              }
-            } else {
-              // Delete folder from filesystem
-              if (window.electronAPI?.deleteFolder) {
-                const result = await window.electronAPI.deleteFolder(node.path);
-                if (result.success) {
-                  console.log('Folder deleted from filesystem:', node.path);
-                  
                   // Remove folder from folders.json
                   if (window.electronAPI?.foldersLoad && window.electronAPI?.foldersSave) {
                     const folders = await window.electronAPI.foldersLoad();
@@ -185,10 +175,12 @@ export default function NoteTakingApp() {
                     await window.electronAPI.foldersSave(updatedFolders);
                     console.log('Folder removed from folders.json');
                   }
-                } else {
-                  console.error('Failed to delete folder:', result.error);
                 }
+              } else {
+                console.error('Failed to delete item:', result.error);
               }
+            } else {
+              console.error('fileDelete method not available');
             }
             
             // Reload the folder tree to reflect changes
