@@ -3,47 +3,48 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
+let mainWindow;
+
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      enableRemoteModule: false,
-      sandbox: true,
       preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
     },
   });
-  win.loadURL('http://localhost:3000');
+
+  // Wait for the Next.js server to be ready
+  const serverUrl = 'http://localhost:3003';
+  mainWindow.loadURL(serverUrl);
+
+  mainWindow.on('closed', function () {
+    mainWindow = null;
+  });
 }
 
-ipcMain.handle('dialog:openFolder', async (event) => {
-  const win = BrowserWindow.getFocusedWindow();
-  const result = await dialog.showOpenDialog(win, {
-    properties: ['openDirectory']
+// Handler pour ouvrir le dialogue de sélection de dossier
+ipcMain.handle('dialog:openFolder', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory'],
   });
-  if (!result.canceled && result.filePaths.length > 0) {
-    event.sender.send('dialog:selectedFolder', result.filePaths[0]);
-    return result.filePaths[0];
-  }
-  event.sender.send('dialog:selectedFolder', '');
-  return '';
+  return result;
 });
 
-// Handler pour sauvegarder les paramètres
-// Handler pour sauvegarder la config
-ipcMain.handle('config:save', async (_event, config) => {
+// Handler pour sauvegarder la configuration
+ipcMain.handle('config:save', async (_event, settings) => {
   try {
     const configPath = path.join(__dirname, 'config.json');
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+    fs.writeFileSync(configPath, JSON.stringify(settings, null, 2), 'utf-8');
     return true;
   } catch (err) {
     return false;
   }
 });
 
-// Handler pour charger la config
+// Handler pour charger la configuration
 ipcMain.handle('config:load', async () => {
   try {
     const configPath = path.join(__dirname, 'config.json');
@@ -57,7 +58,6 @@ ipcMain.handle('config:load', async () => {
     return null;
   }
 });
-
 
 // Handler pour supprimer un dossier du filesystem
 ipcMain.handle('folder:delete', async (_event, folderPath) => {
@@ -189,13 +189,74 @@ ipcMain.handle('foldersScan', async () => {
   }
 });
 
+// Handler pour créer une note
+console.log('Registering note:create handler');
+ipcMain.handle('note:create', async (_event, noteData) => {
+  console.log('note:create handler called with:', noteData);
+  try {
+    const configPath = path.join(__dirname, 'config.json');
+    if (!fs.existsSync(configPath)) {
+      console.log('note:create handler error: Config not found');
+      return { success: false, error: 'Config not found' };
+    }
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const rootPath = config.files?.rootPath;
+    if (!rootPath) {
+      console.log('note:create handler error: rootPath not set');
+      return { success: false, error: 'rootPath not set' };
+    }
+
+    const { name, type, parentPath, tags } = noteData;
+    const fileName = type === 'markdown' ? `${name}.md` : `${name}.txt`;
+    const fullPath = path.join(parentPath || rootPath, fileName);
+
+    if (fs.existsSync(fullPath)) {
+      console.log('note:create handler error: Note already exists');
+      return { success: false, error: 'Note already exists' };
+    }
+
+    fs.writeFileSync(fullPath, '', 'utf-8');
+    console.log('note:create handler returning success');
+    return { success: true, path: fullPath };
+  } catch (err) {
+    console.log('note:create handler error:', err.message);
+    return { success: false, error: err.message };
+  }
+});
+
+// Handler pour charger les notes depuis notes.json
+ipcMain.handle('notes:load', async () => {
+  try {
+    const notesPath = path.join(__dirname, 'notes.json');
+    if (fs.existsSync(notesPath)) {
+      const data = fs.readFileSync(notesPath, 'utf-8');
+      return JSON.parse(data);
+    } else {
+      return [];
+    }
+  } catch (err) {
+    return [];
+  }
+});
+
+// Handler pour sauvegarder les notes dans notes.json
+ipcMain.handle('notes:save', async (_event, notes) => {
+  try {
+    const notesPath = path.join(__dirname, 'notes.json');
+    fs.writeFileSync(notesPath, JSON.stringify(notes, null, 2), 'utf-8');
+    return true;
+  } catch (err) {
+    return false;
+  }
+});
+
+app.on('window-all-closed', function () {
+  if (process.platform !== 'darwin') app.quit();
+});
+
 app.whenReady().then(() => {
   createWindow();
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
-});
-
-app.on('window-all-closed', function () {
-  if (process.platform !== 'darwin') app.quit();
 });

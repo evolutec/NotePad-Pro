@@ -7,6 +7,8 @@ import { FolderPlus, FilePlus, Pencil } from "lucide-react";
 import { FolderTree } from "./FolderTree";
 import { AddFolderDialog } from "@/components/add-folder_dialog";
 
+import { AddNoteDialog } from "@/components/add-note_dialog";
+
 // Fonction utilitaire pour filtrer l'arborescence selon la recherche
 import type { FolderNode } from "./FolderTree";
 function filterTree(node: FolderNode, query: string): FolderNode | null {
@@ -78,36 +80,28 @@ declare global {
   }
 }
 
-interface SidebarProps {
+
+export interface SidebarProps {
   onFolderSelect?: (folderPath: string) => void;
+  onNoteSelect?: (notePath: string) => void;
   open?: boolean;
   selectedFolder?: string | null;
+  selectedNote?: string | null;
   folderTree?: any;
   sidebarWidth?: number;
   onSidebarResize?: (e: React.MouseEvent) => void;
 }
 
-export default function Sidebar({ onFolderSelect, open = true, selectedFolder, folderTree: initialFolderTree, sidebarWidth = 320, onSidebarResize }: SidebarProps) {
-  // State local pour l’arborescence réelle du filesystem
-  const [folderTree, setFolderTree] = useState<FolderNode | null>(null);
+export default function Sidebar({ onFolderSelect, onNoteSelect, open = true, selectedFolder, selectedNote, folderTree, sidebarWidth = 320, onSidebarResize }: SidebarProps) {
+  // DEBUG : log l'arbre pour vérifier la présence de color et icon
   React.useEffect(() => {
-    async function loadFsTree() {
-      let rootPath = "";
-      if (window.electronAPI?.loadSettings) {
-        const config = await window.electronAPI.loadSettings();
-        rootPath = config?.files?.rootPath || "";
-      }
-      if (window.electronAPI?.foldersScan) {
-        const fsTreeArr = await window.electronAPI.foldersScan();
-        const fsTree = Array.isArray(fsTreeArr) ? fsTreeArr[0] : null;
-        setFolderTree(fsTree);
-        console.log("[Sidebar] Arborescence réelle du FS:", fsTree);
-      }
+    if (folderTree) {
+      console.log("[Sidebar] folderTree:", folderTree);
     }
-    loadFsTree();
-  }, []);
+  }, [folderTree]);
   const [search, setSearch] = useState("");
   const [showDialog, setShowDialog] = useState(false);
+  const [showNoteDialog, setShowNoteDialog] = useState(false);
   // Pour la démo, toggleSidebar est un stub
   const toggleSidebar = () => {};
 
@@ -142,7 +136,7 @@ export default function Sidebar({ onFolderSelect, open = true, selectedFolder, f
             <button
               className="sidebar-btn-note p-2 rounded bg-primary text-primary-foreground hover:bg-primary/80 transition"
               title="Ajouter une note"
-              onClick={() => alert('Fonction Ajouter une note à implémenter')}
+              onClick={() => setShowNoteDialog(true)}
             >
               <FilePlus className="w-5 h-5" />
             </button>
@@ -162,6 +156,8 @@ export default function Sidebar({ onFolderSelect, open = true, selectedFolder, f
               tree={filterTree(folderTree, search)}
               onFolderSelect={onFolderSelect}
               selectedFolder={selectedFolder}
+              onNoteSelect={onNoteSelect}
+              selectedNote={selectedNote}
             />
           ) : (
             <div className="sidebar-empty flex flex-col items-center justify-center h-full p-6 text-center">
@@ -175,22 +171,19 @@ export default function Sidebar({ onFolderSelect, open = true, selectedFolder, f
         {showDialog && (
           <AddFolderDialog
             folders={folderTree?.children || []}
-            onFolderAdded={async () => {
-              // Recharge l’arborescence réelle après ajout
-              let rootPath = "";
-              if (window.electronAPI?.loadSettings) {
-                const config = await window.electronAPI.loadSettings();
-                rootPath = config?.files?.rootPath || "";
-              }
-              if (window.electronAPI?.foldersScan) {
-                const fsTreeArr = await window.electronAPI.foldersScan();
-                const fsTree = Array.isArray(fsTreeArr) ? fsTreeArr[0] : null;
-                setFolderTree(fsTree);
-              }
-              setShowDialog(false);
-            }}
+            onFolderAdded={() => setShowDialog(false)}
             open={showDialog}
             onOpenChange={setShowDialog}
+          />
+        )}
+        {showNoteDialog && (
+          <AddNoteDialog
+            open={showNoteDialog}
+            onOpenChange={setShowNoteDialog}
+            parentPath={selectedFolder || folderTree?.path || ""}
+            onNoteCreated={note => {
+              setShowNoteDialog(false);
+            }}
           />
         )}
       </div>

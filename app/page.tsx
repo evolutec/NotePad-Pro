@@ -27,6 +27,12 @@ export default function NoteTakingApp() {
     setActiveView("files")
   }
 
+  // Sélection note : switch auto sur éditeur
+  function handleNoteSelect(path: string) {
+    setSelectedNote(path)
+    setActiveView("editor")
+  }
+
   useEffect(() => {
     async function fetchTreeAndMeta() {
       let fsTree = null;
@@ -90,7 +96,9 @@ export default function NoteTakingApp() {
       {/* Sidebar moderne, déjà avec <aside> interne */}
       <Sidebar
         onFolderSelect={handleFolderSelect}
+        onNoteSelect={handleNoteSelect}
         selectedFolder={selectedFolder}
+        selectedNote={selectedNote}
         folderTree={folderTree}
         open={sidebarOpen}
         sidebarWidth={sidebarWidth}

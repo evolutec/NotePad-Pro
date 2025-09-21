@@ -37,7 +37,7 @@ export type FolderNode = {
  * Props :
  * - tree : objet racine du FS décoré (mergeFsWithMeta)
  */
-export function FolderTree({ tree, onFolderSelect, selectedFolder }: { tree: FolderNode | null, onFolderSelect?: (folderPath: string) => void, selectedFolder?: string | null }) {
+export function FolderTree({ tree, onFolderSelect, selectedFolder, onNoteSelect, selectedNote }: { tree: FolderNode | null, onFolderSelect?: (folderPath: string) => void, selectedFolder?: string | null, onNoteSelect?: (notePath: string) => void, selectedNote?: string | null }) {
   // Gestion de l'expansion par dossier (clé = path)
   const [expanded, setExpanded] = useState<{ [key: string]: boolean }>({})
 
@@ -50,13 +50,18 @@ export function FolderTree({ tree, onFolderSelect, selectedFolder }: { tree: Fol
     const hasChildren = node.children && node.children.length > 0;
     const isExpanded = expanded[node.path];
     const isSelected = selectedFolder === node.path;
+    const isNoteSelected = selectedNote === node.path;
+    
+    // Check if this node is a note file (.md or .txt)
+    const isNoteFile = node.type === 'file' && (node.name.endsWith('.md') || node.name.endsWith('.txt'));
     return (
       <div
         key={node.path}
         className={cn(
           "relative transition-all",
           hasChildren ? "hover:bg-muted/40" : "hover:bg-muted/20",
-          isSelected ? "ring-2 ring-primary/60 bg-primary/10" : ""
+          isSelected ? "ring-2 ring-primary/60 bg-primary/10" : "",
+          isNoteSelected ? "ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950" : ""
         )}
         style={{ marginLeft: depth * 24 }}
       >
@@ -78,7 +83,15 @@ export function FolderTree({ tree, onFolderSelect, selectedFolder }: { tree: Fol
           ) : null}
           <span
             className="flex items-center gap-1 cursor-pointer text-xs font-medium text-card-foreground"
-            onClick={() => onFolderSelect?.(node.path)}
+            onClick={() => {
+              if (isNoteFile && onNoteSelect) {
+                // This is a note file, trigger note selection
+                onNoteSelect(node.path);
+              } else if (onFolderSelect) {
+                // This is a folder, trigger folder selection
+                onFolderSelect(node.path);
+              }
+            }}
           >
             {/* Icône réduite */}
             <span title={node.icon ? `Icône: ${node.icon}` : "Icône dossier"} className="mr-1">
@@ -88,7 +101,11 @@ export function FolderTree({ tree, onFolderSelect, selectedFolder }: { tree: Fol
                     : <span className="inline-block align-middle text-base">{node.icon}</span>)
                 : React.cloneElement(lucideIcons["Folder"] as React.ReactElement, { className: "w-4 h-4 align-middle" })}
             </span>
-            <span className={cn("ml-1", isSelected ? "font-bold text-primary" : "font-medium text-card-foreground")}>{node.name}</span>
+            <span className={cn("ml-1", 
+              isNoteSelected ? "font-bold text-blue-600 dark:text-blue-400" : 
+              isSelected ? "font-bold text-primary" : 
+              isNoteFile ? "font-medium text-blue-600 dark:text-blue-400" : "font-medium text-card-foreground"
+            )}>{node.name}</span>
             {/* Badge couleur à la fin, plus petit */}
             {(() => {
               const tailwindToHex: Record<string, string> = {
