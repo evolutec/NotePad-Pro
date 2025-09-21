@@ -2,7 +2,7 @@
 import React, { useState } from "react"
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { BookOpen, Folder, FileText, Star, Settings, MoreHorizontal } from 'lucide-react';
+import { BookOpen, Folder, FileText, Star, Settings, MoreHorizontal, FolderPlus, Calendar, Tag, Archive } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const lucideIcons: Record<string, React.ReactNode> = {
@@ -11,6 +11,10 @@ const lucideIcons: Record<string, React.ReactNode> = {
   FileText: <FileText className="w-4 h-4 mr-1 align-middle" />,
   Star: <Star className="w-4 h-4 mr-1 align-middle" />,
   Settings: <Settings className="w-4 h-4 mr-1 align-middle" />,
+  FolderPlus: <FolderPlus className="w-4 h-4 mr-1 align-middle" />,
+  Calendar: <Calendar className="w-4 h-4 mr-1 align-middle" />,
+  Tag: <Tag className="w-4 h-4 mr-1 align-middle" />,
+  Archive: <Archive className="w-4 h-4 mr-1 align-middle" />,
 };
 
 // Type pour un nœud de dossier/fichier décoré

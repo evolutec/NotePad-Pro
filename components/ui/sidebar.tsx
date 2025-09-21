@@ -87,13 +87,25 @@ interface SidebarProps {
   onSidebarResize?: (e: React.MouseEvent) => void;
 }
 
-export default function Sidebar({ onFolderSelect, open = true, selectedFolder, folderTree, sidebarWidth = 320, onSidebarResize }: SidebarProps) {
-  // DEBUG : log l'arbre pour vérifier la présence de color et icon
+export default function Sidebar({ onFolderSelect, open = true, selectedFolder, folderTree: initialFolderTree, sidebarWidth = 320, onSidebarResize }: SidebarProps) {
+  // State local pour l’arborescence réelle du filesystem
+  const [folderTree, setFolderTree] = useState<FolderNode | null>(null);
   React.useEffect(() => {
-    if (folderTree) {
-      console.log("[Sidebar] folderTree:", folderTree);
+    async function loadFsTree() {
+      let rootPath = "";
+      if (window.electronAPI?.loadSettings) {
+        const config = await window.electronAPI.loadSettings();
+        rootPath = config?.files?.rootPath || "";
+      }
+      if (window.electronAPI?.foldersScan) {
+        const fsTreeArr = await window.electronAPI.foldersScan();
+        const fsTree = Array.isArray(fsTreeArr) ? fsTreeArr[0] : null;
+        setFolderTree(fsTree);
+        console.log("[Sidebar] Arborescence réelle du FS:", fsTree);
+      }
     }
-  }, [folderTree]);
+    loadFsTree();
+  }, []);
   const [search, setSearch] = useState("");
   const [showDialog, setShowDialog] = useState(false);
   // Pour la démo, toggleSidebar est un stub
@@ -163,7 +175,20 @@ export default function Sidebar({ onFolderSelect, open = true, selectedFolder, f
         {showDialog && (
           <AddFolderDialog
             folders={folderTree?.children || []}
-            onFolderAdded={() => setShowDialog(false)}
+            onFolderAdded={async () => {
+              // Recharge l’arborescence réelle après ajout
+              let rootPath = "";
+              if (window.electronAPI?.loadSettings) {
+                const config = await window.electronAPI.loadSettings();
+                rootPath = config?.files?.rootPath || "";
+              }
+              if (window.electronAPI?.foldersScan) {
+                const fsTreeArr = await window.electronAPI.foldersScan();
+                const fsTree = Array.isArray(fsTreeArr) ? fsTreeArr[0] : null;
+                setFolderTree(fsTree);
+              }
+              setShowDialog(false);
+            }}
             open={showDialog}
             onOpenChange={setShowDialog}
           />
