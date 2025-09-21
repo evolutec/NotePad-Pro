@@ -1,0 +1,329 @@
+/* Modern Folder Tree Styles */
+
+/* Custom scrollbar for tree */
+.tree-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tree-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tree-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.3);
+  border-radius: 3px;
+}
+
+.tree-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.5);
+}
+
+/* Tree item animations */
+.tree-item-enter {
+  animation: tree-item-enter 0.2s ease-out;
+}
+
+@keyframes tree-item-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Connection lines */
+.tree-connection-line {
+  position: relative;
+}
+
+.tree-connection-line::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent 0%, #e5e7eb 20%, #e5e7eb 80%, transparent 100%);
+}
+
+.dark .tree-connection-line::before {
+  background: linear-gradient(to bottom, transparent 0%, #374151 20%, #374151 80%, transparent 100%);
+}
+
+/* Hover effects */
+.tree-item-hover {
+  transition: all 0.2s ease;
+}
+
+.tree-item-hover:hover {
+  background: rgba(59, 130, 246, 0.05);
+  border-color: rgba(59, 130, 246, 0.2);
+  transform: translateX(2px);
+}
+
+.dark .tree-item-hover:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Selection states */
+.tree-item-selected {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 197, 253, 0.1) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.tree-item-note-selected {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(96, 165, 250, 0.1) 100%);
+  border: 1px solid rgba(37, 99, 235, 0.4);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+}
+
+/* File type colors */
+.file-type-folder {
+  color: #f59e0b;
+}
+
+.dark .file-type-folder {
+  color: #fbbf24;
+}
+
+.file-type-note {
+  color: #3b82f6;
+}
+
+.dark .file-type-note {
+  color: #60a5fa;
+}
+
+.file-type-document {
+  color: #ef4444;
+}
+
+.dark .file-type-document {
+  color: #f87171;
+}
+
+.file-type-image {
+  color: #10b981;
+}
+
+.dark .file-type-image {
+  color: #34d399;
+}
+
+.file-type-video {
+  color: #8b5cf6;
+}
+
+.dark .file-type-video {
+  color: #a78bfa;
+}
+
+.file-type-audio {
+  color: #ec4899;
+}
+
+.dark .file-type-audio {
+  color: #f472b6;
+}
+
+.file-type-code {
+  color: #f97316;
+}
+
+.dark .file-type-code {
+  color: #fb923c;
+}
+
+.file-type-archive {
+  color: #6b7280;
+}
+
+.dark .file-type-archive {
+  color: #9ca3af;
+}
+
+/* Icon containers */
+.icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+}
+
+.dark .icon-container {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.icon-container:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.dark .icon-container:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Context menu styles */
+.context-menu-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.context-menu-item:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.dark .context-menu-item:hover {
+  background: rgba(59, 130, 246, 0.2);
+}
+
+/* Badge styles */
+.badge-modern {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 197, 253, 0.1) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+}
+
+.dark .badge-modern {
+  color: #60a5fa;
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+/* Star animation */
+.star-icon {
+  transition: all 0.2s ease;
+}
+
+.star-icon:hover {
+  transform: scale(1.2) rotate(15deg);
+}
+
+.star-icon.starred {
+  animation: star-bounce 0.3s ease;
+}
+
+@keyframes star-bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+}
+
+/* Loading animation */
+.tree-loading {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(59, 130, 246, 0.2);
+  border-top: 2px solid #3b82f6;
+  border-radius: 50%;
+  animation: tree-spin 1s linear infinite;
+}
+
+@keyframes tree-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Drag and drop styles */
+.tree-item-drag-over {
+  background: rgba(59, 130, 246, 0.1);
+  border: 2px dashed #3b82f6;
+  border-radius: 8px;
+}
+
+.tree-item-dragging {
+  opacity: 0.5;
+  transform: rotate(2deg);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .tree-sidebar {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .tree-item {
+    padding: 12px 8px;
+  }
+  
+  .icon-container {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* Dark mode transitions */
+@media (prefers-color-scheme: dark) {
+  .tree-item,
+  .icon-container,
+  .badge-modern {
+    transition: all 0.3s ease;
+  }
+}
+
+/* Accessibility improvements */
+.tree-item:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.tree-item[aria-selected="true"] {
+  position: relative;
+}
+
+.tree-item[aria-selected="true"]::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(to bottom, #3b82f6, #60a5fa);
+  border-radius: 0 4px 4px 0;
+}
+
+/* Custom animations for different states */
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.tree-item-slide-in {
+  animation: slideInFromLeft 0.3s ease-out;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.tree-content-fade-in {
+  animation: fadeInScale 0.2s ease-out;
+}

@@ -65,20 +65,7 @@ function ClientOnlyButton() {
   );
 }
 
-// Déclaration globale pour l'API Electron
-declare global {
-  interface Window {
-    electronAPI?: {
-  selectFolder: () => Promise<string>;
-  foldersScan?: () => Promise<any>;
-  foldersLoad?: () => Promise<any>;
-  folderCreate?: (data: any) => Promise<any>;
-  onFolderSelected?: (callback: (folderPath: string) => void) => void;
-  loadSettings?: () => Promise<any>;
-  foldersSave?: (folders: any[]) => Promise<any>;
-    };
-  }
-}
+// Note: ElectronAPI type is defined in global.d.ts, no need to redeclare here
 
 
 export interface SidebarProps {

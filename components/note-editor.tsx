@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
+import path from "path"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -46,6 +47,7 @@ interface Note {
   folderId?: string
   wordCount: number
   readingTime: number
+  path?: string
 }
 
 const FONT_SIZES = [
@@ -86,6 +88,54 @@ export function NoteEditor({ selectedNote, selectedFolder }: NoteEditorProps) {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const titleRef = useRef<HTMLInputElement>(null)
+
+  // Load note when selectedNote changes
+  useEffect(() => {
+    const loadNote = async () => {
+      if (selectedNote && window.electronAPI?.noteLoad) {
+        try {
+          const result = await window.electronAPI.noteLoad(selectedNote);
+          if (result.success && result.data) {
+            setCurrentNote(prev => ({
+              ...prev,
+              id: selectedNote,
+              title: result.data?.title || "Note sans titre",
+              content: result.data?.content || "",
+              path: selectedNote,
+              lastModified: new Date()
+            }));
+          } else if (result.success && !result.data) {
+            // Handle case where file exists but has no content
+            setCurrentNote(prev => ({
+              ...prev,
+              id: selectedNote,
+              title: path.basename(selectedNote, path.extname(selectedNote)),
+              content: "",
+              path: selectedNote,
+              lastModified: new Date()
+            }));
+          }
+        } catch (error) {
+          console.error('Error loading note:', error);
+        }
+      } else if (!selectedNote) {
+        // Reset to new note if no note is selected
+        setCurrentNote({
+          id: "new",
+          title: "Nouvelle note",
+          content: "",
+          tags: [],
+          createdAt: new Date(),
+          lastModified: new Date(),
+          folderId: selectedFolder || undefined,
+          wordCount: 0,
+          readingTime: 0,
+        });
+      }
+    };
+
+    loadNote();
+  }, [selectedNote]);
 
   // Calculate word count and reading time
   useEffect(() => {
@@ -151,11 +201,30 @@ export function NoteEditor({ selectedNote, selectedFolder }: NoteEditorProps) {
   const saveNote = async () => {
     setIsSaving(true)
 
-    // Simulate save delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    setLastSaved(new Date())
-    setIsSaving(false)
+    try {
+      // Save to file system if path exists
+      if (currentNote.path && window.electronAPI?.noteSave) {
+        const result = await window.electronAPI.noteSave({
+          path: currentNote.path,
+          content: currentNote.content
+        })
+        
+        if (!result.success) {
+          console.error('Failed to save note:', result.error)
+          setIsSaving(false)
+          return
+        }
+      }
+      
+      console.log('Saving note:', currentNote)
+      
+      // Update last saved time
+      setLastSaved(new Date())
+    } catch (error) {
+      console.error('Error saving note:', error)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const insertLink = () => {

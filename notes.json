@@ -6,5 +6,13 @@
     "parentPath": "C:\\Users\\evolu\\Documents\\Notes\\Test",
     "createdAt": "2025-09-21T11:34:26.698Z",
     "tags": []
+  },
+  {
+    "id": "test-note",
+    "name": "test-note.md",
+    "type": "text",
+    "parentPath": "C:\\Users\\evolu\\Documents\\Notes\\Test",
+    "createdAt": "2025-09-21T12:00:00.000Z",
+    "tags": []
   }
 ]

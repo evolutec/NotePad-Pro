@@ -14,6 +14,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     console.log('Preload: Calling note:create with', noteData);
     return ipcRenderer.invoke('note:create', noteData);
   },
+  noteSave: (noteData) => ipcRenderer.invoke('note:save', noteData),
+  noteLoad: (filePath) => ipcRenderer.invoke('note:load', filePath),
+  fileDelete: (filePath) => ipcRenderer.invoke('file:delete', filePath),
+  fileRename: (oldPath, newName) => ipcRenderer.invoke('file:rename', oldPath, newName),
   notesLoad: () => ipcRenderer.invoke('notes:load'),
   notesSave: (notes) => ipcRenderer.invoke('notes:save', notes),
 });

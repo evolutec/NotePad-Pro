@@ -7,6 +7,10 @@ declare global {
     foldersLoad?: () => Promise<any>;
     folderCreate?: (data: any) => Promise<any>;
     noteCreate?: (data: any) => Promise<any>;
+    noteSave?: (data: { path: string; content: string }) => Promise<{ success: boolean; error?: string }>;
+    noteLoad?: (filePath: string) => Promise<{ success: boolean; data?: { title: string; content: string }; error?: string }>;
+    fileDelete?: (filePath: string) => Promise<{ success: boolean; error?: string }>;
+    fileRename?: (oldPath: string, newName: string) => Promise<{ success: boolean; newPath?: string; error?: string }>;
     notesLoad?: () => Promise<any[]>;
     notesSave?: (notes: any[]) => Promise<any>;
     onFolderSelected?: (callback: (folderPath: string) => void) => void;

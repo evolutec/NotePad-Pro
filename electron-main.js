@@ -6,6 +6,7 @@ const fs = require('fs');
 let mainWindow;
 
 function createWindow() {
+  console.log('[Electron] Creating window...');
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -15,12 +16,16 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
+  console.log('[Electron] Window created successfully');
 
   // Wait for the Next.js server to be ready
-  const serverUrl = 'http://localhost:3003';
+  const serverUrl = 'http://localhost:3000';
+  console.log('[Electron] Loading URL:', serverUrl);
   mainWindow.loadURL(serverUrl);
+  console.log('[Electron] URL loaded');
 
   mainWindow.on('closed', function () {
+    console.log('[Electron] Window closed');
     mainWindow = null;
   });
 }
@@ -250,13 +255,99 @@ ipcMain.handle('notes:save', async (_event, notes) => {
   }
 });
 
+// Handler pour sauvegarder le contenu d'une note dans un fichier
+ipcMain.handle('note:save', async (_event, noteData) => {
+  try {
+    const { path: filePath, content } = noteData;
+    if (!filePath) {
+      return { success: false, error: 'File path is required' };
+    }
+    
+    // Ensure the directory exists
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    
+    fs.writeFileSync(filePath, content, 'utf-8');
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Handler pour charger le contenu d'une note depuis un fichier
+ipcMain.handle('note:load', async (_event, filePath) => {
+  try {
+    if (!fs.existsSync(filePath)) {
+      return { success: false, error: 'File not found' };
+    }
+    
+    const content = fs.readFileSync(filePath, 'utf-8');
+    // Extract title from first line or use filename
+    const title = content.split('\n')[0].replace(/^#\s*/, '') || path.basename(filePath, path.extname(filePath));
+    return { success: true, data: { title, content } };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Handler pour supprimer un fichier ou dossier
+ipcMain.handle('file:delete', async (_event, filePath) => {
+  try {
+    if (!fs.existsSync(filePath)) {
+      return { success: false, error: 'File or folder not found' };
+    }
+    
+    const stats = fs.statSync(filePath);
+    if (stats.isDirectory()) {
+      // Remove directory and all its contents
+      fs.rmSync(filePath, { recursive: true, force: true });
+    } else {
+      // Remove file
+      fs.unlinkSync(filePath);
+    }
+    
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Handler pour renommer un fichier ou dossier
+ipcMain.handle('file:rename', async (_event, oldPath, newName) => {
+  try {
+    if (!fs.existsSync(oldPath)) {
+      return { success: false, error: 'File or folder not found' };
+    }
+    
+    const dir = path.dirname(oldPath);
+    const newPath = path.join(dir, newName);
+    
+    if (fs.existsSync(newPath)) {
+      return { success: false, error: 'A file or folder with that name already exists' };
+    }
+    
+    fs.renameSync(oldPath, newPath);
+    return { success: true, newPath };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit();
 });
 
 app.whenReady().then(() => {
+  console.log('[Electron] App is ready, creating window...');
   createWindow();
   app.on('activate', function () {
+    console.log('[Electron] App activated');
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+});
+
+app.on('ready', () => {
+  console.log('[Electron] App ready event fired');
 });
