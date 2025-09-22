@@ -211,55 +211,76 @@ export function ModernSidebar({
     )}>
       {/* Header */}
       <div className="p-4 border-b border-border/50">
+        <div className="flex items-center justify-end mb-4">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="p-1 h-8 w-8"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          >
+            <ChevronLeft className={`w-4 h-4 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`} />
+          </Button>
+        </div>
         <div className="flex items-center justify-between mb-4">
-          <div className={cn("flex items-center gap-2", sidebarCollapsed && "justify-center")}>
-            {!sidebarCollapsed && (
-              <div className="flex items-center gap-2">
-                {/* Two action buttons */}
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="p-2 h-8 w-8 bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900 dark:hover:bg-yellow-800 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300"
-                  onClick={handleNewFolder}
-                  title="Nouveau dossier"
-                >
-                  <FolderPlus className="w-4 h-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="p-2 h-8 w-8 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
-                  onClick={handleNewFile}
-                  title="Nouveau fichier"
-                >
-                  <FilePlus className="w-4 h-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="p-2 h-8 w-8 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
-                  onClick={handleNewDraw}
-                  title="Nouveau dessin"
-                >
-                  <Palette className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
+          <div className="flex items-center gap-2">
+            <div className={cn("flex items-center gap-2", sidebarCollapsed && "flex-col gap-1")}>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className={cn("p-2 h-8 w-8 bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900 dark:hover:bg-yellow-800 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300", sidebarCollapsed && "h-7 w-7 p-1")}
+                      onClick={handleNewFolder}
+                    >
+                      <FolderPlus className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    Nouveau dossier
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className={cn("p-2 h-8 w-8 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300", sidebarCollapsed && "h-7 w-7 p-1")}
+                      onClick={handleNewFile}
+                    >
+                      <FilePlus className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    Nouveau fichier
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className={cn("p-2 h-8 w-8 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300", sidebarCollapsed && "h-7 w-7 p-1")}
+                      onClick={handleNewDraw}
+                    >
+                      <Palette className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    Nouveau dessin
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             {isClient && !isElectronMode && !sidebarCollapsed && (
               <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
                 Mode navigateur
               </Badge>
             )}
-          </div>
-          <div className="flex items-center gap-1">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="p-1 h-8 w-8"
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            >
-              <ChevronLeft className={`w-4 h-4 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`} />
-            </Button>
           </div>
         </div>
 
