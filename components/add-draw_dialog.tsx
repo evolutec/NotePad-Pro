@@ -108,6 +108,7 @@ export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }:
             <Palette className="h-5 w-5" />
             Créer un nouveau dessin
           </DialogTitle>
+          <div className="h-1 w-full bg-purple-500 mt-2" />
           <p id="draw-dialog-description" className="text-sm text-muted-foreground">
             Créez un nouveau dessin avec des outils de dessin avancés
           </p>

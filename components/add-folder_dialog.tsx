@@ -148,6 +148,7 @@ export function AddFolderDialog({ folders, onFolderAdded, open, onOpenChange }: 
             <FolderPlus className="h-5 w-5" />
             Créer un nouveau dossier
           </DialogTitle>
+          <div className="h-1 w-full bg-yellow-500 mt-2"></div>
         </DialogHeader>
         <div className="space-y-4">
           {/* Sélecteur visuel d'icône Lucide (optionnel) */}

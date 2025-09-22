@@ -96,7 +96,7 @@ const getFileIcon = (type: FileType, isExpanded: boolean = false) => {
 const getFileColor = (type: FileType) => {
   switch (type) {
     case 'folder':
-      return 'text-orange-500';
+      return 'text-yellow-500';
     case 'note':
       return 'text-blue-600 dark:text-blue-400';
     case 'draw':
@@ -230,7 +230,7 @@ const TreeItem = React.memo(({
           {/* Icon or Avatar */}
           <div className={cn(
             "flex items-center justify-center w-8 h-8 rounded-md bg-background border border-border/50",
-            fileType === 'folder' && "bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800",
+            fileType === 'folder' && "bg-yellow-100 dark:bg-yellow-900 border-orange-200 dark:border-orange-800",
             fileType === 'note' && "bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800",
             fileType === 'draw' && "bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800"
           )}>

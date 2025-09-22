@@ -110,6 +110,7 @@ export function AddNoteDialog({ open, onOpenChange, parentPath, onNoteCreated }:
             <FilePlus className="h-5 w-5" />
             Créer une nouvelle note
           </DialogTitle>
+          <div className="h-1 w-full bg-blue-500 mt-2" />
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">

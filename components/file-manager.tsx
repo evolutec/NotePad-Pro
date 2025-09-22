@@ -40,7 +40,7 @@ const FILE_TYPES: {
     extensions: string[]
   }
 } = {
-  folder: { icon: Folder, color: "text-orange-500", extensions: [] },
+  folder: { icon: Folder, color: "text-yellow-500", extensions: [] },
   image: { icon: ImageIcon, color: "text-green-600", extensions: ["jpg", "jpeg", "png", "gif", "svg", "webp"] },
   document: { icon: FileText, color: "text-blue-600 dark:text-blue-400", extensions: ["pdf", "doc", "docx", "txt", "rtf"] },
   note: { icon: NotebookText, color: "text-blue-600 dark:text-blue-400", extensions: ["md"] },
