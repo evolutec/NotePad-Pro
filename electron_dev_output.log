@@ -1,0 +1,35 @@
+
+> my-v0-project@0.1.0 electron
+> concurrently "next dev" "electron .\electron-main.js"
+
+[1] 
+[1] Registering note:create handler
+[1] Registering draw:create handler
+[1] Registering document:create handler
+[1] [Electron] App ready event fired
+[1] [Electron] App is ready, creating window...
+[1] [Electron] Creating window...
+[1] [Electron] Window created successfully
+[1] [Electron] Loading URL: http://localhost:3000
+[1] [Electron] URL loaded
+[0]   Ôû▓ Next.js 14.2.16
+[0]   - Local:        http://localhost:3000
+[0] 
+[0]  Ô£ô Starting...
+[0]  Ô£ô Ready in 2.9s
+[0]  Ôùï Compiling / ...
+[0]  Ô£ô Compiled / in 8.5s (1908 modules)
+[0] [RootLayout] rendu
+[0]  ÔÜá Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+[0] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+[0]  ÔÜá Unsupported metadata viewport is configured in metadata export in /. Please move it to viewport export instead.
+[0] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+[0]  GET / 200 in 9142ms
+[0] [RootLayout] rendu
+[0]  ÔÜá Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
+[0] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+[0]  ÔÜá Unsupported metadata viewport is configured in metadata export in /. Please move it to viewport export instead.
+[0] Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+[0]  GET / 200 in 118ms
+[1] [9268:0922/205144.964:ERROR:CONSOLE:1] "Request Autofill.enable failed. {"code":-32601,"message":"'Autofill.enable' wasn't found"}", source: devtools://devtools/bundled/core/protocol_client/protocol_client.js (1)
+[1] [9268:0922/205144.964:ERROR:CONSOLE:1] "Request Autofill.setAddresses failed. {"code":-32601,"message":"'Autofill.setAddresses' wasn't found"}", source: devtools://devtools/bundled/core/protocol_client/protocol_client.js (1)

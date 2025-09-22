@@ -13,6 +13,7 @@ import type { EnhancedFolderNode } from "@/components/ui/FolderTree-modern"
 import { AddFolderDialog } from "@/components/add-folder_dialog"
 import { AddNoteDialog } from "@/components/add-note_dialog"
 import { AddDrawDialog } from "@/components/add-draw_dialog"
+import { AddDocumentDialog } from "@/components/add-document_dialog"
 import { RenameDialog } from "@/components/rename-dialog"
 
 export default function NoteTakingApp() {
@@ -26,6 +27,7 @@ export default function NoteTakingApp() {
   const [isAddFolderOpen, setIsAddFolderOpen] = useState(false)
   const [isAddNoteOpen, setIsAddNoteOpen] = useState(false)
   const [isAddDrawOpen, setIsAddDrawOpen] = useState(false)
+  const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false)
   const [isRenameOpen, setIsRenameOpen] = useState(false)
   const [renameNode, setRenameNode] = useState<any>(null)
   const isMobile = useIsMobile()
@@ -333,9 +335,13 @@ export default function NoteTakingApp() {
           console.log('New folder:', parentPath)
           setIsAddFolderOpen(true)
         }}
-        onNewFile={(parentPath) => {
-          console.log('New file:', parentPath)
-          setIsAddNoteOpen(true)
+        onNewFile={(parentPath, type) => {
+          console.log('New file:', parentPath, type)
+          if (type === 'document') {
+            setIsAddDocumentOpen(true)
+          } else if (type === 'note') {
+            setIsAddNoteOpen(true)
+          }
         }}
         onNewDraw={() => {
           console.log('New draw requested')
@@ -519,6 +525,22 @@ export default function NoteTakingApp() {
         parentPath={selectedFolder || ''}
         onDrawCreated={async (newDraw) => {
           console.log('Draw created:', newDraw)
+          // Reload the folder tree to reflect changes
+          if (window.electronAPI?.foldersScan) {
+            const result = await window.electronAPI.foldersScan()
+            if (result && result.length > 0) {
+              setFolderTree(result[0])
+            }
+          }
+        }}
+      />
+
+      <AddDocumentDialog
+        open={isAddDocumentOpen}
+        onOpenChange={setIsAddDocumentOpen}
+        parentPath={selectedFolder || ''}
+        onDocumentCreated={async (newDocument) => {
+          console.log('Document created:', newDocument)
           // Reload the folder tree to reflect changes
           if (window.electronAPI?.foldersScan) {
             const result = await window.electronAPI.foldersScan()

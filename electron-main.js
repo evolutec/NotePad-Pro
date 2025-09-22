@@ -283,6 +283,43 @@ ipcMain.handle('draw:create', async (_event, drawData) => {
   }
 });
 
+// Handler pour créer un document
+console.log('Registering document:create handler');
+ipcMain.handle('document:create', async (_event, documentData) => {
+  console.log('document:create handler called with:', documentData);
+  try {
+    const configPath = path.join(__dirname, 'config.json');
+    if (!fs.existsSync(configPath)) {
+      console.log('document:create handler error: Config not found');
+      return { success: false, error: 'Config not found' };
+    }
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const rootPath = config.files?.rootPath;
+    if (!rootPath) {
+      console.log('document:create handler error: rootPath not set');
+      return { success: false, error: 'rootPath not set' };
+    }
+
+    const { name, parentPath, tags, content, type } = documentData;
+    const fileName = name; // Use the provided name directly to preserve original extension
+    const fullPath = path.join(parentPath || rootPath, fileName);
+    console.log('Attempting to create document at:', fullPath);
+
+    if (fs.existsSync(fullPath)) {
+      console.log('document:create handler error: Document already exists');
+      return { success: false, error: 'Document already exists' };
+    }
+
+    console.log('Writing document to:', fullPath, 'with content length:', content ? content.length : 0);
+    fs.writeFileSync(fullPath, content || '', 'utf-8');
+    console.log('document:create handler returning success');
+    return { success: true, path: fullPath };
+  } catch (err) {
+    console.log('document:create handler error:', err.message);
+    return { success: false, error: err.message };
+  }
+});
+
 // Handler pour charger les notes depuis notes.json
 ipcMain.handle('notes:load', async () => {
   try {

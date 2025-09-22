@@ -28,4 +28,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   drawLoad: (filePath) => ipcRenderer.invoke('draw:load', filePath),
   drawsLoad: () => ipcRenderer.invoke('draws:load'),
   drawsSave: (draws) => ipcRenderer.invoke('draws:save', draws),
+  documentCreate: (documentData) => {
+    console.log('Preload: Calling document:create with', documentData);
+    return ipcRenderer.invoke('document:create', documentData);
+  },
 });

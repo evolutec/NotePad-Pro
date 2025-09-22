@@ -9,10 +9,10 @@ import { FileText, FilePlus } from "lucide-react"; // Using FileText for documen
 export interface DocumentMeta {
   id: string;
   name: string;
-  type: string; // e.g., "pdf", "docx", "txt"
   parentPath: string;
   createdAt: string;
   tags?: string[];
+  content?: string; // Add content field for uploaded file
 }
 
 export interface AddDocumentDialogProps {
@@ -24,7 +24,7 @@ export interface AddDocumentDialogProps {
 
 export function AddDocumentDialog({ open, onOpenChange, parentPath, onDocumentCreated }: AddDocumentDialogProps) {
   const [documentName, setDocumentName] = useState("");
-  const [documentType, setDocumentType] = useState<string>("txt"); // Default to text document
+  const [selectedFile, setSelectedFile] = useState<File | null>(null); // New state for selected file
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState("");
   const [creationError, setCreationError] = useState<string | null>(null);
@@ -40,10 +40,24 @@ export function AddDocumentDialog({ open, onOpenChange, parentPath, onDocumentCr
     }
   }, [open]);
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      setDocumentName(file.name.split('.').slice(0, -1).join('.')); // Set document name from file name
+    } else {
+      setSelectedFile(null);
+      setDocumentName("");
+    }
+  };
+
   const handleCreateDocument = async () => {
     setCreationError(null);
     setCreationSuccess(null);
-    if (!documentName.trim()) return;
+    if (!documentName.trim() && !selectedFile) {
+      setCreationError("Veuillez entrer un nom de document ou sélectionner un fichier.");
+      return;
+    }
 
     let finalParentPath = parentPath;
     if (parentId) {
@@ -51,12 +65,23 @@ export function AddDocumentDialog({ open, onOpenChange, parentPath, onDocumentCr
       finalParentPath = parentFolder?.path || parentPath;
     }
 
+    let fileContent: string | undefined = undefined;
+    if (selectedFile) {
+      try {
+        fileContent = await selectedFile.text(); // Read file content as text
+      } catch (error) {
+        setCreationError("Erreur lors de la lecture du fichier.");
+        return;
+      }
+    }
+
     if (window.electronAPI?.documentCreate) {
       const result = await window.electronAPI.documentCreate({
         name: documentName.trim(),
-        type: documentType,
         parentPath: finalParentPath,
         tags,
+        content: fileContent, // Pass file content
+        type: selectedFile?.type || 'text/plain', // Infer type from file or default
       });
 
       if (!result.success) {
@@ -67,19 +92,17 @@ export function AddDocumentDialog({ open, onOpenChange, parentPath, onDocumentCr
       const newDocument: DocumentMeta = {
         id: Date.now().toString(),
         name: documentName.trim(),
-        type: documentType,
         parentPath: finalParentPath,
         createdAt: new Date().toISOString(),
         tags,
+        content: fileContent,
       };
 
-      // Assuming a similar notesLoad/notesSave for documents or a generic file manager
-      // For now, we'll just call the onDocumentCreated callback
       setCreationSuccess("Document créé avec succès !");
       if (onDocumentCreated) onDocumentCreated(newDocument);
       setTimeout(() => {
         setDocumentName("");
-        setDocumentType("txt");
+        setSelectedFile(null);
         setTags([]);
         setCurrentTag("");
         setCreationSuccess(null);
@@ -110,10 +133,10 @@ export function AddDocumentDialog({ open, onOpenChange, parentPath, onDocumentCr
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" /> {/* Document icon */}
-            Créer un nouveau document
+            <FileText className="h-5 w-5" />
+            Créer ou importer un document
           </DialogTitle>
-          <div className="h-1 w-full bg-green-500 mt-2" /> {/* Green line for documents */}
+          <div className="h-1 w-full bg-red-500 mt-2" />
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -132,39 +155,22 @@ export function AddDocumentDialog({ open, onOpenChange, parentPath, onDocumentCr
             </select>
           </div>
           <div className="space-y-2">
+            <Label htmlFor="document-file">Importer un fichier</Label>
+            <Input
+              id="document-file"
+              type="file"
+              onChange={handleFileChange}
+            />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="document-name">Nom du document</Label>
             <Input
               id="document-name"
               placeholder="Ex: Rapport, Article, Liste..."
               value={documentName}
               onChange={(e) => setDocumentName(e.target.value)}
+              disabled={!!selectedFile} // Disable if a file is selected
             />
-          </div>
-          <div className="space-y-2">
-            <Label>Type de document</Label>
-            <div className="grid grid-cols-3 gap-2">
-              <Button
-                variant={documentType === "txt" ? "default" : "outline"}
-                onClick={() => setDocumentType("txt")}
-                className="h-10 px-4 py-2"
-              >
-                <span className="font-mono text-xs mr-1">.txt</span> Texte
-              </Button>
-              <Button
-                variant={documentType === "pdf" ? "default" : "outline"}
-                onClick={() => setDocumentType("pdf")}
-                className="h-10 px-4 py-2"
-              >
-                <span className="font-mono text-xs mr-1">.pdf</span> PDF
-              </Button>
-              <Button
-                variant={documentType === "docx" ? "default" : "outline"}
-                onClick={() => setDocumentType("docx")}
-                className="h-10 px-4 py-2"
-              >
-                <span className="font-mono text-xs mr-1">.docx</span> Word
-              </Button>
-            </div>
           </div>
           <div className="space-y-2">
             <Label>Étiquettes</Label>
@@ -198,7 +204,7 @@ export function AddDocumentDialog({ open, onOpenChange, parentPath, onDocumentCr
             <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
               Annuler
             </Button>
-            <Button onClick={handleCreateDocument} disabled={!documentName.trim()} className="flex-1">
+            <Button onClick={handleCreateDocument} disabled={!documentName.trim() && !selectedFile} className="flex-1">
               Créer le document
             </Button>
           </div>
