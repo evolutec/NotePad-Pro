@@ -30,7 +30,7 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, C
 import './tree-styles.css';
 
 // Enhanced type definitions
-export type FileType = 'folder' | 'note' | 'draw' | 'document' | 'image' | 'video' | 'audio' | 'code' | 'archive' | 'file';
+export type FileType = 'folder' | 'note' | 'draw' | 'document' | 'image' | 'video' | 'audio' | 'code' | 'archive' | 'link' | 'file';
 
 export type EnhancedFolderNode = {
   id?: string;
@@ -96,7 +96,7 @@ const getFileIcon = (type: FileType, isExpanded: boolean = false) => {
 const getFileColor = (type: FileType) => {
   switch (type) {
     case 'folder':
-      return 'text-yellow-600 dark:text-yellow-400';
+      return 'text-orange-500';
     case 'note':
       return 'text-blue-600 dark:text-blue-400';
     case 'draw':

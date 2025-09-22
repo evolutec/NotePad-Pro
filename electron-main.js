@@ -190,6 +190,10 @@ ipcMain.handle('foldersScan', async () => {
             fileType = 'video';
           } else if (['zip', 'rar', '7z', 'tar'].includes(fileExtension)) {
             fileType = 'archive';
+          } else if (['js', 'ts', 'jsx', 'tsx', 'py', 'java', 'cpp', 'cs', 'html', 'css', 'json'].includes(fileExtension)) {
+            fileType = 'code';
+          } else if (item.startsWith("http://") || item.startsWith("https://")) {
+            fileType = 'link';
           }
           node.children.push({
             name: item,

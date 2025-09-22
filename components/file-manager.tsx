@@ -49,6 +49,7 @@ const FILE_TYPES: {
   video: { icon: Video, color: "text-red-600", extensions: ["mp4", "avi", "mov", "webm"] },
   archive: { icon: Archive, color: "text-yellow-600", extensions: ["zip", "rar", "7z", "tar"] },
   link: { icon: Link, color: "text-cyan-600", extensions: [] },
+  code: { icon: FileCode, color: "text-orange-600", extensions: ["js", "ts", "jsx", "tsx", "py", "java", "cpp", "cs", "html", "css", "json"] },
   other: { icon: File, color: "text-gray-600", extensions: [] },
 }
 
@@ -207,6 +208,7 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
     if (FILE_TYPES.audio.extensions.includes(extension)) return "audio";
     if (FILE_TYPES.video.extensions.includes(extension)) return "video";
     if (FILE_TYPES.archive.extensions.includes(extension)) return "archive";
+    if (FILE_TYPES.code.extensions.includes(extension)) return "code";
     // Si le nom est une URL, on considère comme 'link'
     if (filename.startsWith("http://") || filename.startsWith("https://")) return "link";
     return "other";
