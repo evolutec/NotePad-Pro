@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Progress } from "@/components/ui/progress"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-  import { Upload, File, ImageIcon, FileText, Music, Video, Archive, Link, Download, Trash2, MoreHorizontal, Search, Grid, List, FolderOpen, Eye, Share, Copy, Move, Scissors, Edit, Folder, FileCode, Palette } from "lucide-react"
+  import { Archive, Copy, Download, Edit, Eye, File, FileCode, FileText, FileWarning, Folder, FolderOpen, Grid, ImageIcon, Link, List, MoreHorizontal, Move, Music, NotebookText, Palette, Plus, Scissors, Search, SearchX, Share, Trash, Upload, UploadCloud, Video } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 import { RenameDialog } from "./rename-dialog"
 interface FileManagerProps {
@@ -29,6 +30,7 @@ interface FileItem {
   folderId?: string
   thumbnail?: string
   description?: string
+  isDirectory?: boolean
 }
 
 const FILE_TYPES: {
@@ -38,8 +40,10 @@ const FILE_TYPES: {
     extensions: string[]
   }
 } = {
+  folder: { icon: Folder, color: "text-orange-500", extensions: [] },
   image: { icon: ImageIcon, color: "text-green-600", extensions: ["jpg", "jpeg", "png", "gif", "svg", "webp"] },
   document: { icon: FileText, color: "text-blue-600 dark:text-blue-400", extensions: ["pdf", "doc", "docx", "txt", "rtf"] },
+  note: { icon: NotebookText, color: "text-blue-600 dark:text-blue-400", extensions: ["md"] },
   draw: { icon: Palette, color: "text-purple-600 dark:text-purple-400", extensions: ["draw"] },
   audio: { icon: Music, color: "text-purple-600", extensions: ["mp3", "wav", "ogg", "m4a"] },
   video: { icon: Video, color: "text-red-600", extensions: ["mp4", "avi", "mov", "webm"] },
@@ -155,6 +159,28 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
     },
   ])
 
+  useEffect(() => {
+    if (folderTree && selectedFolder) {
+      const currentFolder = findFolderNode(folderTree, selectedFolder);
+      if (currentFolder && currentFolder.children) {
+        const newFiles: FileItem[] = currentFolder.children.map((node: any) => ({
+          id: node.path,
+          name: node.name,
+          type: node.isDirectory ? "folder" : getFileType(node.name),
+          size: node.size || 0,
+          uploadDate: new Date(node.lastModified),
+          folderId: currentFolder.path,
+          isDirectory: node.isDirectory,
+        }));
+        setFiles(newFiles);
+      } else {
+        setFiles([]);
+      }
+    } else {
+      setFiles([]);
+    }
+  }, [folderTree, selectedFolder]);
+
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({})
@@ -170,12 +196,13 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
     return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
   }
 
-  type FileType = "image" | "document" | "draw" | "audio" | "video" | "archive" | "link" | "other";
+  type FileType = "image" | "document" | "draw" | "audio" | "video" | "archive" | "link" | "other" | "note";
   const getFileType = (filename: string): FileType => {
     const extension = filename.split(".").pop()?.toLowerCase();
     if (!extension) return "other";
     if (FILE_TYPES.image.extensions.includes(extension)) return "image";
     if (FILE_TYPES.document.extensions.includes(extension)) return "document";
+    if (FILE_TYPES.note.extensions.includes(extension)) return "note";
     if (FILE_TYPES.draw.extensions.includes(extension)) return "draw";
     if (FILE_TYPES.audio.extensions.includes(extension)) return "audio";
     if (FILE_TYPES.video.extensions.includes(extension)) return "video";
@@ -195,24 +222,21 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
     }
 
     // Remove progress after completion
+
     setUploadProgress((prev) => {
       const newProgress = { ...prev }
       delete newProgress[fileId]
       return newProgress
     })
 
-    const fileType = getFileType(file.name)
-    const newFile: FileItem = {
+    return {
       id: fileId,
       name: file.name,
-      type: fileType,
+      type: getFileType(file.name),
       size: file.size,
       uploadDate: new Date(),
       folderId: selectedFolder || undefined,
-      thumbnail: fileType === "image" ? URL.createObjectURL(file) : undefined,
     }
-
-    return newFile
   }
 
   const handleFileUpload = async (uploadedFiles: FileList) => {
@@ -228,6 +252,20 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
     }
   }
 
+  const handleLinkUpload = async (url: string) => {
+    const fileId = Date.now().toString()
+    const newFile: FileItem = {
+      id: fileId,
+      name: url,
+      type: "link",
+      size: 0,
+      uploadDate: new Date(),
+      folderId: selectedFolder || undefined,
+      url: url,
+    }
+    setFiles((prev) => [...prev, newFile])
+  }
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragOver(false)
@@ -236,7 +274,7 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
     if (droppedFiles.length > 0) {
       handleFileUpload(droppedFiles)
     }
-  }, [])
+  }, [handleFileUpload])
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -353,8 +391,8 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
               <Edit className="h-4 w-4 mr-2" />
               Renommer
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => deleteFile(file.id)} className="text-destructive">
-              <Trash2 className="h-4 w-4 mr-2" />
+            <DropdownMenuItem onClick={() => deleteFile(file.id)} className="text-red-600 focus:text-red-600">
+              <Trash className="h-4 w-4 mr-2" />
               Supprimer
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -429,8 +467,8 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
             <Edit className="h-4 w-4 mr-2" />
             Renommer
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => deleteFile(file.id)} className="text-destructive">
-            <Trash2 className="h-4 w-4 mr-2" />
+          <DropdownMenuItem onClick={() => deleteFile(file.id)} className="text-red-600 focus:text-red-600">
+            <Trash className="h-4 w-4 mr-2" />
             Supprimer
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -471,205 +509,80 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
             />
           </div>
 
-          <Button onClick={() => fileInputRef.current?.click()}>
-            <Upload className="h-4 w-4 mr-2" />
-            Importer
-          </Button>
-
-
-
-          <div className="flex items-center gap-2">
-            <Input ref={linkInputRef} placeholder="Coller un lien..." className="w-48" />
-            <Button onClick={addLink} variant="outline">
-              <Link className="h-4 w-4 mr-2" />
-              Ajouter
-            </Button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Ajouter
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                <UploadCloud className="h-4 w-4 mr-2" />
+                Fichier
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsAddDrawOpen(true)}>
+                <Palette className="h-4 w-4 mr-2" />
+                Dessin
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsAddNoteOpen(true)}>
+                <NotebookText className="h-4 w-4 mr-2" />
+                Note
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                <Link className="h-4 w-4 mr-2" />
+                <Input
+                  ref={linkInputRef}
+                  placeholder="Coller un lien..."
+                  className="h-8"
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      addLink();
+                    }
+                  }}
+                />
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
-      {/* Drop Zone */}
+      {/* Main Content */}
       <div
-        className={`flex-1 relative ${isDragOver ? "bg-primary/5 border-2 border-dashed border-primary" : ""}`}
+        className={cn(
+          "flex-1 overflow-auto p-4",
+          isDragOver ? "border-2 border-dashed border-primary" : ""
+        )}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
       >
-        {isDragOver && (
-          <div className="absolute inset-0 flex items-center justify-center bg-primary/5 z-10">
-            <div className="text-center">
-              <Upload className="h-12 w-12 mx-auto mb-4 text-primary" />
-              <p className="text-lg font-medium text-primary">Déposez vos fichiers ici</p>
-              <p className="text-sm text-muted-foreground">Tous les types de fichiers sont acceptés</p>
-            </div>
+        {filteredFiles.length === 0 && searchQuery === "" ? (
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+            <FileWarning className="h-12 w-12 mb-4" />
+            <p>Aucun fichier dans ce dossier.</p>
+            <p>Faites glisser et déposez des fichiers ici, ou cliquez sur "Ajouter" pour en créer un nouveau.</p>
+          </div>
+        ) : filteredFiles.length === 0 && searchQuery !== "" ? (
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+            <SearchX className="h-12 w-12 mb-4" />
+            <p>Aucun fichier ne correspond à votre recherche.</p>
+          </div>
+        ) : viewMode === "grid" ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {filteredFiles.map((file) => (
+              <FileCard key={file.id} file={file} />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {filteredFiles.map((file) => (
+              <FileRow key={file.id} file={file} />
+            ))}
           </div>
         )}
-
-        {/* Dossiers enfants + File List */}
-        <ScrollArea className="h-full">
-          <div className="p-4">
-            {/* Affichage des dossiers enfants */}
-            {childFolders.length > 0 && (
-              viewMode === "grid" ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
-                  {childFolders.map((child: any) => {
-                    const isFolder = child.type === 'folder';
-                    const isNote = child.type === 'note';
-                    const iconColor = isFolder ? 'text-yellow-600 dark:text-yellow-400' : 
-                                     isNote ? 'text-blue-600 dark:text-blue-400' : 
-                                     'text-blue-600 dark:text-blue-400';
-                    const IconComponent = isFolder ? Folder : 
-                                        isNote ? FileText : 
-                                        FileCode;
-                    
-                    return (
-                      <Card
-                        key={child.path}
-                        className="p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md transition-shadow cursor-pointer"
-                        onDoubleClick={() => onFolderSelect && onFolderSelect(child.path)}
-                      >
-                        <div className="flex items-center gap-2 mb-2 w-full justify-between">
-                          <div className="flex items-center gap-3">
-                            <IconComponent className={`h-8 w-8 ${iconColor}`} />
-                            <div className="flex items-center gap-2">
-                              {child.color && <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: child.color }} />}
-                              {child.icon && <span className="text-sm">{child.icon}</span>}
-                            </div>
-                          </div>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => cutFolder(child)}>
-                                <Scissors className="h-4 w-4 mr-2" />
-                                Couper
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => copyFolder(child)}>
-                                <Copy className="h-4 w-4 mr-2" />
-                                Copier
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => pasteFolder(child.path)} disabled={!clipboard}>
-                                <Move className="h-4 w-4 mr-2" />
-                                Coller ici
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => renameFolder(child)}>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Renommer
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => deleteFolder(child)} className="text-destructive">
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Supprimer
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                        <h4 className="font-medium text-sm text-center truncate" title={child.name}>{child.name}</h4>
-                        {child.description && <p className="text-xs text-muted-foreground text-center line-clamp-2">{child.description}</p>}
-                      </Card>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="space-y-1 mb-6">
-                  {childFolders.map((child: any) => {
-                    const isFolder = child.type === 'folder';
-                    const isNote = child.type === 'note';
-                    const iconColor = isFolder ? 'text-yellow-600 dark:text-yellow-400' : 
-                                     isNote ? 'text-blue-600 dark:text-blue-400' : 
-                                     'text-orange-600 dark:text-orange-400';
-                    const IconComponent = isFolder ? Folder : 
-                                        isNote ? FileText : 
-                                        FileCode;
-                    
-                    return (
-                      <div
-                        key={child.path}
-                        className="flex items-center gap-3 p-3 hover:bg-muted/50 rounded-lg transition-colors cursor-pointer"
-                        onDoubleClick={() => onFolderSelect && onFolderSelect(child.path)}
-                      >
-                        <IconComponent className={`h-5 w-5 ${iconColor}`} />
-                        <div className="flex items-center gap-2">
-                          {child.color && <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: child.color }} />}
-                          {child.icon && <span className="text-sm">{child.icon}</span>}
-                        </div>
-                        <span className="font-medium text-sm truncate" title={child.name}>{child.name}</span>
-                        {child.description && <span className="text-xs text-muted-foreground truncate ml-2">{child.description}</span>}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Move className="h-4 w-4 mr-2" />
-                              Déplacer
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Supprimer
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Scissors className="h-4 w-4 mr-2" />
-                              Couper
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Copy className="h-4 w-4 mr-2" />
-                              Copier
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Renommer
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    );
-                  })}
-                </div>
-              )
-            )}
-
-            {/* Affichage des fichiers */}
-            {(filteredFiles.length === 0 && childFolders.length === 0) ? (
-              <div className="text-center py-12">
-                <FolderOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-lg font-medium text-muted-foreground mb-2">Aucun fichier</p>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Glissez-déposez des fichiers ou cliquez sur Importer pour commencer
-                </p>
-                <Button onClick={() => fileInputRef.current?.click()}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Importer des fichiers
-                </Button>
-              </div>
-            ) : viewMode === "grid" ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredFiles.map((file) => (
-                  <FileCard key={file.id} file={file} />
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {filteredFiles.map((file) => (
-                  <FileRow key={file.id} file={file} />
-                ))}
-              </div>
-            )}
-          </div>
-        </ScrollArea>
       </div>
 
-      {/* Status Bar */}
-      <div className="h-8 bg-muted border-t border-border flex items-center justify-between px-4 text-xs text-muted-foreground">
-        <span>{filteredFiles.length} fichier(s)</span>
-        <span>Taille totale: {formatFileSize(filteredFiles.reduce((total, file) => total + file.size, 0))}</span>
-      </div>
-
-      {/* Hidden File Input */}
       <input
         ref={fileInputRef}
         type="file"

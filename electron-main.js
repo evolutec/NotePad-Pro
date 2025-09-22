@@ -176,10 +176,25 @@ ipcMain.handle('foldersScan', async () => {
         if (itemStats.isDirectory()) {
           node.children.push(scanFolderTree(itemPath));
         } else {
+          const fileExtension = item.split('.').pop()?.toLowerCase();
+          let fileType = 'file'; // Default to 'file'
+          if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(fileExtension)) {
+            fileType = 'image';
+          } else if (['pdf', 'doc', 'docx', 'txt', 'rtf'].includes(fileExtension)) {
+            fileType = 'document';
+          } else if (['draw'].includes(fileExtension)) {
+            fileType = 'draw';
+          } else if (['mp3', 'wav', 'ogg', 'm4a'].includes(fileExtension)) {
+            fileType = 'audio';
+          } else if (['mp4', 'avi', 'mov', 'webm'].includes(fileExtension)) {
+            fileType = 'video';
+          } else if (['zip', 'rar', '7z', 'tar'].includes(fileExtension)) {
+            fileType = 'archive';
+          }
           node.children.push({
             name: item,
             path: itemPath,
-            type: 'file',
+            type: fileType,
             isDirectory: false,
           });
         }
@@ -348,6 +363,40 @@ ipcMain.handle('note:load', async (_event, filePath) => {
     // Extract title from first line or use filename
     const title = content.split('\n')[0].replace(/^#\s*/, '') || path.basename(filePath, path.extname(filePath));
     return { success: true, data: { title, content } };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Handler pour sauvegarder le contenu d'un dessin dans un fichier
+ipcMain.handle('draw:save', async (_event, filePath, drawingData) => {
+  try {
+    if (!filePath) {
+      return { success: false, error: 'File path is required' };
+    }
+    
+    // Ensure the directory exists
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    
+    fs.writeFileSync(filePath, JSON.stringify(drawingData, null, 2), 'utf-8');
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Handler pour charger le contenu d'un dessin depuis un fichier
+ipcMain.handle('draw:load', async (_event, filePath) => {
+  try {
+    if (!fs.existsSync(filePath)) {
+      return { success: false, error: 'File not found' };
+    }
+    
+    const content = fs.readFileSync(filePath, 'utf-8');
+    return { success: true, data: JSON.parse(content) };
   } catch (err) {
     return { success: false, error: err.message };
   }
