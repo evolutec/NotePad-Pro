@@ -10,6 +10,8 @@ import { SettingsDialog } from "@/components/settings-dialog"
 import { Button } from "@/components/ui/button"
 import { PenTool, FileText, Upload, Menu, Settings } from "lucide-react"
 import type { EnhancedFolderNode } from "@/components/ui/FolderTree-modern"
+import { AddFolderDialog } from "@/components/add-folder_dialog"
+import { AddNoteDialog } from "@/components/add-note_dialog"
 
 export default function NoteTakingApp() {
   const [activeView, setActiveView] = useState<"canvas" | "editor" | "files">("canvas")
@@ -19,6 +21,8 @@ export default function NoteTakingApp() {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null)
   const [selectedNote, setSelectedNote] = useState<string | null>(null)
   const [folderTree, setFolderTree] = useState<EnhancedFolderNode | null>(null)
+  const [isAddFolderOpen, setIsAddFolderOpen] = useState(false)
+  const [isAddNoteOpen, setIsAddNoteOpen] = useState(false)
   const isMobile = useIsMobile()
 
   // Sélection dossier : switch auto sur fichiers
@@ -264,8 +268,14 @@ export default function NoteTakingApp() {
           }
         }}
         onDuplicate={(node) => console.log('Duplicate:', node.path)}
-        onNewFolder={(parentPath) => console.log('New folder:', parentPath)}
-        onNewFile={(parentPath) => console.log('New file:', parentPath)}
+        onNewFolder={(parentPath) => {
+          console.log('New folder:', parentPath)
+          setIsAddFolderOpen(true)
+        }}
+        onNewFile={(parentPath) => {
+          console.log('New file:', parentPath)
+          setIsAddNoteOpen(true)
+        }}
       />
       {/* Main Content flexible */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -313,6 +323,39 @@ export default function NoteTakingApp() {
           )}
         </main>
       </div>
+
+      {/* Dialogs */}
+      <AddFolderDialog
+        open={isAddFolderOpen}
+        onOpenChange={setIsAddFolderOpen}
+        folders={[]}
+        onFolderAdded={async (newFolder) => {
+          console.log('Folder added:', newFolder)
+          // Reload the folder tree to reflect changes
+          if (window.electronAPI?.foldersScan) {
+            const result = await window.electronAPI.foldersScan()
+            if (result && result.length > 0) {
+              setFolderTree(result[0])
+            }
+          }
+        }}
+      />
+      
+      <AddNoteDialog
+        open={isAddNoteOpen}
+        onOpenChange={setIsAddNoteOpen}
+        parentPath={selectedFolder || ''}
+        onNoteCreated={async (newNote) => {
+          console.log('Note created:', newNote)
+          // Reload the folder tree to reflect changes
+          if (window.electronAPI?.foldersScan) {
+            const result = await window.electronAPI.foldersScan()
+            if (result && result.length > 0) {
+              setFolderTree(result[0])
+            }
+          }
+        }}
+      />
     </div>
   )
 }

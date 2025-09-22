@@ -21,7 +21,8 @@ import {
   Users,
   Trash2,
   Folder,
-  FolderOpen
+  FolderOpen,
+  Palette
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -206,9 +207,27 @@ export function ModernSidebar({
         <div className="flex items-center justify-between mb-4">
           <div className={cn("flex items-center gap-2", sidebarCollapsed && "justify-center")}>
             {!sidebarCollapsed && (
-              <h2 className="text-lg font-semibold text-foreground">
-                Explorateur de fichiers
-              </h2>
+              <div className="flex items-center gap-2">
+                {/* Two action buttons */}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="p-2 h-8 w-8 bg-green-500 hover:bg-green-600 text-white hover:text-white"
+                  onClick={handleNewFolder}
+                  title="Nouveau dossier"
+                >
+                  <FolderPlus className="w-4 h-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="p-2 h-8 w-8 bg-purple-500 hover:bg-purple-600 text-white hover:text-white"
+                  onClick={handleNewFile}
+                  title="Nouveau fichier"
+                >
+                  <FilePlus className="w-4 h-4" />
+                </Button>
+              </div>
             )}
             {isClient && !isElectronMode && !sidebarCollapsed && (
               <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
@@ -217,40 +236,6 @@ export function ModernSidebar({
             )}
           </div>
           <div className="flex items-center gap-1">
-            {!sidebarCollapsed && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="p-1 h-8 w-8">
-                    <Settings className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={handleSelectRootFolder}>
-                    <FolderOpen className="w-4 h-4 mr-2" />
-                    Sélectionner un dossier
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleNewFolder}>
-                    <FolderPlus className="w-4 h-4 mr-2" />
-                    Nouveau dossier
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleNewFile}>
-                    <FilePlus className="w-4 h-4 mr-2" />
-                    Nouveau fichier
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setViewMode('tree')}>
-                    <LayoutGrid className="w-4 h-4 mr-2" />
-                    Vue arborescente
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setViewMode('list')}>
-                    <List className="w-4 h-4 mr-2" />
-                    Vue liste
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-            
             <Button 
               variant="ghost" 
               size="sm" 
