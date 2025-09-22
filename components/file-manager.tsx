@@ -41,15 +41,16 @@ const FILE_TYPES: {
   }
 } = {
   folder: { icon: Folder, color: "text-yellow-500", extensions: [] },
-  image: { icon: ImageIcon, color: "text-green-600", extensions: ["jpg", "jpeg", "png", "gif", "svg", "webp"] },
-  document: { icon: FileText, color: "text-blue-600 dark:text-blue-400", extensions: ["pdf", "doc", "docx", "txt", "rtf"] },
-  note: { icon: NotebookText, color: "text-blue-600 dark:text-blue-400", extensions: ["md"] },
+  image: { icon: ImageIcon, color: "text-red-500", extensions: ["jpg", "jpeg", "png", "gif", "svg", "webp"] },
+  document: { icon: FileText, color: "text-green-500", extensions: ["pdf", "doc", "docx", "txt", "rtf"] },
+  note: { icon: NotebookText, color: "text-blue-500", extensions: ["md"] },
   draw: { icon: Palette, color: "text-purple-600 dark:text-purple-400", extensions: ["draw"] },
-  audio: { icon: Music, color: "text-purple-600", extensions: ["mp3", "wav", "ogg", "m4a"] },
-  video: { icon: Video, color: "text-red-600", extensions: ["mp4", "avi", "mov", "webm"] },
-  archive: { icon: Archive, color: "text-yellow-600", extensions: ["zip", "rar", "7z", "tar"] },
+  audio: { icon: Music, color: "text-purple-500", extensions: ["mp3", "wav", "ogg", "m4a"] },
+  video: { icon: Video, color: "text-blue-500", extensions: ["mp4", "avi", "mov", "webm"] },
+  archive: { icon: Archive, color: "text-gray-500", extensions: ["zip", "rar", "7z", "tar"] },
   link: { icon: Link, color: "text-cyan-600", extensions: [] },
-  code: { icon: FileCode, color: "text-orange-600", extensions: ["js", "ts", "jsx", "tsx", "py", "java", "cpp", "cs", "html", "css", "json"] },
+  code: { icon: FileCode, color: "text-orange-500", extensions: ["js", "ts", "jsx", "tsx", "py", "java", "cpp", "cs", "html", "css", "json"] },
+  archive: { icon: Archive, color: "text-gray-500", extensions: ["zip", "rar", "7z", "tar"] },
   other: { icon: File, color: "text-gray-600", extensions: [] },
 }
 

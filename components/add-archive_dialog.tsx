@@ -4,26 +4,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { FilePlus, Palette } from "lucide-react";
+import { Archive as ArchiveIcon, FilePlus } from "lucide-react"; // Using Archive for archive icon
 
-export interface DrawMeta {
+export interface ArchiveMeta {
   id: string;
   name: string;
-  type: "draw";
+  type: string; // e.g., "zip", "rar", "7z"
   parentPath: string;
   createdAt: string;
   tags?: string[];
 }
 
-export interface AddDrawDialogProps {
+export interface AddArchiveDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   parentPath: string;
-  onDrawCreated: (draw: DrawMeta) => void;
+  onArchiveCreated: (archive: ArchiveMeta) => void;
 }
 
-export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }: AddDrawDialogProps) {
-  const [drawName, setDrawName] = useState("");
+export function AddArchiveDialog({ open, onOpenChange, parentPath, onArchiveCreated }: AddArchiveDialogProps) {
+  const [archiveName, setArchiveName] = useState("");
+  const [archiveType, setArchiveType] = useState<string>("zip"); // Default to zip archive
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState("");
   const [creationError, setCreationError] = useState<string | null>(null);
@@ -39,42 +40,44 @@ export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }:
     }
   }, [open]);
 
-  const handleCreateDraw = async () => {
+  const handleCreateArchive = async () => {
     setCreationError(null);
     setCreationSuccess(null);
-    if (!drawName.trim()) return;
+    if (!archiveName.trim()) return;
+
     let finalParentPath = parentPath;
     if (parentId) {
       const parentFolder = existingFolders.find(f => f.id === parentId);
       finalParentPath = parentFolder?.path || parentPath;
     }
-    if (window.electronAPI?.drawCreate) {
-      const result = await window.electronAPI.drawCreate({
-        name: drawName.trim(),
-        type: "draw",
+
+    if (window.electronAPI?.archiveCreate) {
+      const result = await window.electronAPI.archiveCreate({
+        name: archiveName.trim(),
+        type: archiveType,
         parentPath: finalParentPath,
         tags,
       });
+
       if (!result.success) {
-        setCreationError(result.error || "Erreur lors de la création du dessin.");
+        setCreationError(result.error || "Erreur lors de la création de l'archive.");
         return;
       }
-      const newDraw: DrawMeta = {
+
+      const newArchive: ArchiveMeta = {
         id: Date.now().toString(),
-        name: drawName.trim(),
-        type: "draw",
+        name: archiveName.trim(),
+        type: archiveType,
         parentPath: finalParentPath,
         createdAt: new Date().toISOString(),
         tags,
       };
-      if (window.electronAPI?.drawsLoad && window.electronAPI?.drawsSave) {
-        const draws = await window.electronAPI.drawsLoad();
-        await window.electronAPI.drawsSave([...draws, newDraw]);
-      }
-      setCreationSuccess("Dessin créé avec succès !");
-      if (onDrawCreated) onDrawCreated(newDraw);
+
+      setCreationSuccess("Archive créée avec succès !");
+      if (onArchiveCreated) onArchiveCreated(newArchive);
       setTimeout(() => {
-        setDrawName("");
+        setArchiveName("");
+        setArchiveType("zip");
         setTags([]);
         setCurrentTag("");
         setCreationSuccess(null);
@@ -102,16 +105,13 @@ export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md" aria-describedby="draw-dialog-description">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Palette className="h-5 w-5" />
-            Créer un nouveau dessin
+            <ArchiveIcon className="h-5 w-5" /> {/* Archive icon */}
+            Créer une nouvelle archive
           </DialogTitle>
-          <div className="h-1 w-full bg-purple-500 mt-2" />
-          <p id="draw-dialog-description" className="text-sm text-muted-foreground">
-            Créez un nouveau dessin avec des outils de dessin avancés
-          </p>
+          <div className="h-1 w-full bg-gray-500 mt-2" /> {/* Gray line for archives */}
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -130,13 +130,39 @@ export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }:
             </select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="draw-name">Nom du dessin</Label>
+            <Label htmlFor="archive-name">Nom de l'archive</Label>
             <Input
-              id="draw-name"
-              placeholder="Ex: Croquis, Schéma, Diagramme..."
-              value={drawName}
-              onChange={(e) => setDrawName(e.target.value)}
+              id="archive-name"
+              placeholder="Ex: documents.zip, photos.rar, backup.7z..."
+              value={archiveName}
+              onChange={(e) => setArchiveName(e.target.value)}
             />
+          </div>
+          <div className="space-y-2">
+            <Label>Type d'archive</Label>
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                variant={archiveType === "zip" ? "default" : "outline"}
+                onClick={() => setArchiveType("zip")}
+                className="h-10 px-4 py-2"
+              >
+                <span className="font-mono text-xs mr-1">.zip</span> ZIP
+              </Button>
+              <Button
+                variant={archiveType === "rar" ? "default" : "outline"}
+                onClick={() => setArchiveType("rar")}
+                className="h-10 px-4 py-2"
+              >
+                <span className="font-mono text-xs mr-1">.rar</span> RAR
+              </Button>
+              <Button
+                variant={archiveType === "7z" ? "default" : "outline"}
+                onClick={() => setArchiveType("7z")}
+                className="h-10 px-4 py-2"
+              >
+                <span className="font-mono text-xs mr-1">.7z</span> 7Z
+              </Button>
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Étiquettes</Label>
@@ -170,8 +196,8 @@ export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }:
             <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
               Annuler
             </Button>
-            <Button onClick={handleCreateDraw} disabled={!drawName.trim()} className="flex-1 h-10 px-4 py-2">
-              Créer le dessin
+            <Button onClick={handleCreateArchive} disabled={!archiveName.trim()} className="flex-1">
+              Créer l'archive
             </Button>
           </div>
         </div>

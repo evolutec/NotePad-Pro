@@ -143,12 +143,14 @@ export function AddNoteDialog({ open, onOpenChange, parentPath, onNoteCreated }:
               <Button
                 variant={noteType === "text" ? "default" : "outline"}
                 onClick={() => setNoteType("text")}
+                className="h-10 px-4 py-2"
               >
                 <FileText className="w-4 h-4 mr-1" /> Texte
               </Button>
               <Button
                 variant={noteType === "markdown" ? "default" : "outline"}
                 onClick={() => setNoteType("markdown")}
+                className="h-10 px-4 py-2"
               >
                 <span className="font-mono text-xs mr-1">.md</span> Markdown
               </Button>

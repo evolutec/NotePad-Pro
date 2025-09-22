@@ -154,12 +154,12 @@ export function AddFolderDialog({ folders, onFolderAdded, open, onOpenChange }: 
           {/* Sélecteur visuel d'icône Lucide (optionnel) */}
           <div className="space-y-2">
             <Label>Icône personnalisée <span className="text-xs text-muted-foreground">(optionnel)</span></Label>
-            <div className="flex gap-2 flex-wrap">
+            <div className="grid grid-cols-4 gap-2">
               {ICONS.map(({ name, Comp }) => (
                 <button
                   key={name}
                   type="button"
-                  className={`p-2 rounded border ${icon === name ? "border-primary bg-accent" : "border-border"}`}
+                  className={`p-2 rounded border h-10 w-10 flex items-center justify-center ${icon === name ? "border-primary bg-accent" : "border-border"}`}
                   onClick={() => setIcon(name)}
                   title={name}
                 >
@@ -168,7 +168,7 @@ export function AddFolderDialog({ folders, onFolderAdded, open, onOpenChange }: 
               ))}
               <button
                 type="button"
-                className={`p-2 rounded border ${icon === "" ? "border-primary bg-accent" : "border-border"}`}
+                className={`p-2 rounded border h-10 w-10 flex items-center justify-center ${icon === "" ? "border-primary bg-accent" : "border-border"}`}
                 onClick={() => setIcon("")}
                 title="Aucune icône"
               >

@@ -102,19 +102,21 @@ const getFileColor = (type: FileType) => {
     case 'draw':
       return 'text-purple-600 dark:text-purple-400';
     case 'document':
-      return 'text-red-600 dark:text-red-400';
+      return 'text-green-500';
     case 'image':
-      return 'text-green-600 dark:text-green-400';
+      return 'text-red-500';
     case 'video':
-      return 'text-purple-600 dark:text-purple-400';
+      return 'text-blue-500';
     case 'audio':
-      return 'text-pink-600 dark:text-pink-400';
+      return 'text-purple-500';
     case 'code':
-      return 'text-orange-600 dark:text-orange-400';
+      return 'text-orange-500';
     case 'archive':
-      return 'text-gray-600 dark:text-gray-400';
+      return 'text-gray-500';
+    case 'link':
+      return 'text-cyan-600';
     default:
-      return 'text-gray-500 dark:text-gray-500';
+      return 'text-gray-600';
   }
 };
 

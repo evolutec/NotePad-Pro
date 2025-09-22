@@ -4,26 +4,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { FilePlus, Palette } from "lucide-react";
+import { Image as ImageIcon, FilePlus } from "lucide-react"; // Using Image for image icon
 
-export interface DrawMeta {
+export interface ImageMeta {
   id: string;
   name: string;
-  type: "draw";
+  type: string; // e.g., "png", "jpg", "svg"
   parentPath: string;
   createdAt: string;
   tags?: string[];
 }
 
-export interface AddDrawDialogProps {
+export interface AddImageDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   parentPath: string;
-  onDrawCreated: (draw: DrawMeta) => void;
+  onImageCreated: (image: ImageMeta) => void;
 }
 
-export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }: AddDrawDialogProps) {
-  const [drawName, setDrawName] = useState("");
+export function AddImageDialog({ open, onOpenChange, parentPath, onImageCreated }: AddImageDialogProps) {
+  const [imageName, setImageName] = useState("");
+  const [imageType, setImageType] = useState<string>("png"); // Default to png image
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState("");
   const [creationError, setCreationError] = useState<string | null>(null);
@@ -39,42 +40,44 @@ export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }:
     }
   }, [open]);
 
-  const handleCreateDraw = async () => {
+  const handleCreateImage = async () => {
     setCreationError(null);
     setCreationSuccess(null);
-    if (!drawName.trim()) return;
+    if (!imageName.trim()) return;
+
     let finalParentPath = parentPath;
     if (parentId) {
       const parentFolder = existingFolders.find(f => f.id === parentId);
       finalParentPath = parentFolder?.path || parentPath;
     }
-    if (window.electronAPI?.drawCreate) {
-      const result = await window.electronAPI.drawCreate({
-        name: drawName.trim(),
-        type: "draw",
+
+    if (window.electronAPI?.imageCreate) {
+      const result = await window.electronAPI.imageCreate({
+        name: imageName.trim(),
+        type: imageType,
         parentPath: finalParentPath,
         tags,
       });
+
       if (!result.success) {
-        setCreationError(result.error || "Erreur lors de la création du dessin.");
+        setCreationError(result.error || "Erreur lors de la création de l'image.");
         return;
       }
-      const newDraw: DrawMeta = {
+
+      const newImage: ImageMeta = {
         id: Date.now().toString(),
-        name: drawName.trim(),
-        type: "draw",
+        name: imageName.trim(),
+        type: imageType,
         parentPath: finalParentPath,
         createdAt: new Date().toISOString(),
         tags,
       };
-      if (window.electronAPI?.drawsLoad && window.electronAPI?.drawsSave) {
-        const draws = await window.electronAPI.drawsLoad();
-        await window.electronAPI.drawsSave([...draws, newDraw]);
-      }
-      setCreationSuccess("Dessin créé avec succès !");
-      if (onDrawCreated) onDrawCreated(newDraw);
+
+      setCreationSuccess("Image créée avec succès !");
+      if (onImageCreated) onImageCreated(newImage);
       setTimeout(() => {
-        setDrawName("");
+        setImageName("");
+        setImageType("png");
         setTags([]);
         setCurrentTag("");
         setCreationSuccess(null);
@@ -102,16 +105,13 @@ export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md" aria-describedby="draw-dialog-description">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Palette className="h-5 w-5" />
-            Créer un nouveau dessin
+            <ImageIcon className="h-5 w-5" /> {/* Image icon */}
+            Créer une nouvelle image
           </DialogTitle>
-          <div className="h-1 w-full bg-purple-500 mt-2" />
-          <p id="draw-dialog-description" className="text-sm text-muted-foreground">
-            Créez un nouveau dessin avec des outils de dessin avancés
-          </p>
+          <div className="h-1 w-full bg-red-500 mt-2" /> {/* Red line for images */}
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -130,13 +130,39 @@ export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }:
             </select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="draw-name">Nom du dessin</Label>
+            <Label htmlFor="image-name">Nom de l'image</Label>
             <Input
-              id="draw-name"
-              placeholder="Ex: Croquis, Schéma, Diagramme..."
-              value={drawName}
-              onChange={(e) => setDrawName(e.target.value)}
+              id="image-name"
+              placeholder="Ex: Photo de vacances, Logo, Icône..."
+              value={imageName}
+              onChange={(e) => setImageName(e.target.value)}
             />
+          </div>
+          <div className="space-y-2">
+            <Label>Type d'image</Label>
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                variant={imageType === "png" ? "default" : "outline"}
+                onClick={() => setImageType("png")}
+                className="h-10 px-4 py-2"
+              >
+                <span className="font-mono text-xs mr-1">.png</span> PNG
+              </Button>
+              <Button
+                variant={imageType === "jpg" ? "default" : "outline"}
+                onClick={() => setImageType("jpg")}
+                className="h-10 px-4 py-2"
+              >
+                <span className="font-mono text-xs mr-1">.jpg</span> JPG
+              </Button>
+              <Button
+                variant={imageType === "svg" ? "default" : "outline"}
+                onClick={() => setImageType("svg")}
+                className="h-10 px-4 py-2"
+              >
+                <span className="font-mono text-xs mr-1">.svg</span> SVG
+              </Button>
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Étiquettes</Label>
@@ -170,8 +196,8 @@ export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }:
             <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
               Annuler
             </Button>
-            <Button onClick={handleCreateDraw} disabled={!drawName.trim()} className="flex-1 h-10 px-4 py-2">
-              Créer le dessin
+            <Button onClick={handleCreateImage} disabled={!imageName.trim()} className="flex-1">
+              Créer l'image
             </Button>
           </div>
         </div>

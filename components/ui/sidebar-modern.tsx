@@ -5,9 +5,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Search, 
   Filter, 
-  FolderPlus, 
+  FolderPlus,
   FilePlus,
   FileText,
+  FileImage,
+  FileVideo,
+  FileAudio,
+  FileCode,
+  FileArchive,
   Settings,
   LayoutGrid,
   List,
@@ -46,7 +51,7 @@ interface ModernSidebarProps {
   onRename?: (node: EnhancedFolderNode) => void;
   onDuplicate?: (node: EnhancedFolderNode) => void;
   onNewFolder?: (parentPath: string) => void;
-  onNewFile?: (parentPath: string) => void;
+  onNewFile?: (parentPath: string, fileType?: string) => void;
   onNewDraw?: () => void;
   className?: string;
   isCollapsed?: boolean;
@@ -93,6 +98,10 @@ export function ModernSidebar({
 
   const handleNewFile = useCallback(() => {
     onNewFile?.('root');
+  }, [onNewFile]);
+
+  const handleNewDocument = useCallback(() => {
+    onNewFile?.('root', 'document'); // Assuming onNewFile can handle different types
   }, [onNewFile]);
 
   const handleNewDraw = useCallback(() => {
@@ -223,70 +232,178 @@ export function ModernSidebar({
         </div>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <div className={cn("flex items-center gap-2", sidebarCollapsed && "flex-col gap-1")}>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className={cn("p-2 h-8 w-8 bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900 dark:hover:bg-yellow-800 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300", sidebarCollapsed && "h-7 w-7 p-1")}
-                      onClick={handleNewFolder}
-                    >
-                      <FolderPlus className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    Nouveau dossier
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className={cn("p-2 h-8 w-8 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300", sidebarCollapsed && "h-7 w-7 p-1")}
-                      onClick={handleNewFile}
-                    >
-                      <FilePlus className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    Nouveau fichier
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className={cn("p-2 h-8 w-8 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300", sidebarCollapsed && "h-7 w-7 p-1")}
-                      onClick={handleNewDraw}
-                    >
-                      <Palette className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    Nouveau dessin
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+            <div className={cn("flex flex-wrap items-center gap-2", sidebarCollapsed && "flex-col")}>
+              <div className="flex flex-wrap items-center gap-2">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className={cn("h-12 w-12 p-0 bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900 dark:hover:bg-yellow-800 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300", sidebarCollapsed && "h-7 w-7 p-1")}
+                        onClick={handleNewFolder}
+                      >
+                        <FolderPlus className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      Nouveau dossier
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className={cn("h-12 w-12 p-0 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300", sidebarCollapsed && "h-7 w-7 p-1")}
+                        onClick={() => onNewFile?.('root', 'note')}
+                      >
+                        <FilePlus className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      Nouvelle note
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className={cn("h-12 w-12 p-0 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300", sidebarCollapsed && "h-7 w-7 p-1")}
+                        onClick={handleNewDraw}
+                      >
+                        <Palette className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      Nouveau dessin
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className={cn("h-12 w-12 p-0 bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300", sidebarCollapsed && "h-7 w-7 p-1")}
+                        onClick={() => onNewFile?.('root', 'document')}
+                      >
+                        <FileText className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      Nouveau document
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className={cn("h-12 w-12 p-0 bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300", sidebarCollapsed && "h-7 w-7 p-1")}
+                        onClick={() => onNewFile?.('root', 'image')}
+                      >
+                        <FileImage className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      Nouvelle image
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className={cn("h-12 w-12 p-0 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300", sidebarCollapsed && "h-7 w-7 p-1")}
+                        onClick={() => onNewFile?.('root', 'video')}
+                      >
+                        <FileVideo className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      Nouvelle vidéo
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className={cn("h-12 w-12 p-0 bg-pink-100 hover:bg-pink-200 dark:bg-pink-900 dark:hover:bg-pink-800 text-pink-600 dark:text-pink-400 hover:text-pink-700 dark:hover:text-pink-300", sidebarCollapsed && "h-7 w-7 p-1")}
+                        onClick={() => onNewFile?.('root', 'audio')}
+                      >
+                        <FileAudio className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      Nouvel audio
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className={cn("h-12 w-12 p-0 bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300", sidebarCollapsed && "h-7 w-7 p-1")}
+                        onClick={() => onNewFile?.('root', 'code')}
+                      >
+                        <FileCode className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      Nouveau code
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className={cn("h-12 w-12 p-0 bg-gray-100 hover:bg-gray-200 dark:bg-gray-900 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300", sidebarCollapsed && "h-7 w-7 p-1")}
+                        onClick={() => onNewFile?.('root', 'archive')}
+                      >
+                        <FileArchive className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      Nouvelle archive
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              {isClient && !isElectronMode && !sidebarCollapsed && (
+                <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
+                  Mode navigateur
+                </Badge>
+              )}
             </div>
-            {isClient && !isElectronMode && !sidebarCollapsed && (
-              <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
-                Mode navigateur
-              </Badge>
-            )}
           </div>
+
+
         </div>
 
         {/* Search - Hidden when collapsed */}
         {!sidebarCollapsed && (
-          <div className="relative">
+          <div className="relative mt-4">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Rechercher des fichiers..."

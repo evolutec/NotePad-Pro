@@ -4,26 +4,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { FilePlus, Palette } from "lucide-react";
+import { Code as CodeIcon, FilePlus } from "lucide-react"; // Using Code for code icon
 
-export interface DrawMeta {
+export interface CodeMeta {
   id: string;
   name: string;
-  type: "draw";
+  type: string; // e.g., "js", "py", "ts"
   parentPath: string;
   createdAt: string;
   tags?: string[];
 }
 
-export interface AddDrawDialogProps {
+export interface AddCodeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   parentPath: string;
-  onDrawCreated: (draw: DrawMeta) => void;
+  onCodeCreated: (code: CodeMeta) => void;
 }
 
-export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }: AddDrawDialogProps) {
-  const [drawName, setDrawName] = useState("");
+export function AddCodeDialog({ open, onOpenChange, parentPath, onCodeCreated }: AddCodeDialogProps) {
+  const [codeName, setCodeName] = useState("");
+  const [codeType, setCodeType] = useState<string>("js"); // Default to js code
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState("");
   const [creationError, setCreationError] = useState<string | null>(null);
@@ -39,42 +40,44 @@ export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }:
     }
   }, [open]);
 
-  const handleCreateDraw = async () => {
+  const handleCreateCode = async () => {
     setCreationError(null);
     setCreationSuccess(null);
-    if (!drawName.trim()) return;
+    if (!codeName.trim()) return;
+
     let finalParentPath = parentPath;
     if (parentId) {
       const parentFolder = existingFolders.find(f => f.id === parentId);
       finalParentPath = parentFolder?.path || parentPath;
     }
-    if (window.electronAPI?.drawCreate) {
-      const result = await window.electronAPI.drawCreate({
-        name: drawName.trim(),
-        type: "draw",
+
+    if (window.electronAPI?.codeCreate) {
+      const result = await window.electronAPI.codeCreate({
+        name: codeName.trim(),
+        type: codeType,
         parentPath: finalParentPath,
         tags,
       });
+
       if (!result.success) {
-        setCreationError(result.error || "Erreur lors de la création du dessin.");
+        setCreationError(result.error || "Erreur lors de la création du fichier de code.");
         return;
       }
-      const newDraw: DrawMeta = {
+
+      const newCode: CodeMeta = {
         id: Date.now().toString(),
-        name: drawName.trim(),
-        type: "draw",
+        name: codeName.trim(),
+        type: codeType,
         parentPath: finalParentPath,
         createdAt: new Date().toISOString(),
         tags,
       };
-      if (window.electronAPI?.drawsLoad && window.electronAPI?.drawsSave) {
-        const draws = await window.electronAPI.drawsLoad();
-        await window.electronAPI.drawsSave([...draws, newDraw]);
-      }
-      setCreationSuccess("Dessin créé avec succès !");
-      if (onDrawCreated) onDrawCreated(newDraw);
+
+      setCreationSuccess("Fichier de code créé avec succès !");
+      if (onCodeCreated) onCodeCreated(newCode);
       setTimeout(() => {
-        setDrawName("");
+        setCodeName("");
+        setCodeType("js");
         setTags([]);
         setCurrentTag("");
         setCreationSuccess(null);
@@ -102,16 +105,13 @@ export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md" aria-describedby="draw-dialog-description">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Palette className="h-5 w-5" />
-            Créer un nouveau dessin
+            <CodeIcon className="h-5 w-5" /> {/* Code icon */}
+            Créer un nouveau fichier de code
           </DialogTitle>
-          <div className="h-1 w-full bg-purple-500 mt-2" />
-          <p id="draw-dialog-description" className="text-sm text-muted-foreground">
-            Créez un nouveau dessin avec des outils de dessin avancés
-          </p>
+          <div className="h-1 w-full bg-orange-500 mt-2" /> {/* Orange line for code files */}
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -130,13 +130,39 @@ export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }:
             </select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="draw-name">Nom du dessin</Label>
+            <Label htmlFor="code-name">Nom du fichier de code</Label>
             <Input
-              id="draw-name"
-              placeholder="Ex: Croquis, Schéma, Diagramme..."
-              value={drawName}
-              onChange={(e) => setDrawName(e.target.value)}
+              id="code-name"
+              placeholder="Ex: script.js, main.py, index.ts..."
+              value={codeName}
+              onChange={(e) => setCodeName(e.target.value)}
             />
+          </div>
+          <div className="space-y-2">
+            <Label>Type de code</Label>
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                variant={codeType === "js" ? "default" : "outline"}
+                onClick={() => setCodeType("js")}
+                className="h-10 px-4 py-2"
+              >
+                <span className="font-mono text-xs mr-1">.js</span> JavaScript
+              </Button>
+              <Button
+                variant={codeType === "py" ? "default" : "outline"}
+                onClick={() => setCodeType("py")}
+                className="h-10 px-4 py-2"
+              >
+                <span className="font-mono text-xs mr-1">.py</span> Python
+              </Button>
+              <Button
+                variant={codeType === "ts" ? "default" : "outline"}
+                onClick={() => setCodeType("ts")}
+                className="h-10 px-4 py-2"
+              >
+                <span className="font-mono text-xs mr-1">.ts</span> TypeScript
+              </Button>
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Étiquettes</Label>
@@ -170,8 +196,8 @@ export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }:
             <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
               Annuler
             </Button>
-            <Button onClick={handleCreateDraw} disabled={!drawName.trim()} className="flex-1 h-10 px-4 py-2">
-              Créer le dessin
+            <Button onClick={handleCreateCode} disabled={!codeName.trim()} className="flex-1">
+              Créer le fichier de code
             </Button>
           </div>
         </div>

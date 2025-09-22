@@ -4,26 +4,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { FilePlus, Palette } from "lucide-react";
+import { FileText, FilePlus } from "lucide-react"; // Using FileText for document icon
 
-export interface DrawMeta {
+export interface DocumentMeta {
   id: string;
   name: string;
-  type: "draw";
+  type: string; // e.g., "pdf", "docx", "txt"
   parentPath: string;
   createdAt: string;
   tags?: string[];
 }
 
-export interface AddDrawDialogProps {
+export interface AddDocumentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   parentPath: string;
-  onDrawCreated: (draw: DrawMeta) => void;
+  onDocumentCreated: (document: DocumentMeta) => void;
 }
 
-export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }: AddDrawDialogProps) {
-  const [drawName, setDrawName] = useState("");
+export function AddDocumentDialog({ open, onOpenChange, parentPath, onDocumentCreated }: AddDocumentDialogProps) {
+  const [documentName, setDocumentName] = useState("");
+  const [documentType, setDocumentType] = useState<string>("txt"); // Default to text document
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState("");
   const [creationError, setCreationError] = useState<string | null>(null);
@@ -39,42 +40,46 @@ export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }:
     }
   }, [open]);
 
-  const handleCreateDraw = async () => {
+  const handleCreateDocument = async () => {
     setCreationError(null);
     setCreationSuccess(null);
-    if (!drawName.trim()) return;
+    if (!documentName.trim()) return;
+
     let finalParentPath = parentPath;
     if (parentId) {
       const parentFolder = existingFolders.find(f => f.id === parentId);
       finalParentPath = parentFolder?.path || parentPath;
     }
-    if (window.electronAPI?.drawCreate) {
-      const result = await window.electronAPI.drawCreate({
-        name: drawName.trim(),
-        type: "draw",
+
+    if (window.electronAPI?.documentCreate) {
+      const result = await window.electronAPI.documentCreate({
+        name: documentName.trim(),
+        type: documentType,
         parentPath: finalParentPath,
         tags,
       });
+
       if (!result.success) {
-        setCreationError(result.error || "Erreur lors de la création du dessin.");
+        setCreationError(result.error || "Erreur lors de la création du document.");
         return;
       }
-      const newDraw: DrawMeta = {
+
+      const newDocument: DocumentMeta = {
         id: Date.now().toString(),
-        name: drawName.trim(),
-        type: "draw",
+        name: documentName.trim(),
+        type: documentType,
         parentPath: finalParentPath,
         createdAt: new Date().toISOString(),
         tags,
       };
-      if (window.electronAPI?.drawsLoad && window.electronAPI?.drawsSave) {
-        const draws = await window.electronAPI.drawsLoad();
-        await window.electronAPI.drawsSave([...draws, newDraw]);
-      }
-      setCreationSuccess("Dessin créé avec succès !");
-      if (onDrawCreated) onDrawCreated(newDraw);
+
+      // Assuming a similar notesLoad/notesSave for documents or a generic file manager
+      // For now, we'll just call the onDocumentCreated callback
+      setCreationSuccess("Document créé avec succès !");
+      if (onDocumentCreated) onDocumentCreated(newDocument);
       setTimeout(() => {
-        setDrawName("");
+        setDocumentName("");
+        setDocumentType("txt");
         setTags([]);
         setCurrentTag("");
         setCreationSuccess(null);
@@ -102,16 +107,13 @@ export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md" aria-describedby="draw-dialog-description">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Palette className="h-5 w-5" />
-            Créer un nouveau dessin
+            <FileText className="h-5 w-5" /> {/* Document icon */}
+            Créer un nouveau document
           </DialogTitle>
-          <div className="h-1 w-full bg-purple-500 mt-2" />
-          <p id="draw-dialog-description" className="text-sm text-muted-foreground">
-            Créez un nouveau dessin avec des outils de dessin avancés
-          </p>
+          <div className="h-1 w-full bg-green-500 mt-2" /> {/* Green line for documents */}
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -130,13 +132,39 @@ export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }:
             </select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="draw-name">Nom du dessin</Label>
+            <Label htmlFor="document-name">Nom du document</Label>
             <Input
-              id="draw-name"
-              placeholder="Ex: Croquis, Schéma, Diagramme..."
-              value={drawName}
-              onChange={(e) => setDrawName(e.target.value)}
+              id="document-name"
+              placeholder="Ex: Rapport, Article, Liste..."
+              value={documentName}
+              onChange={(e) => setDocumentName(e.target.value)}
             />
+          </div>
+          <div className="space-y-2">
+            <Label>Type de document</Label>
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                variant={documentType === "txt" ? "default" : "outline"}
+                onClick={() => setDocumentType("txt")}
+                className="h-10 px-4 py-2"
+              >
+                <span className="font-mono text-xs mr-1">.txt</span> Texte
+              </Button>
+              <Button
+                variant={documentType === "pdf" ? "default" : "outline"}
+                onClick={() => setDocumentType("pdf")}
+                className="h-10 px-4 py-2"
+              >
+                <span className="font-mono text-xs mr-1">.pdf</span> PDF
+              </Button>
+              <Button
+                variant={documentType === "docx" ? "default" : "outline"}
+                onClick={() => setDocumentType("docx")}
+                className="h-10 px-4 py-2"
+              >
+                <span className="font-mono text-xs mr-1">.docx</span> Word
+              </Button>
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Étiquettes</Label>
@@ -170,8 +198,8 @@ export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }:
             <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
               Annuler
             </Button>
-            <Button onClick={handleCreateDraw} disabled={!drawName.trim()} className="flex-1 h-10 px-4 py-2">
-              Créer le dessin
+            <Button onClick={handleCreateDocument} disabled={!documentName.trim()} className="flex-1">
+              Créer le document
             </Button>
           </div>
         </div>
