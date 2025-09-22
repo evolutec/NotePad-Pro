@@ -12,6 +12,7 @@ import { PenTool, FileText, Upload, Menu, Settings } from "lucide-react"
 import type { EnhancedFolderNode } from "@/components/ui/FolderTree-modern"
 import { AddFolderDialog } from "@/components/add-folder_dialog"
 import { AddNoteDialog } from "@/components/add-note_dialog"
+import { RenameDialog } from "@/components/rename-dialog"
 
 export default function NoteTakingApp() {
   const [activeView, setActiveView] = useState<"canvas" | "editor" | "files">("canvas")
@@ -23,6 +24,8 @@ export default function NoteTakingApp() {
   const [folderTree, setFolderTree] = useState<EnhancedFolderNode | null>(null)
   const [isAddFolderOpen, setIsAddFolderOpen] = useState(false)
   const [isAddNoteOpen, setIsAddNoteOpen] = useState(false)
+  const [isRenameOpen, setIsRenameOpen] = useState(false)
+  const [renameNode, setRenameNode] = useState<any>(null)
   const isMobile = useIsMobile()
 
   // Sélection dossier : switch auto sur fichiers
@@ -189,9 +192,21 @@ export default function NoteTakingApp() {
             
             // Reload the folder tree to reflect changes
             if (window.electronAPI?.foldersScan) {
-              const result = await window.electronAPI.foldersScan();
-              if (result && result.length > 0) {
-                setFolderTree(result[0]);
+              const scanResult = await window.electronAPI.foldersScan();
+              if (scanResult && scanResult.length > 0) {
+                setFolderTree(scanResult[0]);
+                
+                // Clear selected paths if they were deleted
+                const isNote = node.type === 'note';
+                if (isNote) {
+                  if (selectedNote === node.path) {
+                    setSelectedNote('');
+                  }
+                } else {
+                  if (selectedFolder === node.path) {
+                    setSelectedFolder('');
+                  }
+                }
               }
             }
             
@@ -201,73 +216,111 @@ export default function NoteTakingApp() {
         }}
         onRename={async (node) => {
           console.log('Rename:', node.path);
+          setRenameNode(node);
+          setIsRenameOpen(true);
+        }}
+        onDuplicate={async (node) => {
+          console.log('Duplicate:', node.path);
           
           try {
-            const newName = prompt('Nouveau nom:', node.name);
-            if (!newName || newName === node.name) return;
+            // Only allow duplication for notes (not folders)
+            if (node.type !== 'note' && !node.name.match(/\.(md|txt)$/i)) {
+              console.log('Duplication only supported for notes');
+              return;
+            }
             
-            // Check if it's a note or folder based on the node type
-            const isNote = node.type === 'note';
-            
-            if (isNote) {
-              // Rename note file
+            // Get current note content
+            if (window.electronAPI?.noteLoad) {
+              const loadResult = await window.electronAPI.noteLoad(node.path);
+              if (!loadResult.success) {
+                console.error('Failed to load note content:', loadResult.error);
+                return;
+              }
+              
+              const originalContent = loadResult.data.content;
+              const originalTitle = loadResult.data.title;
+              
+              // Generate new name
+              const baseName = node.name.replace(/\.(md|txt)$/i, '');
+              const ext = node.name.match(/\.(md|txt)$/i)?.[0] || '.md';
+              let counter = 1;
+              let newName = `${baseName}_copie${ext}`;
+              
+              // Check if name exists and find unique name
+              const parentDir = node.path.substring(0, node.path.lastIndexOf('\\'));
+              const checkPath = `${parentDir}\\${newName}`;
+              
               if (window.electronAPI?.fileRename) {
-                const result = await window.electronAPI.fileRename(node.path, newName);
-                if (result.success) {
-                  console.log('Note renamed:', result.newPath);
-                  
-                  // Update note in notes.json
-                  if (window.electronAPI?.notesLoad && window.electronAPI?.notesSave) {
-                    const notes = await window.electronAPI.notesLoad();
-                    const updatedNotes = notes.map((note: any) => 
-                      note.path === node.path 
-                        ? { ...note, name: newName, path: result.newPath }
-                        : note
-                    );
-                    await window.electronAPI.notesSave(updatedNotes);
-                    console.log('Note updated in notes.json');
+                // Use fileRename to check if path exists (it will fail if exists)
+                let exists = true;
+                while (exists) {
+                  const testResult = await window.electronAPI.fileRename(checkPath, newName);
+                  if (testResult.error?.includes('already exists')) {
+                    counter++;
+                    newName = `${baseName}_copie${counter}${ext}`;
+                  } else {
+                    exists = false;
                   }
-                } else {
-                  console.error('Failed to rename note:', result.error);
                 }
               }
-            } else {
-              // Rename folder
-              if (window.electronAPI?.fileRename) {
-                const result = await window.electronAPI.fileRename(node.path, newName);
-                if (result.success) {
-                  console.log('Folder renamed:', result.newPath);
-                  
-                  // Update folder in folders.json
-                  if (window.electronAPI?.foldersLoad && window.electronAPI?.foldersSave) {
-                    const folders = await window.electronAPI.foldersLoad();
-                    const updatedFolders = folders.map((folder: any) => 
-                      folder.path === node.path 
-                        ? { ...folder, name: newName, path: result.newPath }
-                        : folder
-                    );
-                    await window.electronAPI.foldersSave(updatedFolders);
-                    console.log('Folder updated in folders.json');
+              
+              // Create duplicate note
+              const parentPath = node.path.substring(0, node.path.lastIndexOf('\\'));
+              if (window.electronAPI?.noteCreate) {
+                const createResult = await window.electronAPI.noteCreate({
+                  name: newName.replace(/\.(md|txt)$/i, ''),
+                  type: ext === '.md' ? 'markdown' : 'txt',
+                  parentPath: parentPath,
+                  tags: node.tags || []
+                });
+                
+                if (createResult.success) {
+                  // Write the duplicated content
+                  if (window.electronAPI?.noteSave) {
+                    const saveResult = await window.electronAPI.noteSave({
+                      path: createResult.path,
+                      content: originalContent
+                    });
+                    
+                    if (saveResult.success) {
+                      // Add to notes.json
+                      if (window.electronAPI?.notesLoad && window.electronAPI?.notesSave) {
+                        const notes = await window.electronAPI.notesLoad();
+                        const newNoteMeta = {
+                          id: Date.now().toString(),
+                          name: newName.replace(/\.(md|txt)$/i, ''),
+                          type: ext === '.md' ? 'markdown' : 'txt',
+                          parentPath: parentPath,
+                          path: createResult.path,
+                          createdAt: new Date().toISOString(),
+                          tags: node.tags || []
+                        };
+                        notes.push(newNoteMeta);
+                        await window.electronAPI.notesSave(notes);
+                      }
+                      
+                      console.log('Note duplicated successfully:', createResult.path);
+                      
+                      // Reload folder tree
+                      if (window.electronAPI?.foldersScan) {
+                        const result = await window.electronAPI.foldersScan();
+                        if (result && result.length > 0) {
+                          setFolderTree(result[0]);
+                        }
+                      }
+                    } else {
+                      console.error('Failed to save duplicated content:', saveResult.error);
+                    }
                   }
                 } else {
-                  console.error('Failed to rename folder:', result.error);
+                  console.error('Failed to create duplicate note:', createResult.error);
                 }
               }
             }
-            
-            // Reload the folder tree to reflect changes
-            if (window.electronAPI?.foldersScan) {
-              const result = await window.electronAPI.foldersScan();
-              if (result && result.length > 0) {
-                setFolderTree(result[0]);
-              }
-            }
-            
           } catch (error) {
-            console.error('Error during rename:', error);
+            console.error('Error during duplication:', error);
           }
         }}
-        onDuplicate={(node) => console.log('Duplicate:', node.path)}
         onNewFolder={(parentPath) => {
           console.log('New folder:', parentPath)
           setIsAddFolderOpen(true)
@@ -353,6 +406,97 @@ export default function NoteTakingApp() {
             if (result && result.length > 0) {
               setFolderTree(result[0])
             }
+          }
+        }}
+      />
+      
+      <RenameDialog
+        open={isRenameOpen}
+        onOpenChange={setIsRenameOpen}
+        currentName={renameNode?.name || ''}
+        currentPath={renameNode?.path || ''}
+        isFolder={renameNode?.type !== 'note'}
+        onRename={async (newName) => {
+          if (!renameNode) return;
+          
+          try {
+            const node = renameNode;
+            const isNote = node.type === 'note';
+            let renameResult;
+            
+            if (isNote) {
+              // Rename note file
+              if (window.electronAPI?.fileRename) {
+                renameResult = await window.electronAPI.fileRename(node.path, newName);
+                if (renameResult.success) {
+                  console.log('Note renamed:', renameResult.newPath);
+                  
+                  // Update note in notes.json
+                  if (window.electronAPI?.notesLoad && window.electronAPI?.notesSave) {
+                    const notes = await window.electronAPI.notesLoad();
+                    const updatedNotes = notes.map((note: any) => 
+                      note.path === node.path 
+                        ? { ...note, name: newName, path: renameResult.newPath }
+                        : note
+                    );
+                    await window.electronAPI.notesSave(updatedNotes);
+                    console.log('Note updated in notes.json');
+                  }
+                } else {
+                  console.error('Failed to rename note:', renameResult.error);
+                  throw new Error(renameResult.error || 'Failed to rename note');
+                }
+              }
+            } else {
+              // Rename folder
+              if (window.electronAPI?.fileRename) {
+                renameResult = await window.electronAPI.fileRename(node.path, newName);
+                if (renameResult.success) {
+                  console.log('Folder renamed:', renameResult.newPath);
+                  
+                  // Update folder in folders.json
+                  if (window.electronAPI?.foldersLoad && window.electronAPI?.foldersSave) {
+                    const folders = await window.electronAPI.foldersLoad();
+                    const updatedFolders = folders.map((folder: any) => 
+                      folder.path === node.path 
+                        ? { ...folder, name: newName, path: renameResult.newPath }
+                        : folder
+                    );
+                    await window.electronAPI.foldersSave(updatedFolders);
+                    console.log('Folder updated in folders.json');
+                  }
+                } else {
+                  console.error('Failed to rename folder:', renameResult.error);
+                  throw new Error(renameResult.error || 'Failed to rename folder');
+                }
+              }
+            }
+            
+            // Update selected paths first, before reloading the tree
+            if (isNote && renameResult?.success) {
+              if (selectedNote === node.path) {
+                console.log('Updating selectedNote from', node.path, 'to', renameResult.newPath);
+                setSelectedNote(renameResult.newPath);
+              }
+            } else if (!isNote && renameResult?.success) {
+              if (selectedFolder === node.path) {
+                console.log('Updating selectedFolder from', node.path, 'to', renameResult.newPath);
+                setSelectedFolder(renameResult.newPath);
+              }
+            }
+            
+            // Reload the folder tree to reflect changes
+            if (window.electronAPI?.foldersScan) {
+              const scanResult = await window.electronAPI.foldersScan();
+              if (scanResult && scanResult.length > 0) {
+                console.log('Folder tree reloaded after rename');
+                setFolderTree(scanResult[0]);
+              }
+            }
+            
+          } catch (error) {
+            console.error('Error during rename:', error);
+            throw error;
           }
         }}
       />

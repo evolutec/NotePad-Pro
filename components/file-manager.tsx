@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Progress } from "@/components/ui/progress"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-  import { Upload, File, ImageIcon, FileText, Music, Video, Archive, Link, Download, Trash2, MoreHorizontal, Search, Grid, List, FolderOpen, Eye, Share, Copy, Move, Scissors, Edit } from "lucide-react"
+  import { Upload, File, ImageIcon, FileText, Music, Video, Archive, Link, Download, Trash2, MoreHorizontal, Search, Grid, List, FolderOpen, Eye, Share, Copy, Move, Scissors, Edit, Folder, FileCode } from "lucide-react"
 interface FileManagerProps {
   selectedFolder: string | null
   folderTree?: any // Ajout de la structure des dossiers
@@ -37,7 +37,7 @@ const FILE_TYPES: {
   }
 } = {
   image: { icon: ImageIcon, color: "text-green-600", extensions: ["jpg", "jpeg", "png", "gif", "svg", "webp"] },
-  document: { icon: FileText, color: "text-blue-600", extensions: ["pdf", "doc", "docx", "txt", "rtf"] },
+  document: { icon: FileText, color: "text-blue-600 dark:text-blue-400", extensions: ["pdf", "doc", "docx", "txt", "rtf"] },
   audio: { icon: Music, color: "text-purple-600", extensions: ["mp3", "wav", "ogg", "m4a"] },
   video: { icon: Video, color: "text-red-600", extensions: ["mp4", "avi", "mov", "webm"] },
   archive: { icon: Archive, color: "text-yellow-600", extensions: ["zip", "rar", "7z", "tar"] },
@@ -304,7 +304,7 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
   const FileCard = ({ file }: { file: FileItem }) => (
     <Card className="p-4 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <FileIcon file={file} />
           <Badge variant="outline" className="text-xs">
             {file.type}
@@ -367,7 +367,7 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
   )
 
   const FileRow = ({ file }: { file: FileItem }) => (
-    <div className="flex items-center gap-4 p-3 hover:bg-muted/50 rounded-lg transition-colors">
+    <div className="flex items-center gap-3 p-3 hover:bg-muted/50 rounded-lg transition-colors">
       <FileIcon file={file} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
@@ -482,17 +482,91 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
             {childFolders.length > 0 && (
               viewMode === "grid" ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
-                  {childFolders.map((folder: any) => (
-                    <Card
-                      key={folder.path}
-                      className="p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md transition-shadow cursor-pointer"
-                      onDoubleClick={() => onFolderSelect && onFolderSelect(folder.path)}
-                    >
-                      <div className="flex items-center gap-2 mb-2 w-full justify-between">
-                        <div className="flex items-center gap-2">
-                          {folder.color && <span className="inline-block w-4 h-4 rounded-full" style={{ backgroundColor: folder.color }} />}
-                          {folder.icon && <span className="text-xl">{folder.icon}</span>}
+                  {childFolders.map((child: any) => {
+                    const isFolder = child.type === 'folder';
+                    const isNote = child.type === 'note';
+                    const iconColor = isFolder ? 'text-yellow-600 dark:text-yellow-400' : 
+                                     isNote ? 'text-blue-600 dark:text-blue-400' : 
+                                     'text-orange-600 dark:text-orange-400';
+                    const IconComponent = isFolder ? Folder : 
+                                        isNote ? FileText : 
+                                        FileCode;
+                    
+                    return (
+                      <Card
+                        key={child.path}
+                        className="p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md transition-shadow cursor-pointer"
+                        onDoubleClick={() => onFolderSelect && onFolderSelect(child.path)}
+                      >
+                        <div className="flex items-center gap-2 mb-2 w-full justify-between">
+                          <div className="flex items-center gap-3">
+                            <IconComponent className={`h-8 w-8 ${iconColor}`} />
+                            <div className="flex items-center gap-2">
+                              {child.color && <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: child.color }} />}
+                              {child.icon && <span className="text-sm">{child.icon}</span>}
+                            </div>
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => cutFolder(child)}>
+                                <Scissors className="h-4 w-4 mr-2" />
+                                Couper
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => copyFolder(child)}>
+                                <Copy className="h-4 w-4 mr-2" />
+                                Copier
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => pasteFolder(child.path)} disabled={!clipboard}>
+                                <Move className="h-4 w-4 mr-2" />
+                                Coller ici
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => renameFolder(child)}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Renommer
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => deleteFolder(child)} className="text-destructive">
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Supprimer
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
+                        <h4 className="font-medium text-sm text-center truncate" title={child.name}>{child.name}</h4>
+                        {child.description && <p className="text-xs text-muted-foreground text-center line-clamp-2">{child.description}</p>}
+                      </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="space-y-1 mb-6">
+                  {childFolders.map((child: any) => {
+                    const isFolder = child.type === 'folder';
+                    const isNote = child.type === 'note';
+                    const iconColor = isFolder ? 'text-yellow-600 dark:text-yellow-400' : 
+                                     isNote ? 'text-blue-600 dark:text-blue-400' : 
+                                     'text-orange-600 dark:text-orange-400';
+                    const IconComponent = isFolder ? Folder : 
+                                        isNote ? FileText : 
+                                        FileCode;
+                    
+                    return (
+                      <div
+                        key={child.path}
+                        className="flex items-center gap-3 p-3 hover:bg-muted/50 rounded-lg transition-colors cursor-pointer"
+                        onDoubleClick={() => onFolderSelect && onFolderSelect(child.path)}
+                      >
+                        <IconComponent className={`h-5 w-5 ${iconColor}`} />
+                        <div className="flex items-center gap-2">
+                          {child.color && <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: child.color }} />}
+                          {child.icon && <span className="text-sm">{child.icon}</span>}
+                        </div>
+                        <span className="font-medium text-sm truncate" title={child.name}>{child.name}</span>
+                        {child.description && <span className="text-xs text-muted-foreground truncate ml-2">{child.description}</span>}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
@@ -500,77 +574,31 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => cutFolder(folder)}>
+                            <DropdownMenuItem>
+                              <Move className="h-4 w-4 mr-2" />
+                              Déplacer
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Supprimer
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
                               <Scissors className="h-4 w-4 mr-2" />
                               Couper
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => copyFolder(folder)}>
+                            <DropdownMenuItem>
                               <Copy className="h-4 w-4 mr-2" />
                               Copier
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => pasteFolder(folder.path)} disabled={!clipboard}>
-                              <Move className="h-4 w-4 mr-2" />
-                              Coller ici
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => renameFolder(folder)}>
+                            <DropdownMenuItem>
                               <Edit className="h-4 w-4 mr-2" />
                               Renommer
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => deleteFolder(folder)} className="text-destructive">
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Supprimer
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
-                      <h4 className="font-medium text-sm text-center truncate" title={folder.name}>{folder.name}</h4>
-                      {folder.description && <p className="text-xs text-muted-foreground text-center line-clamp-2">{folder.description}</p>}
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-1 mb-6">
-                  {childFolders.map((folder: any) => (
-                    <div
-                      key={folder.path}
-                      className="flex items-center gap-3 p-3 hover:bg-muted/50 rounded-lg transition-colors cursor-pointer"
-                      onDoubleClick={() => onFolderSelect && onFolderSelect(folder.path)}
-                    >
-                      {folder.color && <span className="inline-block w-4 h-4 rounded-full" style={{ backgroundColor: folder.color }} />}
-                      {folder.icon && <span className="text-xl">{folder.icon}</span>}
-                      <span className="font-medium text-sm truncate" title={folder.name}>{folder.name}</span>
-                      {folder.description && <span className="text-xs text-muted-foreground truncate ml-2">{folder.description}</span>}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Move className="h-4 w-4 mr-2" />
-                            Déplacer
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Supprimer
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Scissors className="h-4 w-4 mr-2" />
-                            Couper
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Copy className="h-4 w-4 mr-2" />
-                            Copier
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Renommer
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )
             )}

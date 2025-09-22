@@ -212,7 +212,7 @@ export function ModernSidebar({
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="p-2 h-8 w-8 bg-green-500 hover:bg-green-600 text-white hover:text-white"
+                  className="p-2 h-8 w-8 bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900 dark:hover:bg-yellow-800 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300"
                   onClick={handleNewFolder}
                   title="Nouveau dossier"
                 >
@@ -221,7 +221,7 @@ export function ModernSidebar({
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="p-2 h-8 w-8 bg-purple-500 hover:bg-purple-600 text-white hover:text-white"
+                  className="p-2 h-8 w-8 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
                   onClick={handleNewFile}
                   title="Nouveau fichier"
                 >
@@ -342,7 +342,7 @@ export function ModernSidebar({
                       {console.log('Rendering ModernFolderTree with original tree:', tree)}
                       {console.log('Rendering ModernFolderTree with filtered tree:', filteredTree(tree))}
                       <ModernFolderTree
-                        tree={tree}
+                        tree={filteredTree(tree)}
                         onFolderSelect={onFolderSelect}
                         selectedFolder={selectedFolder}
                         onNoteSelect={onNoteSelect}

@@ -199,7 +199,7 @@ const TreeItem = React.memo(({
           )}
 
           {/* Expand/Collapse button */}
-          {hasChildren && (
+          {hasChildren ? (
             <Button
               variant="ghost"
               size="sm"
@@ -216,6 +216,9 @@ const TreeItem = React.memo(({
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </motion.div>
             </Button>
+          ) : (
+            // Spacer to keep alignment for items without children
+            <div className="h-6 w-6" aria-hidden />
           )}
 
           {/* Icon or Avatar */}
@@ -296,20 +299,10 @@ const TreeItem = React.memo(({
                 <DropdownMenuItem onClick={onRename}>
                   Renommer
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={onDuplicate}>
-                  Dupliquer
-                </DropdownMenuItem>
-                {fileType === 'folder' && (
-                  <>
-                    <DropdownMenuItem onClick={onNewFolder}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Nouveau dossier
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={onNewFile}>
-                      <FileText className="w-4 h-4 mr-2" />
-                      Nouveau fichier
-                    </DropdownMenuItem>
-                  </>
+                {fileType !== 'folder' && (
+                  <DropdownMenuItem onClick={onDuplicate}>
+                    Dupliquer
+                  </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
@@ -326,19 +319,8 @@ const TreeItem = React.memo(({
       
       <ContextMenuContent>
         <ContextMenuItem onClick={onRename}>Renommer</ContextMenuItem>
-        <ContextMenuItem onClick={onDuplicate}>Dupliquer</ContextMenuItem>
-        {fileType === 'folder' && (
-          <>
-            <ContextMenuSeparator />
-            <ContextMenuItem onClick={onNewFolder}>
-              <Plus className="w-4 h-4 mr-2" />
-              Nouveau dossier
-            </ContextMenuItem>
-            <ContextMenuItem onClick={onNewFile}>
-              <FileText className="w-4 h-4 mr-2" />
-              Nouveau fichier
-            </ContextMenuItem>
-          </>
+        {fileType !== 'folder' && (
+          <ContextMenuItem onClick={onDuplicate}>Dupliquer</ContextMenuItem>
         )}
         <ContextMenuSeparator />
         <ContextMenuItem onClick={onDelete} className="text-destructive">
@@ -376,6 +358,46 @@ export function ModernFolderTree({
   onNewFile?: (parentPath: string) => void;
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [treeVersion, setTreeVersion] = useState(0);
+
+  // Update expanded state when tree changes to remove invalid paths
+  React.useEffect(() => {
+    if (tree) {
+      console.log('Tree updated, validating expanded paths...');
+      setTreeVersion(prev => prev + 1);
+      setExpanded(prev => {
+        const validPaths = new Set<string>();
+        
+        // Collect all valid paths from the tree
+        const collectPaths = (node: EnhancedFolderNode) => {
+          validPaths.add(node.path);
+          if (node.children) {
+            node.children.forEach(collectPaths);
+          }
+        };
+        
+        collectPaths(tree);
+        
+        // Filter expanded set to only include valid paths
+        const newExpanded = new Set<string>();
+        const removedPaths: string[] = [];
+        prev.forEach(path => {
+          if (validPaths.has(path)) {
+            newExpanded.add(path);
+          } else {
+            removedPaths.push(path);
+          }
+        });
+        
+        if (removedPaths.length > 0) {
+          console.log('Removed invalid paths from expanded:', removedPaths);
+        }
+        console.log('Valid expanded paths:', Array.from(newExpanded));
+        
+        return newExpanded;
+      });
+    }
+  }, [tree]);
 
   const toggleExpand = useCallback((path: string) => {
     setExpanded(prev => {
@@ -390,10 +412,13 @@ export function ModernFolderTree({
   }, []);
 
   const handleSelect = useCallback((node: EnhancedFolderNode) => {
+    console.log('handleSelect called with node:', node.path, 'type:', node.type);
     const fileType = getFileType(node);
     if (fileType === 'note' && onNoteSelect) {
+      console.log('Calling onNoteSelect with path:', node.path);
       onNoteSelect(node.path);
     } else if (onFolderSelect) {
+      console.log('Calling onFolderSelect with path:', node.path);
       onFolderSelect(node.path);
     }
   }, [onFolderSelect, onNoteSelect]);
@@ -405,9 +430,12 @@ export function ModernFolderTree({
     const isExpanded = expanded.has(node.path);
     const isSelected = selectedFolder === node.path;
     const isNoteSelected = selectedNote === node.path;
+    
+    console.log('Node:', node.path, 'selectedFolder:', selectedFolder, 'isSelected:', isSelected);
+    console.log('Node:', node.path, 'selectedNote:', selectedNote, 'isNoteSelected:', isNoteSelected);
 
     return (
-      <div key={node.path}>
+      <div key={`${node.id || node.path}-${node.name}-${node.type}`}>
         <TreeItem
           node={node}
           depth={depth}
@@ -453,7 +481,7 @@ export function ModernFolderTree({
 
   return (
     <TooltipProvider>
-      <div className="space-y-1 p-2">
+      <div className="space-y-1 p-2" key={treeVersion}>
         {renderTree(tree)}
       </div>
     </TooltipProvider>

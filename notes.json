@@ -14,5 +14,30 @@
     "parentPath": "C:\\Users\\evolu\\Documents\\Notes\\Test",
     "createdAt": "2025-09-21T12:00:00.000Z",
     "tags": []
+  },
+  {
+    "id": "1758522739745",
+    "name": "Projet-1",
+    "type": "markdown",
+    "parentPath": "C:\\Users\\evolu\\Documents\\Notes\\Projets",
+    "createdAt": "2025-09-22T06:32:19.745Z",
+    "tags": []
+  },
+  {
+    "id": "1758528712229",
+    "name": "Projet-2",
+    "type": "markdown",
+    "parentPath": "C:\\Users\\evolu\\Documents\\Notes\\Projets",
+    "createdAt": "2025-09-22T08:11:52.229Z",
+    "tags": []
+  },
+  {
+    "id": "1758532130616",
+    "name": "Projet-1_copie",
+    "type": "markdown",
+    "parentPath": "C:\\Users\\evolu\\Documents\\Notes\\Projets",
+    "path": "C:\\Users\\evolu\\Documents\\Notes\\Projets\\Projet-1_copie.md",
+    "createdAt": "2025-09-22T09:08:50.616Z",
+    "tags": []
   }
 ]
