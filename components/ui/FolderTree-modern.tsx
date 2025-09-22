@@ -17,7 +17,8 @@ import {
   Plus,
   Tag,
   Clock,
-  Star
+  Star,
+  Palette
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -29,7 +30,7 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, C
 import './tree-styles.css';
 
 // Enhanced type definitions
-export type FileType = 'folder' | 'note' | 'document' | 'image' | 'video' | 'audio' | 'code' | 'archive' | 'file';
+export type FileType = 'folder' | 'note' | 'draw' | 'document' | 'image' | 'video' | 'audio' | 'code' | 'archive' | 'file';
 
 export type EnhancedFolderNode = {
   id?: string;
@@ -56,6 +57,7 @@ export type EnhancedFolderNode = {
 const getFileType = (node: EnhancedFolderNode): FileType => {
   if (node.type === 'folder') return 'folder';
   if (node.name.endsWith('.md') || node.name.endsWith('.txt')) return 'note';
+  if (node.name.endsWith('.draw')) return 'draw';
   if (node.name.match(/\.(doc|docx|pdf|odt)$/i)) return 'document';
   if (node.name.match(/\.(jpg|jpeg|png|gif|svg|webp)$/i)) return 'image';
   if (node.name.match(/\.(mp4|avi|mov|mkv)$/i)) return 'video';
@@ -72,6 +74,8 @@ const getFileIcon = (type: FileType, isExpanded: boolean = false) => {
       return isExpanded ? <FolderOpen className={iconClass} /> : <Folder className={iconClass} />;
     case 'note':
       return <FileText className={iconClass} />;
+    case 'draw':
+      return <Palette className={iconClass} />;
     case 'document':
       return <FileText className={iconClass} />;
     case 'image':
@@ -95,6 +99,8 @@ const getFileColor = (type: FileType) => {
       return 'text-yellow-600 dark:text-yellow-400';
     case 'note':
       return 'text-blue-600 dark:text-blue-400';
+    case 'draw':
+      return 'text-purple-600 dark:text-purple-400';
     case 'document':
       return 'text-red-600 dark:text-red-400';
     case 'image':
@@ -143,7 +149,7 @@ const TreeItem = React.memo(({
   onNewFile: () => void;
 }) => {
   const fileType = getFileType(node);
-  const isNoteFile = fileType === 'note';
+  const isNoteFile = fileType === 'note' || fileType === 'draw';
   
   const getInitials = (name: string) => {
     return name
@@ -225,7 +231,8 @@ const TreeItem = React.memo(({
           <div className={cn(
             "flex items-center justify-center w-8 h-8 rounded-md bg-background border border-border/50",
             fileType === 'folder' && "bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800",
-            fileType === 'note' && "bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800"
+            fileType === 'note' && "bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800",
+            fileType === 'draw' && "bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800"
           )}>
             {node.icon ? (
               <span className="text-lg">{node.icon}</span>
@@ -244,6 +251,7 @@ const TreeItem = React.memo(({
                 isSelected ? "text-primary" : 
                 isNoteSelected ? "text-blue-600 dark:text-blue-400" :
                 fileType === 'note' ? "text-blue-600 dark:text-blue-400" :
+                fileType === 'draw' ? "text-purple-600 dark:text-purple-400" :
                 "text-foreground"
               )}>
                 {node.name}
@@ -414,7 +422,7 @@ export function ModernFolderTree({
   const handleSelect = useCallback((node: EnhancedFolderNode) => {
     console.log('handleSelect called with node:', node.path, 'type:', node.type);
     const fileType = getFileType(node);
-    if (fileType === 'note' && onNoteSelect) {
+    if ((fileType === 'note' || fileType === 'draw') && onNoteSelect) {
       console.log('Calling onNoteSelect with path:', node.path);
       onNoteSelect(node.path);
     } else if (onFolderSelect) {

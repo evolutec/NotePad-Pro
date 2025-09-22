@@ -229,6 +229,41 @@ ipcMain.handle('note:create', async (_event, noteData) => {
   }
 });
 
+// Handler pour créer un dessin
+console.log('Registering draw:create handler');
+ipcMain.handle('draw:create', async (_event, drawData) => {
+  console.log('draw:create handler called with:', drawData);
+  try {
+    const configPath = path.join(__dirname, 'config.json');
+    if (!fs.existsSync(configPath)) {
+      console.log('draw:create handler error: Config not found');
+      return { success: false, error: 'Config not found' };
+    }
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const rootPath = config.files?.rootPath;
+    if (!rootPath) {
+      console.log('draw:create handler error: rootPath not set');
+      return { success: false, error: 'rootPath not set' };
+    }
+
+    const { name, parentPath, tags } = drawData;
+    const fileName = `${name}.draw`;
+    const fullPath = path.join(parentPath || rootPath, fileName);
+
+    if (fs.existsSync(fullPath)) {
+      console.log('draw:create handler error: Draw already exists');
+      return { success: false, error: 'Draw already exists' };
+    }
+
+    fs.writeFileSync(fullPath, JSON.stringify({ name, tags, content: [] }, null, 2), 'utf-8');
+    console.log('draw:create handler returning success');
+    return { success: true, path: fullPath };
+  } catch (err) {
+    console.log('draw:create handler error:', err.message);
+    return { success: false, error: err.message };
+  }
+});
+
 // Handler pour charger les notes depuis notes.json
 ipcMain.handle('notes:load', async () => {
   try {
@@ -249,6 +284,32 @@ ipcMain.handle('notes:save', async (_event, notes) => {
   try {
     const notesPath = path.join(__dirname, 'notes.json');
     fs.writeFileSync(notesPath, JSON.stringify(notes, null, 2), 'utf-8');
+    return true;
+  } catch (err) {
+    return false;
+  }
+});
+
+// Handler pour charger les dessins depuis draws.json
+ipcMain.handle('draws:load', async () => {
+  try {
+    const drawsPath = path.join(__dirname, 'draws.json');
+    if (fs.existsSync(drawsPath)) {
+      const data = fs.readFileSync(drawsPath, 'utf-8');
+      return JSON.parse(data);
+    } else {
+      return [];
+    }
+  } catch (err) {
+    return [];
+  }
+});
+
+// Handler pour sauvegarder les dessins dans draws.json
+ipcMain.handle('draws:save', async (_event, draws) => {
+  try {
+    const drawsPath = path.join(__dirname, 'draws.json');
+    fs.writeFileSync(drawsPath, JSON.stringify(draws, null, 2), 'utf-8');
     return true;
   } catch (err) {
     return false;

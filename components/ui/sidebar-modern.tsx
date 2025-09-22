@@ -47,6 +47,7 @@ interface ModernSidebarProps {
   onDuplicate?: (node: EnhancedFolderNode) => void;
   onNewFolder?: (parentPath: string) => void;
   onNewFile?: (parentPath: string) => void;
+  onNewDraw?: () => void;
   className?: string;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -63,6 +64,7 @@ export function ModernSidebar({
   onDuplicate,
   onNewFolder,
   onNewFile,
+  onNewDraw,
   className,
   isCollapsed = false,
   onToggleCollapse,
@@ -70,7 +72,7 @@ export function ModernSidebar({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeView, setActiveView] = useState<'files' | 'recent' | 'starred' | 'shared'>('files');
   const [viewMode, setViewMode] = useState<'tree' | 'list'>('tree');
-  const [filterType, setFilterType] = useState<'all' | 'folders' | 'notes' | 'documents' | 'images'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'folders' | 'notes' | 'draws' | 'documents' | 'images'>('all');
   const [isElectronMode, setIsElectronMode] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -92,6 +94,10 @@ export function ModernSidebar({
   const handleNewFile = useCallback(() => {
     onNewFile?.('root');
   }, [onNewFile]);
+
+  const handleNewDraw = useCallback(() => {
+    onNewDraw?.();
+  }, [onNewDraw]);
 
   // Fonction pour sélectionner un dossier racine (comme dans sidebar.tsx)
   const handleSelectRootFolder = useCallback(async () => {
@@ -133,13 +139,14 @@ export function ModernSidebar({
       const typeMap = {
         'folders': 'folder',
         'notes': 'note',
+        'draws': 'draw',
         'documents': 'document',
         'images': 'image'
       };
       
       const matchesFilter = !node.isDirectory && 
-        (node.name.endsWith('.md') || node.name.endsWith('.txt')) && 
-        filterType === 'notes';
+        ((node.name.endsWith('.md') || node.name.endsWith('.txt')) && filterType === 'notes') ||
+        (node.name.endsWith('.draw') && filterType === 'draws');
       
       const filteredChildren = node.children?.map(child => filteredTree(child)).filter(Boolean) as EnhancedFolderNode[];
       
@@ -147,7 +154,7 @@ export function ModernSidebar({
         console.log('filteredTree: returning node with type filter:', node.name);
         return { ...node, children: filteredChildren };
       }
-      console.log('filteredTree: returning null for type filter:', node.name);
+      console.log('filteredTree: returning node as-is (no type filter match):', node.name);
       return null;
     }
 
@@ -158,7 +165,7 @@ export function ModernSidebar({
   const recentFiles = useCallback((): EnhancedFolderNode[] => {
     const files: EnhancedFolderNode[] = [];
     const collectFiles = (node: EnhancedFolderNode) => {
-      if (!node.isDirectory && (node.name.endsWith('.md') || node.name.endsWith('.txt'))) {
+      if (!node.isDirectory && (node.name.endsWith('.md') || node.name.endsWith('.txt') || node.name.endsWith('.draw'))) {
         files.push(node);
       }
       node.children?.forEach(collectFiles);
@@ -227,6 +234,15 @@ export function ModernSidebar({
                 >
                   <FilePlus className="w-4 h-4" />
                 </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="p-2 h-8 w-8 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+                  onClick={handleNewDraw}
+                  title="Nouveau dessin"
+                >
+                  <Palette className="w-4 h-4" />
+                </Button>
               </div>
             )}
             {isClient && !isElectronMode && !sidebarCollapsed && (
@@ -276,6 +292,9 @@ export function ModernSidebar({
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setFilterType('notes')}>
                   Notes
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilterType('draws')}>
+                  Dessins
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setFilterType('documents')}>
                   Documents

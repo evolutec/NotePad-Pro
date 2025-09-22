@@ -145,6 +145,41 @@ export function DrawingCanvas({ selectedNote, selectedFolder }: DrawingCanvasPro
   const [lastStrokeTime, setLastStrokeTime] = useState(0)
   const [pendingStrokes, setPendingStrokes] = useState<string[]>([])
 
+  // Charger le fichier de dessin sélectionné
+  useEffect(() => {
+    const loadDrawing = async () => {
+      if (!selectedNote || !selectedNote.endsWith('.draw')) return
+      
+      try {
+        if (window.electronAPI?.drawLoad) {
+          const result = await window.electronAPI.drawLoad(selectedNote)
+          if (result.success && result.data) {
+            // Charger les traits sauvegardés
+            if (result.data.strokes) {
+              setStrokes(result.data.strokes)
+            }
+            // Charger les textes convertis
+            if (result.data.convertedTexts) {
+              setConvertedTexts(result.data.convertedTexts)
+            }
+            console.log('Dessin chargé:', selectedNote)
+          } else {
+            console.log('Aucun dessin trouvé ou erreur:', result.error)
+            // Réinitialiser le canvas pour un nouveau dessin
+            setStrokes([])
+            setConvertedTexts([])
+          }
+        } else {
+          console.log('API de chargement non disponible')
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement du dessin:', error)
+      }
+    }
+
+    loadDrawing()
+  }, [selectedNote])
+
   useEffect(() => {
     const backupCanvas = document.createElement("canvas")
     backupCanvasRef.current = backupCanvas
@@ -634,6 +669,34 @@ export function DrawingCanvas({ selectedNote, selectedFolder }: DrawingCanvasPro
     link.click()
   }
 
+  const saveDrawing = async () => {
+    if (!selectedNote || !selectedNote.endsWith('.draw')) {
+      console.log('Aucun fichier de dessin sélectionné')
+      return
+    }
+
+    try {
+      const drawingData = {
+        strokes: strokes,
+        convertedTexts: convertedTexts,
+        timestamp: new Date().toISOString()
+      }
+
+      if (window.electronAPI?.drawSave) {
+        const result = await window.electronAPI.drawSave(selectedNote, drawingData)
+        if (result.success) {
+          console.log('Dessin sauvegardé:', selectedNote)
+        } else {
+          console.error('Erreur lors de la sauvegarde:', result.error)
+        }
+      } else {
+        console.log('API de sauvegarde non disponible')
+      }
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde du dessin:', error)
+    }
+  }
+
   return (
     <div className="h-full flex flex-col bg-background">
       <div className="border-b border-border bg-card p-4">
@@ -769,7 +832,7 @@ export function DrawingCanvas({ selectedNote, selectedFolder }: DrawingCanvasPro
             <Button variant="outline" size="sm" onClick={exportCanvas}>
               <Download className="h-4 w-4" />
             </Button>
-            <Button variant="default" size="sm">
+            <Button variant="default" size="sm" onClick={saveDrawing}>
               <Save className="h-4 w-4 mr-2" />
               Sauvegarder
             </Button>

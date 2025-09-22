@@ -10,7 +10,9 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Progress } from "@/components/ui/progress"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-  import { Upload, File, ImageIcon, FileText, Music, Video, Archive, Link, Download, Trash2, MoreHorizontal, Search, Grid, List, FolderOpen, Eye, Share, Copy, Move, Scissors, Edit, Folder, FileCode } from "lucide-react"
+  import { Upload, File, ImageIcon, FileText, Music, Video, Archive, Link, Download, Trash2, MoreHorizontal, Search, Grid, List, FolderOpen, Eye, Share, Copy, Move, Scissors, Edit, Folder, FileCode, Palette } from "lucide-react"
+
+import { RenameDialog } from "./rename-dialog"
 interface FileManagerProps {
   selectedFolder: string | null
   folderTree?: any // Ajout de la structure des dossiers
@@ -20,7 +22,7 @@ interface FileManagerProps {
 interface FileItem {
   id: string
   name: string
-  type: "image" | "document" | "audio" | "video" | "archive" | "link" | "other"
+  type: "image" | "document" | "draw" | "audio" | "video" | "archive" | "link" | "other"
   size: number
   url?: string
   uploadDate: Date
@@ -38,6 +40,7 @@ const FILE_TYPES: {
 } = {
   image: { icon: ImageIcon, color: "text-green-600", extensions: ["jpg", "jpeg", "png", "gif", "svg", "webp"] },
   document: { icon: FileText, color: "text-blue-600 dark:text-blue-400", extensions: ["pdf", "doc", "docx", "txt", "rtf"] },
+  draw: { icon: Palette, color: "text-purple-600 dark:text-purple-400", extensions: ["draw"] },
   audio: { icon: Music, color: "text-purple-600", extensions: ["mp3", "wav", "ogg", "m4a"] },
   video: { icon: Video, color: "text-red-600", extensions: ["mp4", "avi", "mov", "webm"] },
   archive: { icon: Archive, color: "text-yellow-600", extensions: ["zip", "rar", "7z", "tar"] },
@@ -48,6 +51,9 @@ const FILE_TYPES: {
 export function FileManager({ selectedFolder, folderTree, onFolderSelect }: FileManagerProps) {
   // Buffer pour copier/couper/coller
   const [clipboard, setClipboard] = useState<{ action: "cut" | "copy"; folder: any } | null>(null);
+
+  // État pour le dialogue de renommage
+  const [renameFileState, setRenameFileState] = useState<{ file: FileItem; isOpen: boolean } | null>(null);
   // Actions kebab menu pour dossiers
   const cutFolder = (folder: any) => {
     setClipboard({ action: "cut", folder });
@@ -138,6 +144,15 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
       folderId: "C:/Users/evolu/Documents/Notes/Perso",
       description: "Lien vers une ressource externe",
     },
+    {
+      id: "5",
+      name: "Sketch.draw",
+      type: "draw",
+      size: 512000,
+      uploadDate: new Date("2024-01-11"),
+      folderId: "C:/Users/evolu/Documents/Notes/Perso",
+      description: "Dessin de croquis",
+    },
   ])
 
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
@@ -155,12 +170,13 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
     return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
   }
 
-  type FileType = "image" | "document" | "audio" | "video" | "archive" | "link" | "other";
+  type FileType = "image" | "document" | "draw" | "audio" | "video" | "archive" | "link" | "other";
   const getFileType = (filename: string): FileType => {
     const extension = filename.split(".").pop()?.toLowerCase();
     if (!extension) return "other";
     if (FILE_TYPES.image.extensions.includes(extension)) return "image";
     if (FILE_TYPES.document.extensions.includes(extension)) return "document";
+    if (FILE_TYPES.draw.extensions.includes(extension)) return "draw";
     if (FILE_TYPES.audio.extensions.includes(extension)) return "audio";
     if (FILE_TYPES.video.extensions.includes(extension)) return "video";
     if (FILE_TYPES.archive.extensions.includes(extension)) return "archive";
@@ -256,6 +272,10 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
     setFiles((prev) => prev.filter((file) => file.id !== fileId))
   }
 
+  const renameFile = (file: FileItem, newName: string) => {
+    setFiles((prev) => prev.map((f) => f.id === file.id ? { ...f, name: newName } : f))
+  }
+
   const downloadFile = (file: FileItem) => {
     if (file.type === "link" && file.url) {
       window.open(file.url, "_blank")
@@ -329,6 +349,10 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
               <Share className="h-4 w-4 mr-2" />
               Partager
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setRenameFileState({ file, isOpen: true })}>
+              <Edit className="h-4 w-4 mr-2" />
+              Renommer
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => deleteFile(file.id)} className="text-destructive">
               <Trash2 className="h-4 w-4 mr-2" />
               Supprimer
@@ -401,6 +425,10 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
             <Share className="h-4 w-4 mr-2" />
             Partager
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setRenameFileState({ file, isOpen: true })}>
+            <Edit className="h-4 w-4 mr-2" />
+            Renommer
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => deleteFile(file.id)} className="text-destructive">
             <Trash2 className="h-4 w-4 mr-2" />
             Supprimer
@@ -448,6 +476,8 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
             Importer
           </Button>
 
+
+
           <div className="flex items-center gap-2">
             <Input ref={linkInputRef} placeholder="Coller un lien..." className="w-48" />
             <Button onClick={addLink} variant="outline">
@@ -487,7 +517,7 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
                     const isNote = child.type === 'note';
                     const iconColor = isFolder ? 'text-yellow-600 dark:text-yellow-400' : 
                                      isNote ? 'text-blue-600 dark:text-blue-400' : 
-                                     'text-orange-600 dark:text-orange-400';
+                                     'text-blue-600 dark:text-blue-400';
                     const IconComponent = isFolder ? Folder : 
                                         isNote ? FileText : 
                                         FileCode;
@@ -647,6 +677,22 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
         className="hidden"
         onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
       />
+
+
+
+      {/* Rename File Dialog */}
+      {renameFileState && (
+        <RenameDialog
+          open={renameFileState.isOpen}
+          onOpenChange={(open) => setRenameFileState(open ? renameFileState : null)}
+          currentName={renameFileState.file.name}
+          currentPath={renameFileState.file.id}
+          isFolder={false}
+          onRename={(newName) => {
+            renameFile(renameFileState.file, newName)
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -12,6 +12,7 @@ import { PenTool, FileText, Upload, Menu, Settings } from "lucide-react"
 import type { EnhancedFolderNode } from "@/components/ui/FolderTree-modern"
 import { AddFolderDialog } from "@/components/add-folder_dialog"
 import { AddNoteDialog } from "@/components/add-note_dialog"
+import { AddDrawDialog } from "@/components/add-draw_dialog"
 import { RenameDialog } from "@/components/rename-dialog"
 
 export default function NoteTakingApp() {
@@ -24,6 +25,7 @@ export default function NoteTakingApp() {
   const [folderTree, setFolderTree] = useState<EnhancedFolderNode | null>(null)
   const [isAddFolderOpen, setIsAddFolderOpen] = useState(false)
   const [isAddNoteOpen, setIsAddNoteOpen] = useState(false)
+  const [isAddDrawOpen, setIsAddDrawOpen] = useState(false)
   const [isRenameOpen, setIsRenameOpen] = useState(false)
   const [renameNode, setRenameNode] = useState<any>(null)
   const isMobile = useIsMobile()
@@ -34,10 +36,16 @@ export default function NoteTakingApp() {
     setActiveView("files")
   }
 
-  // Sélection note : switch auto sur éditeur
+  // Sélection note : switch auto sur éditeur ou canvas selon le type
   function handleNoteSelect(path: string) {
     setSelectedNote(path)
-    setActiveView("editor")
+    // Déterminer le type de fichier à partir de l'extension
+    const fileExtension = path.toLowerCase().split('.').pop()
+    if (fileExtension === 'draw') {
+      setActiveView("canvas")
+    } else {
+      setActiveView("editor")
+    }
   }
 
   // Function to load real data from config.json root path
@@ -329,6 +337,10 @@ export default function NoteTakingApp() {
           console.log('New file:', parentPath)
           setIsAddNoteOpen(true)
         }}
+        onNewDraw={() => {
+          console.log('New draw requested')
+          setIsAddDrawOpen(true)
+        }}
       />
       {/* Main Content flexible */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -497,6 +509,22 @@ export default function NoteTakingApp() {
           } catch (error) {
             console.error('Error during rename:', error);
             throw error;
+          }
+        }}
+      />
+
+      <AddDrawDialog
+        open={isAddDrawOpen}
+        onOpenChange={setIsAddDrawOpen}
+        parentPath={selectedFolder || ''}
+        onDrawCreated={async (newDraw) => {
+          console.log('Draw created:', newDraw)
+          // Reload the folder tree to reflect changes
+          if (window.electronAPI?.foldersScan) {
+            const result = await window.electronAPI.foldersScan()
+            if (result && result.length > 0) {
+              setFolderTree(result[0])
+            }
           }
         }}
       />
