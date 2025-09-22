@@ -32,4 +32,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
     console.log('Preload: Calling document:create with', documentData);
     return ipcRenderer.invoke('document:create', documentData);
   },
+  readFile: (filePath) => ipcRenderer.invoke('file:read', filePath),
 });

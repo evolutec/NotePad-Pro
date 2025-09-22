@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -12,8 +12,12 @@ import { Progress } from "@/components/ui/progress"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
   import { Archive, Copy, Download, Edit, Eye, File, FileCode, FileText, FileWarning, Folder, FolderOpen, Grid, ImageIcon, Link, List, MoreHorizontal, Move, Music, NotebookText, Palette, Plus, Scissors, Search, SearchX, Share, Trash, Upload, UploadCloud, Video } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { AddDocumentDialog } from "./add-document_dialog"
+import { AddDrawDialog } from "./add-draw_dialog"
 
 import { RenameDialog } from "./rename-dialog"
+import { PdfViewer } from "./pdf-viewer";
+
 interface FileManagerProps {
   selectedFolder: string | null
   folderTree?: any // Ajout de la structure des dossiers
@@ -23,7 +27,7 @@ interface FileManagerProps {
 interface FileItem {
   id: string
   name: string
-  type: "image" | "document" | "draw" | "audio" | "video" | "archive" | "link" | "other"
+  type: "image" | "document" | "draw" | "audio" | "video" | "archive" | "link" | "other" | "code" | "note"
   size: number
   url?: string
   uploadDate: Date
@@ -60,145 +64,97 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
 
   // État pour le dialogue de renommage
   const [renameFileState, setRenameFileState] = useState<{ file: FileItem; isOpen: boolean } | null>(null);
+  const [selectedFileContent, setSelectedFileContent] = useState<string | null>(null);
+  const [selectedFileForView, setSelectedFileForView] = useState<FileItem | null>(null);
+
   // Actions kebab menu pour dossiers
   const cutFolder = (folder: any) => {
     setClipboard({ action: "cut", folder });
-    console.log("Couper dossier:", folder);
   };
 
   const copyFolder = (folder: any) => {
     setClipboard({ action: "copy", folder });
-    console.log("Copier dossier:", folder);
   };
 
-  const pasteFolder = (targetPath: string) => {
-    if (!clipboard) return;
-    // Logique de déplacement ou duplication à implémenter
-    console.log(`Coller dossier ${clipboard.folder.name} dans ${targetPath} (action: ${clipboard.action})`);
-    setClipboard(null);
+  const pasteFolder = async (targetFolderId: string) => {
+    if (clipboard) {
+      // Logic to move/copy folder
+      console.log(`${clipboard.action} folder ${clipboard.folder.name} to ${targetFolderId}`);
+      setClipboard(null);
+    }
   };
 
-  const renameFolder = (folder: any) => {
-    // Logique de renommage à implémenter
-    console.log("Renommer dossier:", folder);
+  const renameFolder = async (folder: any, newName: string) => {
+    console.log(`Renaming folder ${folder.name} to ${newName}`);
+    // Implement actual rename logic
   };
 
-  // Suppression réelle d’un dossier (filesystem + folders.json)
   const deleteFolder = async (folder: any) => {
-    try {
-      // Suppression du dossier dans le filesystem via IPC (Electron)
-      if (typeof window !== "undefined" && window.electronAPI && window.electronAPI.deleteFolder && window.electronAPI.foldersSave && window.electronAPI.foldersLoad) {
-        console.log("Appel suppression dossier via Electron :", folder.path);
-        // Suppression physique du dossier
-        const res = await window.electronAPI.deleteFolder(folder.path);
-        if (res && res.success) {
-          // Charger folders.json, retirer le dossier, sauvegarder
-          const folders = await window.electronAPI.foldersLoad();
-          if (folders && Array.isArray(folders)) {
-            const updatedFolders = folders.filter((f: any) => f.path !== folder.path);
-            await window.electronAPI.foldersSave(updatedFolders);
-            console.log("Dossier supprimé du disque et de folders.json :", folder.path);
-          }
+    console.log(`Deleting folder ${folder.name}`);
+    // Implement actual delete logic
+  };
+
+  // Actions kebab menu pour fichiers
+  const handleRenameFile = async (file: FileItem, newName: string) => {
+    console.log(`Renaming file ${file.name} to ${newName}`);
+    // Implement actual rename logic
+  };
+
+  const handleDeleteFile = async (file: FileItem) => {
+    console.log(`Deleting file ${file.name}`);
+    // Implement actual delete logic
+  };
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const linkInputRef = useRef<HTMLInputElement>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
+
+  const files = useMemo(() => {
+    if (!selectedFolder) return [];
+    return folderTree[selectedFolder]?.files || [];
+  }, [selectedFolder, folderTree]);
+
+  const handleFileUpload = async (selectedFiles: FileList) => {
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const file = selectedFiles[i];
+      const fileId = `file-${Date.now()}-${i}`;
+      setUploadProgress((prev) => ({ ...prev, [fileId]: 0 }));
+
+      // Simulate upload progress
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += 10;
+        if (progress <= 100) {
+          setUploadProgress((prev) => ({ ...prev, [fileId]: progress }));
         } else {
-          console.error("Erreur suppression dossier:", res?.error);
+          clearInterval(interval);
         }
-      } else {
-        console.warn("API Electron deleteFolder/foldersSave/foldersLoad non disponible");
+      }, 100);
+
+      try {
+        const uploadedFile = await simulateUpload(file);
+        // Add the uploaded file to the current folder's files
+        // This part needs to be connected to your state management for files
+        console.log("Uploaded file:", uploadedFile);
+      } catch (error) {
+        console.error("Error uploading file:", error);
+      } finally {
+        setUploadProgress((prev) => {
+          const newState = { ...prev };
+          delete newState[fileId];
+          return newState;
+        });
       }
-      // Optionnel : feedback visuel ou reload
-      console.log("Dossier supprimé :", folder.path);
-    } catch (err) {
-      console.error("Erreur suppression dossier :", err);
     }
   };
-  const [files, setFiles] = useState<FileItem[]>([
-    {
-      id: "1",
-      name: "Mockup_Interface.png",
-      type: "image",
-      size: 2048576,
-      uploadDate: new Date("2024-01-15"),
-      folderId: "C:/Users/evolu/Documents/Notes/Perso",
-      thumbnail: "/interface-mockup.jpg",
-      description: "Mockup de l'interface utilisateur",
-    },
-    {
-      id: "2",
-      name: "Specifications.pdf",
-      type: "document",
-      size: 1024000,
-      uploadDate: new Date("2024-01-14"),
-      folderId: "C:/Users/evolu/Documents/Notes/Perso",
-      description: "Document de spécifications techniques",
-    },
-    {
-      id: "3",
-      name: "Presentation_Audio.mp3",
-      type: "audio",
-      size: 5242880,
-      uploadDate: new Date("2024-01-13"),
-      folderId: "C:/Users/evolu/Documents/Notes/Pro",
-      description: "Enregistrement de la présentation",
-    },
-    {
-      id: "4",
-      name: "https://example.com/resource",
-      type: "link",
-      size: 0,
-      url: "https://example.com/resource",
-      uploadDate: new Date("2024-01-12"),
-      folderId: "C:/Users/evolu/Documents/Notes/Perso",
-      description: "Lien vers une ressource externe",
-    },
-    {
-      id: "5",
-      name: "Sketch.draw",
-      type: "draw",
-      size: 512000,
-      uploadDate: new Date("2024-01-11"),
-      folderId: "C:/Users/evolu/Documents/Notes/Perso",
-      description: "Dessin de croquis",
-    },
-  ])
 
-  useEffect(() => {
-    if (folderTree && selectedFolder) {
-      const currentFolder = findFolderNode(folderTree, selectedFolder);
-      if (currentFolder && currentFolder.children) {
-        const newFiles: FileItem[] = currentFolder.children.map((node: any) => ({
-          id: node.path,
-          name: node.name,
-          type: node.isDirectory ? "folder" : getFileType(node.name),
-          size: node.size || 0,
-          uploadDate: new Date(node.lastModified),
-          folderId: currentFolder.path,
-          isDirectory: node.isDirectory,
-        }));
-        setFiles(newFiles);
-      } else {
-        setFiles([]);
-      }
-    } else {
-      setFiles([]);
-    }
-  }, [folderTree, selectedFolder]);
+  const handleAddLink = (url: string) => {
+    console.log("Adding link:", url);
+    // Implement logic to add link to the current folder
+  };
 
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({})
-  const [isDragOver, setIsDragOver] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const linkInputRef = useRef<HTMLInputElement>(null)
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 B"
-    const k = 1024
-    const sizes = ["B", "KB", "MB", "GB"]
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
-  }
-
-  type FileType = "image" | "document" | "draw" | "audio" | "video" | "archive" | "link" | "other" | "note";
   const getFileType = (filename: string): FileType => {
     const extension = filename.split(".").pop()?.toLowerCase();
     if (!extension) return "other";
@@ -213,402 +169,387 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
     // Si le nom est une URL, on considère comme 'link'
     if (filename.startsWith("http://") || filename.startsWith("https://")) return "link";
     return "other";
-  }
+  };
 
   const simulateUpload = async (file: File): Promise<FileItem> => {
-    const fileId = Date.now().toString()
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          id: `file-${Date.now()}`,
+          name: file.name,
+          type: getFileType(file.name),
+          size: file.size,
+          uploadDate: new Date(),
+          folderId: selectedFolder || "root",
+        });
+      }, 1000);
+    });
+  };
 
-    // Simulate upload progress
-    for (let progress = 0; progress <= 100; progress += 10) {
-      setUploadProgress((prev) => ({ ...prev, [fileId]: progress }))
-      await new Promise((resolve) => setTimeout(resolve, 100))
+  const handleFileClick = useCallback(async (file: FileItem) => {
+    if (file.isDirectory) {
+      onFolderSelect?.(file.id);
+      setSelectedFileForView(null);
+      setSelectedFileContent(null);
+      return;
     }
 
-    // Remove progress after completion
+    setSelectedFileForView(file);
+    setSelectedFileContent(null); // Clear previous content
 
-    setUploadProgress((prev) => {
-      const newProgress = { ...prev }
-      delete newProgress[fileId]
-      return newProgress
-    })
-
-    return {
-      id: fileId,
-      name: file.name,
-      type: getFileType(file.name),
-      size: file.size,
-      uploadDate: new Date(),
-      folderId: selectedFolder || undefined,
-    }
-  }
-
-  const handleFileUpload = async (uploadedFiles: FileList) => {
-    const fileArray = Array.from(uploadedFiles)
-
-    for (const file of fileArray) {
-      try {
-        const newFile = await simulateUpload(file)
-        setFiles((prev) => [...prev, newFile])
-      } catch (error) {
-        console.error("Upload failed:", error)
+    if (file.type === "document" && file.name.toLowerCase().endsWith(".pdf")) {
+      if (typeof window !== "undefined" && window.electronAPI && window.electronAPI.readFile) {
+        try {
+          const result = await window.electronAPI.readFile(file.id);
+          if (result.success) {
+            setSelectedFileContent(`data:application/pdf;base64,${result.data}`);
+          } else {
+            console.error("Error reading PDF file:", result.error);
+            // Handle error, maybe show a toast notification
+          }
+        } catch (error) {
+          console.error("Error reading PDF file:", error);
+          // Handle error, maybe show a toast notification
+        }
       }
-    }
-  }
-
-  const handleLinkUpload = async (url: string) => {
-    const fileId = Date.now().toString()
-    const newFile: FileItem = {
-      id: fileId,
-      name: url,
-      type: "link",
-      size: 0,
-      uploadDate: new Date(),
-      folderId: selectedFolder || undefined,
-      url: url,
-    }
-    setFiles((prev) => [...prev, newFile])
-  }
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragOver(false)
-
-    const droppedFiles = e.dataTransfer.files
-    if (droppedFiles.length > 0) {
-      handleFileUpload(droppedFiles)
-    }
-  }, [handleFileUpload])
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragOver(true)
-  }, [])
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragOver(false)
-  }, [])
-
-  const addLink = () => {
-    const url = linkInputRef.current?.value
-    if (!url) return
-
-    const newFile: FileItem = {
-      id: Date.now().toString(),
-      name: url,
-      type: "link",
-      size: 0,
-      url,
-      uploadDate: new Date(),
-      folderId: selectedFolder || undefined,
-    }
-
-    setFiles((prev) => [...prev, newFile])
-    if (linkInputRef.current) {
-      linkInputRef.current.value = ""
-    }
-  }
-
-  const deleteFile = (fileId: string) => {
-    setFiles((prev) => prev.filter((file) => file.id !== fileId))
-  }
-
-  const renameFile = (file: FileItem, newName: string) => {
-    setFiles((prev) => prev.map((f) => f.id === file.id ? { ...f, name: newName } : f))
-  }
-
-  const downloadFile = (file: FileItem) => {
-    if (file.type === "link" && file.url) {
-      window.open(file.url, "_blank")
     } else {
-      // Simulate download
-      console.log(`Downloading ${file.name}`)
+      // Handle other file types or show a generic viewer
+      console.log("Selected file for view:", file);
     }
-  }
+  }, [onFolderSelect]);
 
-  function normalizePath(path: string): string {
-    return path.replace(/\\+$/, '').replace(/\/+$|\/+$|\\+$/, '').toLowerCase();
-  }
+  const filteredFiles = files.filter((file) =>
+    file.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  const filteredFiles = files.filter((file) => {
-    const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesFolder = !selectedFolder || normalizePath(file.folderId || '') === normalizePath(selectedFolder)
-    return matchesSearch && matchesFolder
-  })
-
-  // Trouver le dossier sélectionné
-  function findFolderNode(tree: any, path: string): any {
-    if (!tree) return null;
-    if (tree.path === path) return tree;
-    if (tree.children) {
-      for (const child of tree.children) {
-        const found = findFolderNode(child, path);
-        if (found) return found;
-      }
-    }
-    return null;
-  }
-  const selectedNode = selectedFolder && folderTree ? findFolderNode(folderTree, selectedFolder) : null;
-  const childFolders = selectedNode?.children || [];
-
-  // Debug : log selectedFolder, selectedNode, childFolders
-  console.log('FileManager selectedFolder:', selectedFolder)
-  console.log('FileManager selectedNode:', selectedNode)
-  console.log('FileManager childFolders:', childFolders)
-
-  const FileIcon = ({ file }: { file: FileItem }) => {
-    const config = FILE_TYPES[file.type]
-    const IconComponent = config.icon
-    return <IconComponent className={`h-5 w-5 ${config.color}`} />
-  }
-
-  const FileCard = ({ file }: { file: FileItem }) => (
-    <Card className="p-4 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <FileIcon file={file} />
-          <Badge variant="outline" className="text-xs">
-            {file.type}
-          </Badge>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-              <MoreHorizontal className="h-3 w-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => downloadFile(file)}>
-              {file.type === "link" ? <Eye className="h-4 w-4 mr-2" /> : <Download className="h-4 w-4 mr-2" />}
-              {file.type === "link" ? "Ouvrir" : "Télécharger"}
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Copy className="h-4 w-4 mr-2" />
-              Copier le lien
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Share className="h-4 w-4 mr-2" />
-              Partager
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setRenameFileState({ file, isOpen: true })}>
-              <Edit className="h-4 w-4 mr-2" />
-              Renommer
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => deleteFile(file.id)} className="text-red-600 focus:text-red-600">
-              <Trash className="h-4 w-4 mr-2" />
-              Supprimer
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      {file.thumbnail && (
-        <div className="mb-3">
-          <img
-            src={file.thumbnail || "/placeholder.svg"}
-            alt={file.name}
-            className="w-full h-32 object-cover rounded"
-          />
-        </div>
-      )}
-
-      <div className="space-y-2">
-        <h4 className="font-medium text-sm truncate" title={file.name}>
-          {file.name}
-        </h4>
-        {file.description && <p className="text-xs text-muted-foreground line-clamp-2">{file.description}</p>}
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{formatFileSize(file.size)}</span>
-          <span>{file.uploadDate.toLocaleDateString("fr-FR")}</span>
-        </div>
-      </div>
-
-      {uploadProgress[file.id] !== undefined && (
-        <div className="mt-2">
-          <Progress value={uploadProgress[file.id]} className="h-1" />
-        </div>
-      )}
-    </Card>
-  )
-
-  const FileRow = ({ file }: { file: FileItem }) => (
-    <div className="flex items-center gap-3 p-3 hover:bg-muted/50 rounded-lg transition-colors">
-      <FileIcon file={file} />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="font-medium text-sm truncate">{file.name}</span>
-          <Badge variant="outline" className="text-xs">
-            {file.type}
-          </Badge>
-        </div>
-        {file.description && <p className="text-xs text-muted-foreground truncate">{file.description}</p>}
-      </div>
-      <div className="text-xs text-muted-foreground text-right">
-        <div>{formatFileSize(file.size)}</div>
-        <div>{file.uploadDate.toLocaleDateString("fr-FR")}</div>
-      </div>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-            <MoreHorizontal className="h-3 w-3" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => downloadFile(file)}>
-            {file.type === "link" ? <Eye className="h-4 w-4 mr-2" /> : <Download className="h-4 w-4 mr-2" />}
-            {file.type === "link" ? "Ouvrir" : "Télécharger"}
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Copy className="h-4 w-4 mr-2" />
-            Copier le lien
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Share className="h-4 w-4 mr-2" />
-            Partager
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setRenameFileState({ file, isOpen: true })}>
-            <Edit className="h-4 w-4 mr-2" />
-            Renommer
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => deleteFile(file.id)} className="text-red-600 focus:text-red-600">
-            <Trash className="h-4 w-4 mr-2" />
-            Supprimer
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  )
+  const renderFileIcon = (file: FileItem) => {
+    const fileType = file.isDirectory ? "folder" : getFileType(file.name);
+    const Icon = FILE_TYPES[fileType]?.icon || File;
+    const colorClass = FILE_TYPES[fileType]?.color || "text-gray-600";
+    return <Icon className={cn("h-5 w-5", colorClass)} />;
+  };
 
   return (
-    <div className="h-full flex flex-col bg-background">
-      {/* Header */}
-      <div className="border-b border-border bg-card p-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <FolderOpen className="h-5 w-5" />
-            <h2 className="text-lg font-semibold">Gestionnaire de fichiers</h2>
-            {selectedFolder && <Badge variant="outline">Dossier {selectedFolder}</Badge>}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button variant={viewMode === "grid" ? "default" : "outline"} size="sm" onClick={() => setViewMode("grid")}>
-              <Grid className="h-4 w-4" />
-            </Button>
-            <Button variant={viewMode === "list" ? "default" : "outline"} size="sm" onClick={() => setViewMode("list")}>
-              <List className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Search and Actions */}
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher des fichiers..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-
+    <Card className="flex flex-col h-full">
+      <div className="flex items-center justify-between p-4">
+        <h2 className="text-xl font-semibold">File Manager</h2>
+        <div className="flex items-center space-x-2">
+          <Input
+            placeholder="Search files..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="max-w-sm"
+          />
+          <Button variant="outline" size="icon" onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}>
+            {viewMode === "grid" ? <List className="h-4 w-4" /> : <Grid className="h-4 w-4" />}
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button className="flex items-center gap-2">
+              <Button variant="outline" size="icon">
                 <Plus className="h-4 w-4" />
-                Ajouter
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent>
+              <AddNoteDialog onNoteCreated={() => { /* Gérer la création de note */ }} />
+              <AddDocumentDialog onDocumentCreated={() => { /* Gérer la création de document */ }} />
+              <AddDrawDialog onDrawCreated={() => { /* Gérer la création de dessin */ }} />
               <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                <UploadCloud className="h-4 w-4 mr-2" />
-                Fichier
+                <UploadCloud className="mr-2 h-4 w-4" /> Upload File
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsAddDrawOpen(true)}>
-                <Palette className="h-4 w-4 mr-2" />
-                Dessin
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsAddNoteOpen(true)}>
-                <NotebookText className="h-4 w-4 mr-2" />
-                Note
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                <Link className="h-4 w-4 mr-2" />
-                <Input
-                  ref={linkInputRef}
-                  placeholder="Coller un lien..."
-                  className="h-8"
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      addLink();
-                    }
-                  }}
-                />
+              <DropdownMenuItem onClick={() => linkInputRef.current?.click()}>
+                <Link className="mr-2 h-4 w-4" /> Add Link
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
-
-      {/* Main Content */}
-      <div
-        className={cn(
-          "flex-1 overflow-auto p-4",
-          isDragOver ? "border-2 border-dashed border-primary" : ""
-        )}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-      >
-        {filteredFiles.length === 0 && searchQuery === "" ? (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-            <FileWarning className="h-12 w-12 mb-4" />
-            <p>Aucun fichier dans ce dossier.</p>
-            <p>Faites glisser et déposez des fichiers ici, ou cliquez sur "Ajouter" pour en créer un nouveau.</p>
-          </div>
-        ) : filteredFiles.length === 0 && searchQuery !== "" ? (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-            <SearchX className="h-12 w-12 mb-4" />
-            <p>Aucun fichier ne correspond à votre recherche.</p>
-          </div>
-        ) : viewMode === "grid" ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filteredFiles.map((file) => (
-              <FileCard key={file.id} file={file} />
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {filteredFiles.map((file) => (
-              <FileRow key={file.id} file={file} />
-            ))}
-          </div>
-        )}
-      </div>
-
       <input
-        ref={fileInputRef}
         type="file"
-        multiple
+        ref={fileInputRef}
         className="hidden"
-        onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+        onChange={(e) => {
+          if (e.target.files) handleFileUpload(e.target.files);
+          e.target.value = ''; // Reset input
+        }}
+        multiple
+      />
+      <input
+        type="url"
+        ref={linkInputRef}
+        className="hidden"
+        onBlur={(e) => {
+          if (e.target.value) handleAddLink(e.target.value);
+          e.target.value = ''; // Reset input
+        }}
+        placeholder="Enter URL"
       />
 
-
-
-      {/* Rename File Dialog */}
+      <ScrollArea className="h-full flex-grow p-4">
+        {selectedFileForView && selectedFileContent && selectedFileForView.type === "document" && selectedFileForView.name.toLowerCase().endsWith(".pdf") ? (
+          <PdfViewer file={selectedFileContent} />
+        ) : selectedFileForView ? (
+          <div className="flex flex-col items-center justify-center h-full text-gray-500">
+            <File className="h-16 w-16 mb-4" />
+            <p>Preview not available for this file type.</p>
+            <p className="text-sm">Selected: {selectedFileForView.name}</p>
+          </div>
+        ) : filteredFiles.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-gray-500">
+            <SearchX className="h-16 w-16 mb-4" />
+            <p>Aucun fichier dans ce dossier. Faites glisser et déposez des fichiers ici, ou cliquez sur 'Ajouter' pour en créer un nouveau</p>
+          </div>
+        ) : (
+          <div
+            className={cn(
+              "grid gap-4",
+              viewMode === "grid" ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-4" : "grid-cols-1"
+            )}
+          >
+            {filteredFiles.map((file) => (
+              <Card
+                key={file.id}
+                className={cn(
+                  "relative group flex flex-col items-center p-4 cursor-pointer",
+                  file.isDirectory ? "bg-blue-50 dark:bg-blue-950" : "bg-white dark:bg-gray-800"
+                )}
+                onClick={() => handleFileClick(file)}
+              >
+                {file.isDirectory && (
+                  <FolderOpen className="h-12 w-12 text-blue-500 mb-2" />
+                )}
+                {!file.isDirectory && renderFileIcon(file)}
+                <p className="text-sm font-medium text-center mt-2 break-all">{file.name}</p>
+                {!file.isDirectory && file.type !== "link" && (
+                  <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                )}
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="w-8 h-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setRenameFileState({ file, isOpen: true }); }}>
+                        <Edit className="mr-2 h-4 w-4" /> Rename
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); /* handleCopy(file) */ }}>
+                        <Copy className="mr-2 h-4 w-4" /> Copy
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); /* handleMove(file) */ }}>
+                        <Move className="mr-2 h-4 w-4" /> Move
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteFile(file); }}>
+                        <Trash className="mr-2 h-4 w-4" /> Delete
+                      </DropdownMenuItem>
+                      {file.url && (
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); window.open(file.url, '_blank'); }}>
+                          <Eye className="mr-2 h-4 w-4" /> Open Link
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                {uploadProgress[file.id] !== undefined && (
+                  <Progress value={uploadProgress[file.id]} className="w-full mt-2" />
+                )}
+              </Card>
+            ))}
+          </div>
+        )}
+      </ScrollArea>
       {renameFileState && (
         <RenameDialog
-          open={renameFileState.isOpen}
-          onOpenChange={(open) => setRenameFileState(open ? renameFileState : null)}
-          currentName={renameFileState.file.name}
-          currentPath={renameFileState.file.id}
-          isFolder={false}
-          onRename={(newName) => {
-            renameFile(renameFileState.file, newName)
-          }}
+          isOpen={renameFileState.isOpen}
+          onClose={() => setRenameFileState(null)}
+          file={renameFileState.file}
+          onRename={handleRenameFile}
         />
       )}
-    </div>
-  )
+    </Card>
+  );
 }
+
+interface AddNoteDialogProps {
+  onNoteCreated: () => void;
+}
+
+const AddNoteDialog: React.FC<AddNoteDialogProps> = ({ onNoteCreated }) => {
+  const [open, setOpen] = useState(false);
+  const [noteName, setNoteName] = useState("");
+  const [noteType, setNoteType] = useState<"text" | "markdown">("text");
+  const [tags, setTags] = useState<string[]>([]);
+  const [currentTag, setCurrentTag] = useState("");
+  const [creationError, setCreationError] = useState<string | null>(null);
+  const [creationSuccess, setCreationSuccess] = useState<string | null>(null);
+  const [parentId, setParentId] = useState<string | undefined>(undefined);
+  const [existingFolders, setExistingFolders] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (open && window.electronAPI?.foldersLoad) {
+      window.electronAPI.foldersLoad().then((loadedFolders: any[]) => {
+        setExistingFolders(loadedFolders);
+      });
+    }
+  }, [open]);
+
+  const handleCreateNote = async () => {
+    setCreationError(null);
+    setCreationSuccess(null);
+    if (!noteName.trim()) return;
+    let finalParentPath = parentId ? existingFolders.find(f => f.id === parentId)?.path : undefined;
+
+    if (window.electronAPI?.noteCreate) {
+      const result = await window.electronAPI.noteCreate({
+        name: noteName.trim(),
+        type: noteType,
+        parentPath: finalParentPath,
+        tags,
+      });
+      if (!result.success) {
+        setCreationError(result.error || "Erreur lors de la création de la note.");
+        return;
+      }
+      const newNote: FileItem = {
+        id: result.id,
+        name: noteName.trim(),
+        type: "note",
+        size: 0,
+        uploadDate: new Date(),
+        folderId: finalParentPath,
+        isDirectory: false,
+      };
+
+      onNoteCreated();
+      setCreationSuccess("Note créée avec succès !");
+      setTimeout(() => {
+        setNoteName("");
+        setNoteType("text");
+        setTags([]);
+        setCurrentTag("");
+        setCreationSuccess(null);
+        setCreationError(null);
+        setOpen(false);
+      }, 1000);
+    }
+  };
+
+  const addTag = () => {
+    if (currentTag.trim() && !tags.includes(currentTag.trim())) {
+      setTags([...tags, currentTag.trim()]);
+      setCurrentTag("");
+    }
+  };
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter((tag) => tag !== tagToRemove));
+  };
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addTag();
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <DropdownMenuItem onSelect={(e) => {
+          e.preventDefault();
+          setOpen(true);
+        }}>
+          <FileText className="mr-2 h-4 w-4" /> New Note
+        </DropdownMenuItem>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FilePlus className="h-5 w-5" />
+            Créer une nouvelle note
+          </DialogTitle>
+          <div className="h-1 w-full bg-blue-500 mt-2" />
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Dossier parent <span className="text-xs text-muted-foreground">(optionnel)</span></Label>
+            <select
+              className="w-full border rounded p-2 bg-zinc-900 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              value={parentId || ""}
+              onChange={(e) => setParentId(e.target.value || undefined)}
+            >
+              <option value="">Dossier sélectionné par défaut</option>
+              {existingFolders.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="note-name">Nom de la note</Label>
+            <Input
+              id="note-name"
+              placeholder="Ex: Compte rendu, Idée, TODO..."
+              value={noteName}
+              onChange={(e) => setNoteName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Type de fichier</Label>
+            <div className="flex gap-2">
+              <Button
+                variant={noteType === "text" ? "default" : "outline"}
+                onClick={() => setNoteType("text")}
+                className="h-10 px-4 py-2"
+              >
+                <FileText className="w-4 h-4 mr-1" /> Texte
+              </Button>
+              <Button
+                variant={noteType === "markdown" ? "default" : "outline"}
+                onClick={() => setNoteType("markdown")}
+                className="h-10 px-4 py-2"
+              >
+                <span className="font-mono text-xs mr-1">.md</span> Markdown
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Étiquettes</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Ajouter une étiquette..."
+                value={currentTag}
+                onChange={(e) => setCurrentTag(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="flex-1"
+              />
+              <Button type="button" onClick={addTag} size="sm" variant="outline">
+                Ajouter
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {tags.map((tag) => (
+                <span key={tag} className="bg-muted px-2 py-1 rounded text-xs cursor-pointer" onClick={() => removeTag(tag)}>
+                  {tag} ×
+                </span>
+              ))}
+            </div>
+          </div>
+          {creationError && (
+            <div className="text-sm text-red-500 mb-2">{creationError}</div>
+          )}
+          {creationSuccess && (
+            <div className="text-sm text-green-600 mb-2">{creationSuccess}</div>
+          )}
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" onClick={() => setOpen(false)} className="flex-1">
+              Annuler
+            </Button>
+            <Button onClick={handleCreateNote} disabled={!noteName.trim()} className="flex-1">
+              Créer la note
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};

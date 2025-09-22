@@ -486,6 +486,19 @@ ipcMain.handle('file:rename', async (_event, oldPath, newName) => {
   }
 });
 
+// Handler to read file content
+ipcMain.handle('file:read', async (_event, filePath) => {
+  try {
+    if (!fs.existsSync(filePath)) {
+      return { success: false, error: 'File not found' };
+    }
+    const content = fs.readFileSync(filePath);
+    return { success: true, data: content.toString('base64') };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit();
 });
