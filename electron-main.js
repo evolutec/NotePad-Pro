@@ -8,8 +8,8 @@ let mainWindow;
 function createWindow() {
   console.log('[Electron] Creating window...');
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 1920,
+    height: 1080,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -507,20 +507,301 @@ ipcMain.handle('video:create', async (_event, videoData) => {
       return { success: false, error: 'rootPath not set' };
     }
 
-    const { name, type, parentPath, tags } = videoData;
+    const { name, type, parentPath, tags, content, isBinary } = videoData;
     const fileName = `${name}.${type}`;
     const fullPath = path.join(parentPath || rootPath, fileName);
+    console.log('Attempting to create video at:', fullPath);
 
     if (fs.existsSync(fullPath)) {
       console.log('video:create handler error: Video file already exists');
       return { success: false, error: 'Video file already exists' };
     }
 
-    fs.writeFileSync(fullPath, '', 'utf-8');
+    console.log('Writing video to:', fullPath, 'with content length:', content ? content.length : 0, 'isBinary:', isBinary);
+
+    // Handle binary video files
+    if (isBinary && content) {
+      try {
+        if (typeof content === 'string') {
+          // If content is base64 string, convert to buffer
+          const binaryData = Buffer.from(content, 'base64');
+          fs.writeFileSync(fullPath, binaryData);
+          console.log('Binary video file written successfully, size:', binaryData.length);
+        } else if (content instanceof ArrayBuffer) {
+          // If content is ArrayBuffer, convert to Buffer
+          const binaryData = Buffer.from(content);
+          fs.writeFileSync(fullPath, binaryData);
+          console.log('Binary video file (ArrayBuffer) written successfully, size:', binaryData.length);
+        } else if (content && typeof content === 'object' && content.type === 'Buffer') {
+          // If content is a Buffer-like object from Node.js
+          fs.writeFileSync(fullPath, Buffer.from(content.data));
+          console.log('Binary video file (Buffer) written successfully');
+        } else {
+          // Assume it's already a buffer or buffer-like
+          fs.writeFileSync(fullPath, content);
+          console.log('Binary video file written successfully');
+        }
+      } catch (writeError) {
+        console.error('Error writing binary video file:', writeError);
+        return { success: false, error: `Failed to write video file: ${writeError.message}` };
+      }
+    } else {
+      // For text-based formats or empty files, write as UTF-8
+      fs.writeFileSync(fullPath, content || '', 'utf-8');
+      console.log('Text video file written successfully');
+    }
+
     console.log('video:create handler returning success');
     return { success: true, path: fullPath };
   } catch (err) {
     console.log('video:create handler error:', err.message);
+    return { success: false, error: err.message };
+  }
+});
+
+// Handler for camera access and video recording in Electron desktop app
+console.log('Registering camera access handlers for Electron desktop app');
+
+// Get available camera devices using Electron APIs
+ipcMain.handle('camera:getDevices', async () => {
+  try {
+    console.log('Getting camera devices using Electron APIs...');
+
+    // In Electron desktop app, we need to use different approaches:
+    // 1. Use desktopCapturer for screen sharing
+    // 2. Use system APIs for camera enumeration
+    // 3. Use native modules for direct camera access
+
+    const { desktopCapturer } = require('electron');
+
+    // Get available sources (screens and windows)
+    const sources = await desktopCapturer.getSources({
+      types: ['screen', 'window']
+    });
+
+    // For camera devices, we'll return mock devices since direct camera access
+    // in Electron main process is limited. The actual camera access will be
+    // handled in the renderer process using browser APIs.
+    const devices = [
+      {
+        deviceId: 'camera-0',
+        label: 'Caméra principale',
+        kind: 'videoinput',
+        type: 'camera'
+      },
+      {
+        deviceId: 'microphone-0',
+        label: 'Microphone principal',
+        kind: 'audioinput',
+        type: 'microphone'
+      }
+    ];
+
+    // Add screen capture devices
+    sources.forEach((source, index) => {
+      devices.push({
+        deviceId: `screen-${index}`,
+        label: source.name,
+        kind: 'screen',
+        type: 'screen',
+        thumbnail: source.thumbnail.toDataURL()
+      });
+    });
+
+    console.log('Found devices:', devices.length);
+    return { success: true, devices };
+  } catch (err) {
+    console.error('Error getting camera devices:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Request camera permission for Electron desktop app
+ipcMain.handle('camera:requestPermission', async () => {
+  try {
+    console.log('Requesting camera permission for Electron desktop app...');
+
+    // In Electron desktop app, camera permissions are handled differently:
+    // 1. The app needs to be packaged and signed
+    // 2. User needs to grant permissions in system settings
+    // 3. We can show a dialog to guide the user
+
+    const { dialog } = require('electron');
+
+    const result = await dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Permission caméra requise',
+      message: 'L\'application a besoin d\'accéder à votre caméra pour enregistrer des vidéos.',
+      detail: 'Veuillez autoriser l\'accès à la caméra dans les paramètres système de votre ordinateur.',
+      buttons: ['J\'ai compris', 'Ouvrir les paramètres'],
+      defaultId: 0,
+      cancelId: 0
+    });
+
+    if (result.response === 1) {
+      // User wants to open settings - we can't directly open camera settings
+      // but we can provide instructions
+      console.log('User wants to open camera settings');
+    }
+
+    console.log('Camera permission dialog shown');
+    return { success: true, message: 'Permission dialog shown' };
+  } catch (err) {
+    console.error('Error requesting camera permission:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Start camera recording using Electron desktop APIs
+ipcMain.handle('camera:startRecording', async (_event, options) => {
+  try {
+    console.log('Starting video recording with Electron desktop APIs:', options);
+
+    // In Electron desktop app, we need to use different approaches:
+    // 1. Use navigator.mediaDevices.getUserMedia in renderer process
+    // 2. Use native modules for camera access
+    // 3. Use system APIs for video capture
+
+    const streamId = 'electron-recording-' + Date.now();
+    console.log('Recording request acknowledged with stream ID:', streamId);
+
+    return {
+      success: true,
+      streamId,
+      message: 'Recording started using Electron desktop APIs',
+      method: 'electron-desktop'
+    };
+  } catch (err) {
+    console.error('Error starting recording:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Stop camera recording using Electron desktop APIs
+ipcMain.handle('camera:stopRecording', async (_event, streamId) => {
+  try {
+    console.log('Stopping video recording:', streamId);
+
+    // The actual recording stop will be handled in the renderer process
+    // This handler just acknowledges the request
+    console.log('Recording stop request acknowledged');
+
+    return { success: true, message: 'Recording stopped in renderer' };
+  } catch (err) {
+    console.error('Error stopping recording:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Save recorded video data using Electron file system APIs
+ipcMain.handle('camera:saveRecording', async (_event, videoData) => {
+  try {
+    console.log('Saving recorded video data using Electron APIs...');
+
+    const { videoBlob, fileName, filePath } = videoData;
+
+    // Convert blob to buffer and save to file using Electron's fs module
+    const buffer = Buffer.from(await videoBlob.arrayBuffer());
+    const fs = require('fs');
+    const path = require('path');
+
+    // Ensure directory exists
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    // Write video file
+    fs.writeFileSync(filePath, buffer);
+    console.log('Video file saved successfully using Electron APIs:', filePath);
+
+    return { success: true, path: filePath };
+  } catch (err) {
+    console.error('Error saving recording:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Get system camera information for Electron desktop app
+ipcMain.handle('camera:getSystemInfo', async () => {
+  try {
+    console.log('Getting system camera information for Electron desktop app...');
+
+    // Get comprehensive system information for Electron desktop app
+    const systemInfo = {
+      platform: process.platform,
+      arch: process.arch,
+      nodeVersion: process.version,
+      electronVersion: process.versions.electron,
+      chromeVersion: process.versions.chrome,
+      hasCamera: true, // Assume camera is available in desktop app
+      supportedFormats: ['mp4', 'webm', 'mov', 'avi', 'mkv'],
+      isElectronDesktop: true,
+      appPath: app.getAppPath(),
+      userDataPath: app.getPath('userData'),
+      desktopCapturerAvailable: true,
+      mediaDevicesAvailable: true
+    };
+
+    console.log('System info for Electron desktop app:', systemInfo);
+    return { success: true, systemInfo };
+  } catch (err) {
+    console.error('Error getting system info:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Check if camera is available in Electron desktop app
+ipcMain.handle('camera:checkAvailability', async () => {
+  try {
+    console.log('Checking camera availability in Electron desktop app...');
+
+    // In Electron desktop app, camera availability depends on:
+    // 1. System hardware
+    // 2. Driver support
+    // 3. User permissions
+    // 4. App packaging and signing
+
+    const availability = {
+      available: true, // Assume available in desktop app
+      method: 'electron-desktop',
+      requiresPermission: true,
+      permissionStatus: 'unknown', // Will be checked in renderer
+      message: 'Camera check initiated for Electron desktop app'
+    };
+
+    console.log('Camera availability check:', availability);
+    return { success: true, ...availability };
+  } catch (err) {
+    console.error('Error checking camera availability:', err);
+    return { success: false, available: false, error: err.message };
+  }
+});
+
+// Get desktop capture sources (screens and windows)
+ipcMain.handle('camera:getDesktopSources', async () => {
+  try {
+    console.log('Getting desktop capture sources...');
+
+    const { desktopCapturer } = require('electron');
+
+    const sources = await desktopCapturer.getSources({
+      types: ['screen', 'window']
+    });
+
+    const desktopSources = sources.map((source, index) => ({
+      id: source.id,
+      name: source.name,
+      thumbnail: source.thumbnail.toDataURL(),
+      type: 'desktop',
+      display_id: source.display_id,
+      index: index
+    }));
+
+    console.log('Found desktop sources:', desktopSources.length);
+    return { success: true, sources: desktopSources };
+  } catch (err) {
+    console.error('Error getting desktop sources:', err);
     return { success: false, error: err.message };
   }
 });

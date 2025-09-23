@@ -20,6 +20,13 @@ declare global {
     codeCreate?: (data: any) => Promise<{ success: boolean; path?: string; error?: string }>;
     imageCreate?: (data: any) => Promise<{ success: boolean; path?: string; error?: string }>;
     videoCreate?: (data: any) => Promise<{ success: boolean; path?: string; error?: string }>;
+
+    // Camera access APIs
+    getCameraDevices?: () => Promise<{ success: boolean; devices?: any[]; error?: string }>;
+    startCameraRecording?: (options: { video: boolean; audio: boolean; mimeType: string }) => Promise<{ success: boolean; streamId?: string; error?: string }>;
+    stopCameraRecording?: (streamId?: string) => Promise<{ success: boolean; videoData?: Blob; error?: string }>;
+    requestCameraPermission?: () => Promise<{ success: boolean; error?: string }>;
+
     saveSettings?: (settings: any) => Promise<boolean>;
     notesLoad?: () => Promise<any[]>;
     notesSave?: (notes: any[]) => Promise<any>;

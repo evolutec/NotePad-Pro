@@ -286,7 +286,7 @@ export default function NoteTakingApp() {
 
   return (
     <div className="flex h-screen bg-background">
-      {/* Sidebar moderne, déjà avec <aside> interne */}
+      {/* Sidebar moderne, responsive */}
       <ModernSidebar
         onFolderSelect={handleFolderSelect}
         onNoteSelect={handleNoteSelect}

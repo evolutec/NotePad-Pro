@@ -53,16 +53,46 @@ contextBridge.exposeInMainWorld('electronAPI', {
     console.log('Preload: Calling video:create with', videoData);
     return ipcRenderer.invoke('video:create', videoData);
   },
-  saveSettings: (settings) => {
-    console.log('Preload: Calling config:save with', settings);
-    return ipcRenderer.invoke('config:save', settings);
+
+  // Camera access APIs
+  getCameraDevices: () => {
+    console.log('Preload: Getting camera devices');
+    return ipcRenderer.invoke('camera:getDevices');
   },
-  drawLoad: (filePath) => {
-    console.log('Preload: Calling draw:load with', filePath);
-    return ipcRenderer.invoke('draw:load', filePath);
+
+  startCameraRecording: (options) => {
+    console.log('Preload: Starting camera recording with options:', options);
+    return ipcRenderer.invoke('camera:startRecording', options);
   },
-  drawSave: (filePath, drawingData) => {
-    console.log('Preload: Calling draw:save with', filePath);
-    return ipcRenderer.invoke('draw:save', filePath, drawingData);
+
+  stopCameraRecording: (streamId) => {
+    console.log('Preload: Stopping camera recording:', streamId);
+    return ipcRenderer.invoke('camera:stopRecording', streamId);
+  },
+
+  requestCameraPermission: () => {
+    console.log('Preload: Requesting camera permission');
+    return ipcRenderer.invoke('camera:requestPermission');
+  },
+
+  // Additional camera APIs
+  getSystemInfo: () => {
+    console.log('Preload: Getting system info');
+    return ipcRenderer.invoke('camera:getSystemInfo');
+  },
+
+  checkAvailability: () => {
+    console.log('Preload: Checking camera availability');
+    return ipcRenderer.invoke('camera:checkAvailability');
+  },
+
+  getDesktopSources: () => {
+    console.log('Preload: Getting desktop sources');
+    return ipcRenderer.invoke('camera:getDesktopSources');
+  },
+
+  saveRecording: (videoData) => {
+    console.log('Preload: Saving recording');
+    return ipcRenderer.invoke('camera:saveRecording', videoData);
   },
 });
