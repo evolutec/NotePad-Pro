@@ -13,6 +13,17 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Archive, Copy, Download, Edit, Eye, File, FileCode, FileText, FileWarning, Folder, FolderOpen, Grid, ImageIcon, Link, List, MoreHorizontal, Move, Music, NotebookText, Palette, Plus, Scissors, Search, SearchX, Share, Trash, Upload, UploadCloud, Video, FilePlus } from "lucide-react"
+
+// Custom PDF icon component
+const FileIconPdf = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <polyline points="14,2 14,8 20,8"/>
+    <text x="7" y="16" fontSize="3" fill="currentColor" fontWeight="bold">PDF</text>
+  </svg>
+)
+
+
 import { cn } from "@/lib/utils"
 import { AddDocumentDialog } from "./add-document_dialog"
 import { AddDrawDialog } from "./add-draw_dialog"
@@ -27,7 +38,7 @@ interface FileManagerProps {
   selectedNote?: string | null; // Add selectedNote prop
 }
 
-type FileType = "image" | "document" | "draw" | "audio" | "video" | "archive" | "link" | "other" | "code" | "note" | "folder"
+type FileType = "image" | "document" | "draw" | "audio" | "video" | "archive" | "link" | "other" | "code" | "note" | "folder" | "pdf"
 
 interface FileItem {
   id: string
@@ -51,8 +62,9 @@ const FILE_TYPES: {
 } = {
   folder: { icon: Folder, color: "text-yellow-500", extensions: [] },
   image: { icon: ImageIcon, color: "text-red-500", extensions: ["jpg", "jpeg", "png", "gif", "svg", "webp"] },
-  document: { icon: FileText, color: "text-green-500", extensions: ["pdf", "doc", "docx", "txt", "rtf"] },
-  note: { icon: NotebookText, color: "text-blue-500", extensions: ["md"] },
+  pdf: { icon: FileText, color: "text-red-600", extensions: ["pdf"] },
+  document: { icon: FileText, color: "text-green-500", extensions: ["doc", "docx", "rtf"] },
+  note: { icon: FileCode, color: "text-blue-500", extensions: ["md"] },
   draw: { icon: Palette, color: "text-purple-600 dark:text-purple-400", extensions: ["draw"] },
   audio: { icon: Music, color: "text-purple-500", extensions: ["mp3", "wav", "ogg", "m4a"] },
   video: { icon: Video, color: "text-blue-500", extensions: ["mp4", "avi", "mov", "webm"] },
@@ -165,6 +177,14 @@ export function FileManager({
   const getFileType = (filename: string): FileType => {
     const extension = filename.split(".").pop()?.toLowerCase();
     if (!extension) return "other";
+
+    // Check for PDF first (most specific)
+    if (FILE_TYPES.pdf.extensions.includes(extension)) {
+      console.log('PDF file detected in file-manager getFileType:', filename);
+      return "pdf";
+    }
+
+    // Then check other types
     if (FILE_TYPES.image.extensions.includes(extension)) return "image";
     if (FILE_TYPES.document.extensions.includes(extension)) return "document";
     if (FILE_TYPES.note.extensions.includes(extension)) return "note";
@@ -173,6 +193,7 @@ export function FileManager({
     if (FILE_TYPES.video.extensions.includes(extension)) return "video";
     if (FILE_TYPES.archive.extensions.includes(extension)) return "archive";
     if (FILE_TYPES.code.extensions.includes(extension)) return "code";
+
     // Si le nom est une URL, on considère comme 'link'
     if (filename.startsWith("http://") || filename.startsWith("https://")) return "link";
     return "other";
@@ -303,6 +324,13 @@ export function FileManager({
 
   const renderFileIcon = (file: FileItem) => {
     const fileType = file.isDirectory ? "folder" : getFileType(file.name);
+
+    // Special case for PDF files - use custom PDF icon
+    if (fileType === "pdf" || (file.name && file.name.toLowerCase().endsWith('.pdf'))) {
+      console.log('PDF file detected in file-manager renderFileIcon:', file.name);
+      return <FileIconPdf className="h-5 w-5 text-red-600" />;
+    }
+
     const Icon = FILE_TYPES[fileType]?.icon || File;
     const colorClass = FILE_TYPES[fileType]?.color || "text-gray-600";
     return <Icon className={cn("h-5 w-5", colorClass)} />;

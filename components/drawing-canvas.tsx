@@ -123,7 +123,7 @@ const smoothStroke = (
 export function DrawingCanvas({ selectedNote, selectedFolder }: DrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const backupCanvasRef = useRef<HTMLCanvasElement>(null)
+  const backupCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [currentTool, setCurrentTool] = useState<DrawingTool>({
     type: "pen",
@@ -182,6 +182,10 @@ export function DrawingCanvas({ selectedNote, selectedFolder }: DrawingCanvasPro
 
   useEffect(() => {
     const backupCanvas = document.createElement("canvas")
+    // Use a different approach to store the backup canvas
+    if (backupCanvasRef.current) {
+      backupCanvasRef.current.remove()
+    }
     backupCanvasRef.current = backupCanvas
 
     return () => {
@@ -622,7 +626,7 @@ export function DrawingCanvas({ selectedNote, selectedFolder }: DrawingCanvasPro
         const { data } = await worker.recognize(optimizedImageData)
 
         if (data.words && data.words.length > 0) {
-          data.words.forEach((word) => {
+          data.words.forEach((word: any) => {
             if (word.text.trim() && word.confidence > 40) {
               results.push({
                 text: word.text,

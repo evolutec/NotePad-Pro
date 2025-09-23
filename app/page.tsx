@@ -16,6 +16,10 @@ import { AddFolderDialog } from "@/components/add-folder_dialog"
 import { AddNoteDialog } from "@/components/add-note_dialog"
 import { AddDrawDialog } from "@/components/add-draw_dialog"
 import { AddDocumentDialog } from "@/components/add-document_dialog"
+import { AddAudioDialog } from "@/components/add-audio_dialog"
+import { AddImageDialog } from "@/components/add-image_dialog"
+import { AddVideoDialog } from "@/components/add-video_dialog"
+import { AddCodeDialog } from "@/components/add-code_dialog"
 import { RenameDialog } from "@/components/rename-dialog"
 
 const PdfViewer = dynamic(() => import('@/components/pdf-viewer').then(mod => mod.PdfViewer), {
@@ -34,6 +38,10 @@ export default function NoteTakingApp() {
   const [isAddNoteOpen, setIsAddNoteOpen] = useState(false)
   const [isAddDrawOpen, setIsAddDrawOpen] = useState(false)
   const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false);
+  const [isAddAudioOpen, setIsAddAudioOpen] = useState(false);
+  const [isAddImageOpen, setIsAddImageOpen] = useState(false);
+  const [isAddVideoOpen, setIsAddVideoOpen] = useState(false);
+  const [isAddCodeOpen, setIsAddCodeOpen] = useState(false);
   const [pdfContent, setPdfContent] = useState<string | null>(null);
   const [isRenameOpen, setIsRenameOpen] = useState(false)
   const [renameNode, setRenameNode] = useState<any>(null)
@@ -201,7 +209,7 @@ export default function NoteTakingApp() {
             setPdfContent(pdfUrl);
             toast({
               title: "PDF loaded successfully!",
-              variant: "success",
+              variant: "default",
             });
             console.log('PDF viewer set successfully');
           } else {
@@ -214,13 +222,13 @@ export default function NoteTakingApp() {
               variant: "destructive",
             });
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('Error reading PDF file:', error);
           setPdfContent(null);
           setActiveView("editor");
           toast({
             title: "Error reading PDF file",
-            description: error.message,
+            description: error?.message || 'Unknown error',
             variant: "destructive",
           });
         }
@@ -338,11 +346,11 @@ export default function NoteTakingApp() {
             // Get current note content
             if (window.electronAPI?.noteLoad) {
               const loadResult = await window.electronAPI.noteLoad(node.path);
-              if (!loadResult.success) {
+              if (!loadResult.success || !loadResult.data) {
                 console.error('Failed to load note content:', loadResult.error);
                 return;
               }
-              
+
               const originalContent = loadResult.data.content;
               const originalTitle = loadResult.data.title;
               
@@ -437,6 +445,14 @@ export default function NoteTakingApp() {
             setIsAddDocumentOpen(true)
           } else if (type === 'note') {
             setIsAddNoteOpen(true)
+          } else if (type === 'audio') {
+            setIsAddAudioOpen(true)
+          } else if (type === 'image') {
+            setIsAddImageOpen(true)
+          } else if (type === 'video') {
+            setIsAddVideoOpen(true)
+          } else if (type === 'code') {
+            setIsAddCodeOpen(true)
           }
         }}
         onNewDraw={() => {
@@ -545,52 +561,52 @@ export default function NoteTakingApp() {
           try {
             const node = renameNode;
             const isNote = node.type === 'note';
-            let renameResult;
-            
+            let renameResult: { success: boolean; newPath?: string; error?: string } | undefined;
+
             if (isNote) {
               // Rename note file
               if (window.electronAPI?.fileRename) {
                 renameResult = await window.electronAPI.fileRename(node.path, newName);
-                if (renameResult.success) {
+                if (renameResult?.success) {
                   console.log('Note renamed:', renameResult.newPath);
-                  
+
                   // Update note in notes.json
                   if (window.electronAPI?.notesLoad && window.electronAPI?.notesSave) {
                     const notes = await window.electronAPI.notesLoad();
-                    const updatedNotes = notes.map((note: any) => 
-                      note.path === node.path 
-                        ? { ...note, name: newName, path: renameResult.newPath }
+                    const updatedNotes = notes.map((note: any) =>
+                      note.path === node.path
+                        ? { ...note, name: newName, path: renameResult?.newPath }
                         : note
                     );
                     await window.electronAPI.notesSave(updatedNotes);
                     console.log('Note updated in notes.json');
                   }
                 } else {
-                  console.error('Failed to rename note:', renameResult.error);
-                  throw new Error(renameResult.error || 'Failed to rename note');
+                  console.error('Failed to rename note:', renameResult?.error);
+                  throw new Error(renameResult?.error || 'Failed to rename note');
                 }
               }
             } else {
               // Rename folder
               if (window.electronAPI?.fileRename) {
                 renameResult = await window.electronAPI.fileRename(node.path, newName);
-                if (renameResult.success) {
+                if (renameResult?.success) {
                   console.log('Folder renamed:', renameResult.newPath);
-                  
+
                   // Update folder in folders.json
                   if (window.electronAPI?.foldersLoad && window.electronAPI?.foldersSave) {
                     const folders = await window.electronAPI.foldersLoad();
-                    const updatedFolders = folders.map((folder: any) => 
-                      folder.path === node.path 
-                        ? { ...folder, name: newName, path: renameResult.newPath }
+                    const updatedFolders = folders.map((folder: any) =>
+                      folder.path === node.path
+                        ? { ...folder, name: newName, path: renameResult?.newPath }
                         : folder
                     );
                     await window.electronAPI.foldersSave(updatedFolders);
                     console.log('Folder updated in folders.json');
                   }
                 } else {
-                  console.error('Failed to rename folder:', renameResult.error);
-                  throw new Error(renameResult.error || 'Failed to rename folder');
+                  console.error('Failed to rename folder:', renameResult?.error);
+                  throw new Error(renameResult?.error || 'Failed to rename folder');
                 }
               }
             }
@@ -599,12 +615,12 @@ export default function NoteTakingApp() {
             if (isNote && renameResult?.success) {
               if (selectedNote === node.path) {
                 console.log('Updating selectedNote from', node.path, 'to', renameResult.newPath);
-                setSelectedNote(renameResult.newPath);
+                setSelectedNote(renameResult.newPath || null);
               }
             } else if (!isNote && renameResult?.success) {
               if (selectedFolder === node.path) {
                 console.log('Updating selectedFolder from', node.path, 'to', renameResult.newPath);
-                setSelectedFolder(renameResult.newPath);
+                setSelectedFolder(renameResult.newPath || null);
               }
             }
             
@@ -645,6 +661,70 @@ export default function NoteTakingApp() {
         parentPath={selectedFolder || ''}
         onDocumentCreated={async (newDocument) => {
           console.log('Document created:', newDocument)
+          // Reload the folder tree to reflect changes
+          if (window.electronAPI?.foldersScan) {
+            const result = await window.electronAPI.foldersScan()
+            if (result && result.length > 0) {
+              setFolderTree(result[0])
+            }
+          }
+        }}
+      />
+
+      <AddAudioDialog
+        open={isAddAudioOpen}
+        onOpenChange={setIsAddAudioOpen}
+        parentPath={selectedFolder || ''}
+        onAudioCreated={async (newAudio) => {
+          console.log('Audio created:', newAudio)
+          // Reload the folder tree to reflect changes
+          if (window.electronAPI?.foldersScan) {
+            const result = await window.electronAPI.foldersScan()
+            if (result && result.length > 0) {
+              setFolderTree(result[0])
+            }
+          }
+        }}
+      />
+
+      <AddImageDialog
+        open={isAddImageOpen}
+        onOpenChange={setIsAddImageOpen}
+        parentPath={selectedFolder || ''}
+        onImageCreated={async (newImage) => {
+          console.log('Image created:', newImage)
+          // Reload the folder tree to reflect changes
+          if (window.electronAPI?.foldersScan) {
+            const result = await window.electronAPI.foldersScan()
+            if (result && result.length > 0) {
+              setFolderTree(result[0])
+            }
+          }
+        }}
+      />
+
+      <AddVideoDialog
+        open={isAddVideoOpen}
+        onOpenChange={setIsAddVideoOpen}
+        parentPath={selectedFolder || ''}
+        onVideoCreated={async (newVideo) => {
+          console.log('Video created:', newVideo)
+          // Reload the folder tree to reflect changes
+          if (window.electronAPI?.foldersScan) {
+            const result = await window.electronAPI.foldersScan()
+            if (result && result.length > 0) {
+              setFolderTree(result[0])
+            }
+          }
+        }}
+      />
+
+      <AddCodeDialog
+        open={isAddCodeOpen}
+        onOpenChange={setIsAddCodeOpen}
+        parentPath={selectedFolder || ''}
+        onCodeCreated={async (newCode) => {
+          console.log('Code created:', newCode)
           // Reload the folder tree to reflect changes
           if (window.electronAPI?.foldersScan) {
             const result = await window.electronAPI.foldersScan()

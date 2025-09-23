@@ -1,12 +1,3 @@
-// Déclaration du type electronAPI pour TypeScript
-declare global {
-  interface Window {
-    electronAPI?: {
-      selectFolder: () => Promise<string>;
-      onFolderSelected?: (callback: (folderPath: string) => void) => void;
-    };
-  }
-}
 "use client"
 
 import type React from "react"

@@ -29,6 +29,15 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from '@/components/ui/context-menu';
 import './tree-styles.css';
 
+// Custom PDF icon component
+const FileIconPdf = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <polyline points="14,2 14,8 20,8"/>
+    <text x="7" y="16" fontSize="3" fill="currentColor" fontWeight="bold">PDF</text>
+  </svg>
+)
+
 // Enhanced type definitions
 export type FileType = 'folder' | 'note' | 'draw' | 'document' | 'image' | 'video' | 'audio' | 'code' | 'archive' | 'link' | 'file';
 
@@ -58,7 +67,14 @@ const getFileType = (node: EnhancedFolderNode): FileType => {
   if (node.type === 'folder') return 'folder';
   if (node.name.endsWith('.md') || node.name.endsWith('.txt')) return 'note';
   if (node.name.endsWith('.draw')) return 'draw';
-  if (node.name.match(/\.(doc|docx|pdf|odt)$/i)) return 'document';
+
+  // Check for PDF first (most specific)
+  if (node.name.endsWith('.pdf')) {
+    console.log('PDF file detected in getFileType:', node.name);
+    return 'document'; // Using 'document' type but will use custom PDF icon
+  }
+
+  if (node.name.match(/\.(doc|docx|odt)$/i)) return 'document';
   if (node.name.match(/\.(jpg|jpeg|png|gif|svg|webp)$/i)) return 'image';
   if (node.name.match(/\.(mp4|avi|mov|mkv)$/i)) return 'video';
   if (node.name.match(/\.(mp3|wav|flac|aac)$/i)) return 'audio';
@@ -67,8 +83,15 @@ const getFileType = (node: EnhancedFolderNode): FileType => {
   return 'file';
 };
 
-const getFileIcon = (type: FileType, isExpanded: boolean = false) => {
+const getFileIcon = (type: FileType, isExpanded: boolean = false, nodeName?: string) => {
   const iconClass = "w-4 h-4";
+
+  // Special case for PDF files - use custom PDF icon
+  if (nodeName && nodeName.toLowerCase().endsWith('.pdf')) {
+    console.log('PDF file detected in getFileIcon:', nodeName);
+    return <FileIconPdf className={iconClass} />;
+  }
+
   switch (type) {
     case 'folder':
       return isExpanded ? <FolderOpen className={iconClass} /> : <Folder className={iconClass} />;
@@ -77,6 +100,11 @@ const getFileIcon = (type: FileType, isExpanded: boolean = false) => {
     case 'draw':
       return <Palette className={iconClass} />;
     case 'document':
+      // Check if it's actually a PDF file
+      if (nodeName && nodeName.toLowerCase().endsWith('.pdf')) {
+        console.log('PDF file detected in document case:', nodeName);
+        return <FileIconPdf className={iconClass} />;
+      }
       return <FileText className={iconClass} />;
     case 'image':
       return <FileImage className={iconClass} />;
@@ -102,7 +130,7 @@ const getFileColor = (type: FileType) => {
     case 'draw':
       return 'text-purple-600 dark:text-purple-400';
     case 'document':
-      return 'text-green-500';
+      return 'text-red-500';
     case 'image':
       return 'text-red-500';
     case 'video':
@@ -240,7 +268,7 @@ const TreeItem = React.memo(({
               <span className="text-lg">{node.icon}</span>
             ) : (
               <div className={cn(getFileColor(fileType))}>
-                {getFileIcon(fileType, isExpanded)}
+                {getFileIcon(fileType, isExpanded, node.name)}
               </div>
             )}
           </div>

@@ -348,6 +348,149 @@ ipcMain.handle('document:create', async (_event, documentData) => {
   }
 });
 
+// Handler pour créer un fichier audio
+console.log('Registering audio:create handler');
+ipcMain.handle('audio:create', async (_event, audioData) => {
+  console.log('audio:create handler called with:', audioData);
+  try {
+    const configPath = path.join(__dirname, 'config.json');
+    if (!fs.existsSync(configPath)) {
+      console.log('audio:create handler error: Config not found');
+      return { success: false, error: 'Config not found' };
+    }
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const rootPath = config.files?.rootPath;
+    if (!rootPath) {
+      console.log('audio:create handler error: rootPath not set');
+      return { success: false, error: 'rootPath not set' };
+    }
+
+    const { name, type, parentPath, tags } = audioData;
+    const fileName = `${name}.${type}`;
+    const fullPath = path.join(parentPath || rootPath, fileName);
+
+    if (fs.existsSync(fullPath)) {
+      console.log('audio:create handler error: Audio file already exists');
+      return { success: false, error: 'Audio file already exists' };
+    }
+
+    // Create an empty audio file (placeholder)
+    // In a real implementation, you might want to create a proper audio file
+    // or copy from a template/source
+    fs.writeFileSync(fullPath, '', 'utf-8');
+    console.log('audio:create handler returning success');
+    return { success: true, path: fullPath };
+  } catch (err) {
+    console.log('audio:create handler error:', err.message);
+    return { success: false, error: err.message };
+  }
+});
+
+// Handler pour créer un fichier code
+console.log('Registering code:create handler');
+ipcMain.handle('code:create', async (_event, codeData) => {
+  console.log('code:create handler called with:', codeData);
+  try {
+    const configPath = path.join(__dirname, 'config.json');
+    if (!fs.existsSync(configPath)) {
+      console.log('code:create handler error: Config not found');
+      return { success: false, error: 'Config not found' };
+    }
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const rootPath = config.files?.rootPath;
+    if (!rootPath) {
+      console.log('code:create handler error: rootPath not set');
+      return { success: false, error: 'rootPath not set' };
+    }
+
+    const { name, type, parentPath, tags } = codeData;
+    const fileName = `${name}.${type}`;
+    const fullPath = path.join(parentPath || rootPath, fileName);
+
+    if (fs.existsSync(fullPath)) {
+      console.log('code:create handler error: Code file already exists');
+      return { success: false, error: 'Code file already exists' };
+    }
+
+    fs.writeFileSync(fullPath, '', 'utf-8');
+    console.log('code:create handler returning success');
+    return { success: true, path: fullPath };
+  } catch (err) {
+    console.log('code:create handler error:', err.message);
+    return { success: false, error: err.message };
+  }
+});
+
+// Handler pour créer un fichier image
+console.log('Registering image:create handler');
+ipcMain.handle('image:create', async (_event, imageData) => {
+  console.log('image:create handler called with:', imageData);
+  try {
+    const configPath = path.join(__dirname, 'config.json');
+    if (!fs.existsSync(configPath)) {
+      console.log('image:create handler error: Config not found');
+      return { success: false, error: 'Config not found' };
+    }
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const rootPath = config.files?.rootPath;
+    if (!rootPath) {
+      console.log('image:create handler error: rootPath not set');
+      return { success: false, error: 'rootPath not set' };
+    }
+
+    const { name, type, parentPath, tags } = imageData;
+    const fileName = `${name}.${type}`;
+    const fullPath = path.join(parentPath || rootPath, fileName);
+
+    if (fs.existsSync(fullPath)) {
+      console.log('image:create handler error: Image file already exists');
+      return { success: false, error: 'Image file already exists' };
+    }
+
+    fs.writeFileSync(fullPath, '', 'utf-8');
+    console.log('image:create handler returning success');
+    return { success: true, path: fullPath };
+  } catch (err) {
+    console.log('image:create handler error:', err.message);
+    return { success: false, error: err.message };
+  }
+});
+
+// Handler pour créer un fichier video
+console.log('Registering video:create handler');
+ipcMain.handle('video:create', async (_event, videoData) => {
+  console.log('video:create handler called with:', videoData);
+  try {
+    const configPath = path.join(__dirname, 'config.json');
+    if (!fs.existsSync(configPath)) {
+      console.log('video:create handler error: Config not found');
+      return { success: false, error: 'Config not found' };
+    }
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const rootPath = config.files?.rootPath;
+    if (!rootPath) {
+      console.log('video:create handler error: rootPath not set');
+      return { success: false, error: 'rootPath not set' };
+    }
+
+    const { name, type, parentPath, tags } = videoData;
+    const fileName = `${name}.${type}`;
+    const fullPath = path.join(parentPath || rootPath, fileName);
+
+    if (fs.existsSync(fullPath)) {
+      console.log('video:create handler error: Video file already exists');
+      return { success: false, error: 'Video file already exists' };
+    }
+
+    fs.writeFileSync(fullPath, '', 'utf-8');
+    console.log('video:create handler returning success');
+    return { success: true, path: fullPath };
+  } catch (err) {
+    console.log('video:create handler error:', err.message);
+    return { success: false, error: err.message };
+  }
+});
+
 // Handler pour charger les notes depuis notes.json
 ipcMain.handle('notes:load', async () => {
   try {

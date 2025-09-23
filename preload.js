@@ -37,4 +37,32 @@ contextBridge.exposeInMainWorld('electronAPI', {
     console.log('Preload: Calling readPdfFile with', filePath);
     return ipcRenderer.invoke('readPdfFile', filePath);
   },
+  audioCreate: (audioData) => {
+    console.log('Preload: Calling audio:create with', audioData);
+    return ipcRenderer.invoke('audio:create', audioData);
+  },
+  codeCreate: (codeData) => {
+    console.log('Preload: Calling code:create with', codeData);
+    return ipcRenderer.invoke('code:create', codeData);
+  },
+  imageCreate: (imageData) => {
+    console.log('Preload: Calling image:create with', imageData);
+    return ipcRenderer.invoke('image:create', imageData);
+  },
+  videoCreate: (videoData) => {
+    console.log('Preload: Calling video:create with', videoData);
+    return ipcRenderer.invoke('video:create', videoData);
+  },
+  saveSettings: (settings) => {
+    console.log('Preload: Calling config:save with', settings);
+    return ipcRenderer.invoke('config:save', settings);
+  },
+  drawLoad: (filePath) => {
+    console.log('Preload: Calling draw:load with', filePath);
+    return ipcRenderer.invoke('draw:load', filePath);
+  },
+  drawSave: (filePath, drawingData) => {
+    console.log('Preload: Calling draw:save with', filePath);
+    return ipcRenderer.invoke('draw:save', filePath, drawingData);
+  },
 });

@@ -111,7 +111,7 @@ export function AddImageDialog({ open, onOpenChange, parentPath, onImageCreated 
             <ImageIcon className="h-5 w-5" /> {/* Image icon */}
             Créer une nouvelle image
           </DialogTitle>
-          <div className="h-1 w-full bg-red-500 mt-2" /> {/* Red line for images */}
+          <div className="h-1 w-full bg-green-500 mt-2" /> {/* Green line for images */}
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
