@@ -10,24 +10,29 @@ import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Progress } from "@/components/ui/progress"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-  import { Archive, Copy, Download, Edit, Eye, File, FileCode, FileText, FileWarning, Folder, FolderOpen, Grid, ImageIcon, Link, List, MoreHorizontal, Move, Music, NotebookText, Palette, Plus, Scissors, Search, SearchX, Share, Trash, Upload, UploadCloud, Video } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Archive, Copy, Download, Edit, Eye, File, FileCode, FileText, FileWarning, Folder, FolderOpen, Grid, ImageIcon, Link, List, MoreHorizontal, Move, Music, NotebookText, Palette, Plus, Scissors, Search, SearchX, Share, Trash, Upload, UploadCloud, Video, FilePlus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AddDocumentDialog } from "./add-document_dialog"
 import { AddDrawDialog } from "./add-draw_dialog"
 
 import { RenameDialog } from "./rename-dialog"
-import { PdfViewer } from "./pdf-viewer";
 
 interface FileManagerProps {
   selectedFolder: string | null
   folderTree?: any // Ajout de la structure des dossiers
   onFolderSelect?: (folderPath: string) => void
+  onNoteSelect?: (notePath: string) => void
+  selectedNote?: string | null; // Add selectedNote prop
 }
+
+type FileType = "image" | "document" | "draw" | "audio" | "video" | "archive" | "link" | "other" | "code" | "note" | "folder"
 
 interface FileItem {
   id: string
   name: string
-  type: "image" | "document" | "draw" | "audio" | "video" | "archive" | "link" | "other" | "code" | "note"
+  type: FileType
   size: number
   url?: string
   uploadDate: Date
@@ -54,18 +59,64 @@ const FILE_TYPES: {
   archive: { icon: Archive, color: "text-gray-500", extensions: ["zip", "rar", "7z", "tar"] },
   link: { icon: Link, color: "text-cyan-600", extensions: [] },
   code: { icon: FileCode, color: "text-orange-500", extensions: ["js", "ts", "jsx", "tsx", "py", "java", "cpp", "cs", "html", "css", "json"] },
-  archive: { icon: Archive, color: "text-gray-500", extensions: ["zip", "rar", "7z", "tar"] },
   other: { icon: File, color: "text-gray-600", extensions: [] },
 }
 
-export function FileManager({ selectedFolder, folderTree, onFolderSelect }: FileManagerProps) {
+export function FileManager({
+  selectedFolder,
+  folderTree,
+  onFolderSelect,
+  onNoteSelect,
+  selectedNote, // Add selectedNote here
+}: FileManagerProps) {
+  console.log("FileManager: Component re-rendered with selectedNote", selectedNote);
   // Buffer pour copier/couper/coller
   const [clipboard, setClipboard] = useState<{ action: "cut" | "copy"; folder: any } | null>(null);
 
   // État pour le dialogue de renommage
   const [renameFileState, setRenameFileState] = useState<{ file: FileItem; isOpen: boolean } | null>(null);
+
   const [selectedFileContent, setSelectedFileContent] = useState<string | null>(null);
   const [selectedFileForView, setSelectedFileForView] = useState<FileItem | null>(null);
+
+  useEffect(() => {
+    console.log("FileManager: useEffect for selectedNote triggered", selectedNote);
+    const loadSelectedNote = async () => {
+      if (selectedNote) {
+        const fileExtension = selectedNote.split('.').pop()?.toLowerCase();
+        if (fileExtension === 'pdf') {
+          // Assuming selectedNote is the full path to the file
+          const fileItem: FileItem = {
+            id: selectedNote, // Or a proper ID if available
+            name: selectedNote.split('\\').pop() || '', // Extract file name
+            type: 'document',
+            size: 0, // Placeholder
+            uploadDate: new Date(),
+          };
+          setSelectedFileForView(fileItem);
+          if (typeof window !== "undefined" && window.electronAPI && window.electronAPI.readFile) {
+            try {
+              const result = await window.electronAPI.readFile(selectedNote);
+              if (result.success) {
+                setSelectedFileContent(`data:application/pdf;base64,${result.data}`);
+              } else {
+                console.error("Error reading PDF file:", result.error);
+              }
+            } catch (error) {
+              console.error("Error reading PDF file with Electron API:", error);
+            }
+          }
+        } else {
+          setSelectedFileForView(null);
+          setSelectedFileContent(null);
+        }
+      } else {
+        setSelectedFileForView(null);
+        setSelectedFileContent(null);
+      }
+    };
+    loadSelectedNote();
+  }, [selectedNote]);
 
   // Actions kebab menu pour dossiers
   const cutFolder = (folder: any) => {
@@ -95,8 +146,8 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
   };
 
   // Actions kebab menu pour fichiers
-  const handleRenameFile = async (file: FileItem, newName: string) => {
-    console.log(`Renaming file ${file.name} to ${newName}`);
+  const handleRenameFile = async (newName: string) => {
+    console.log(`Renaming file to ${newName}`);
     // Implement actual rename logic
   };
 
@@ -111,9 +162,69 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
   const linkInputRef = useRef<HTMLInputElement>(null);
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
 
+  const getFileType = (filename: string): FileType => {
+    const extension = filename.split(".").pop()?.toLowerCase();
+    if (!extension) return "other";
+    if (FILE_TYPES.image.extensions.includes(extension)) return "image";
+    if (FILE_TYPES.document.extensions.includes(extension)) return "document";
+    if (FILE_TYPES.note.extensions.includes(extension)) return "note";
+    if (FILE_TYPES.draw.extensions.includes(extension)) return "draw";
+    if (FILE_TYPES.audio.extensions.includes(extension)) return "audio";
+    if (FILE_TYPES.video.extensions.includes(extension)) return "video";
+    if (FILE_TYPES.archive.extensions.includes(extension)) return "archive";
+    if (FILE_TYPES.code.extensions.includes(extension)) return "code";
+    // Si le nom est une URL, on considère comme 'link'
+    if (filename.startsWith("http://") || filename.startsWith("https://")) return "link";
+    return "other";
+  };
+
   const files = useMemo(() => {
-    if (!selectedFolder) return [];
-    return folderTree[selectedFolder]?.files || [];
+    if (!selectedFolder || !folderTree) return [];
+
+    // Function to find folder in tree structure
+    const findFolderInTree = (tree: any, targetPath: string): any => {
+      if (tree.path === targetPath) {
+        return tree;
+      }
+      if (tree.children) {
+        for (const child of tree.children) {
+          const found = findFolderInTree(child, targetPath);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const selectedFolderData = findFolderInTree(folderTree, selectedFolder);
+
+    if (selectedFolderData) {
+      // Convert tree structure to FileItem array
+      const convertToFileItems = (items: any[]): FileItem[] => {
+        return items.map(item => ({
+          id: item.path || item.id || item.name,
+          name: item.name,
+          type: item.type === 'folder' ? 'folder' : getFileType(item.name),
+          size: item.size || 0,
+          url: item.url,
+          uploadDate: item.modifiedAt ? new Date(item.modifiedAt) : new Date(),
+          folderId: item.parent,
+          thumbnail: item.thumbnail,
+          description: item.description,
+          isDirectory: item.type === 'folder' || item.isDirectory || !!item.children
+        }));
+      };
+
+      // Get files and subfolders
+      const allItems: FileItem[] = [];
+
+      if (selectedFolderData.children) {
+        allItems.push(...convertToFileItems(selectedFolderData.children));
+      }
+
+      return allItems;
+    }
+
+    return [];
   }, [selectedFolder, folderTree]);
 
   const handleFileUpload = async (selectedFiles: FileList) => {
@@ -155,22 +266,6 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
     // Implement logic to add link to the current folder
   };
 
-  const getFileType = (filename: string): FileType => {
-    const extension = filename.split(".").pop()?.toLowerCase();
-    if (!extension) return "other";
-    if (FILE_TYPES.image.extensions.includes(extension)) return "image";
-    if (FILE_TYPES.document.extensions.includes(extension)) return "document";
-    if (FILE_TYPES.note.extensions.includes(extension)) return "note";
-    if (FILE_TYPES.draw.extensions.includes(extension)) return "draw";
-    if (FILE_TYPES.audio.extensions.includes(extension)) return "audio";
-    if (FILE_TYPES.video.extensions.includes(extension)) return "video";
-    if (FILE_TYPES.archive.extensions.includes(extension)) return "archive";
-    if (FILE_TYPES.code.extensions.includes(extension)) return "code";
-    // Si le nom est une URL, on considère comme 'link'
-    if (filename.startsWith("http://") || filename.startsWith("https://")) return "link";
-    return "other";
-  };
-
   const simulateUpload = async (file: File): Promise<FileItem> => {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -189,38 +284,22 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
   const handleFileClick = useCallback(async (file: FileItem) => {
     if (file.isDirectory) {
       onFolderSelect?.(file.id);
-      setSelectedFileForView(null);
-      setSelectedFileContent(null);
       return;
     }
-
-    setSelectedFileForView(file);
-    setSelectedFileContent(null); // Clear previous content
-
-    if (file.type === "document" && file.name.toLowerCase().endsWith(".pdf")) {
-      if (typeof window !== "undefined" && window.electronAPI && window.electronAPI.readFile) {
-        try {
-          const result = await window.electronAPI.readFile(file.id);
-          if (result.success) {
-            setSelectedFileContent(`data:application/pdf;base64,${result.data}`);
-          } else {
-            console.error("Error reading PDF file:", result.error);
-            // Handle error, maybe show a toast notification
-          }
-        } catch (error) {
-          console.error("Error reading PDF file:", error);
-          // Handle error, maybe show a toast notification
-        }
-      }
-    } else {
-      // Handle other file types or show a generic viewer
-      console.log("Selected file for view:", file);
-    }
-  }, [onFolderSelect]);
+    onNoteSelect?.(file.id);
+  }, [onFolderSelect, onNoteSelect]);
 
   const filteredFiles = files.filter((file) =>
     file.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
 
   const renderFileIcon = (file: FileItem) => {
     const fileType = file.isDirectory ? "folder" : getFileType(file.name);
@@ -251,8 +330,8 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <AddNoteDialog onNoteCreated={() => { /* Gérer la création de note */ }} />
-              <AddDocumentDialog onDocumentCreated={() => { /* Gérer la création de document */ }} />
-              <AddDrawDialog onDrawCreated={() => { /* Gérer la création de dessin */ }} />
+              <AddDocumentDialog open={false} onOpenChange={() => {}} parentPath={selectedFolder || ''} onDocumentCreated={() => { /* Gérer la création de document */ }} />
+              <AddDrawDialog open={false} onOpenChange={() => {}} parentPath={selectedFolder || ''} onDrawCreated={() => { /* Gérer la création de dessin */ }} />
               <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
                 <UploadCloud className="mr-2 h-4 w-4" /> Upload File
               </DropdownMenuItem>
@@ -285,15 +364,7 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
       />
 
       <ScrollArea className="h-full flex-grow p-4">
-        {selectedFileForView && selectedFileContent && selectedFileForView.type === "document" && selectedFileForView.name.toLowerCase().endsWith(".pdf") ? (
-          <PdfViewer file={selectedFileContent} />
-        ) : selectedFileForView ? (
-          <div className="flex flex-col items-center justify-center h-full text-gray-500">
-            <File className="h-16 w-16 mb-4" />
-            <p>Preview not available for this file type.</p>
-            <p className="text-sm">Selected: {selectedFileForView.name}</p>
-          </div>
-        ) : filteredFiles.length === 0 ? (
+        {filteredFiles.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-500">
             <SearchX className="h-16 w-16 mb-4" />
             <p>Aucun fichier dans ce dossier. Faites glisser et déposez des fichiers ici, ou cliquez sur 'Ajouter' pour en créer un nouveau</p>
@@ -360,9 +431,11 @@ export function FileManager({ selectedFolder, folderTree, onFolderSelect }: File
       </ScrollArea>
       {renameFileState && (
         <RenameDialog
-          isOpen={renameFileState.isOpen}
-          onClose={() => setRenameFileState(null)}
-          file={renameFileState.file}
+          open={renameFileState.isOpen}
+          onOpenChange={() => setRenameFileState(null)}
+          currentName={renameFileState.file.name}
+          currentPath={renameFileState.file.id}
+          isFolder={false}
           onRename={handleRenameFile}
         />
       )}

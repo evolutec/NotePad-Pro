@@ -1,12 +1,14 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { ModernSidebar } from "@/components/ui/sidebar-modern"
 import { DrawingCanvas } from "@/components/drawing-canvas"
 import { NoteEditor } from "@/components/note-editor"
 import { FileManager } from "@/components/file-manager"
 import { SettingsDialog } from "@/components/settings-dialog"
+import { toast } from "@/components/ui/use-toast"
+import dynamic from 'next/dynamic';
 import { Button } from "@/components/ui/button"
 import { PenTool, FileText, Upload, Menu, Settings } from "lucide-react"
 import type { EnhancedFolderNode } from "@/components/ui/FolderTree-modern"
@@ -16,8 +18,12 @@ import { AddDrawDialog } from "@/components/add-draw_dialog"
 import { AddDocumentDialog } from "@/components/add-document_dialog"
 import { RenameDialog } from "@/components/rename-dialog"
 
+const PdfViewer = dynamic(() => import('@/components/pdf-viewer').then(mod => mod.PdfViewer), {
+  ssr: false,
+});
+
 export default function NoteTakingApp() {
-  const [activeView, setActiveView] = useState<"canvas" | "editor" | "files">("canvas")
+  const [activeView, setActiveView] = useState<"canvas" | "editor" | "files" | "pdf_viewer">("canvas")
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(256)
   const [isResizing, setIsResizing] = useState(false)
@@ -27,7 +33,8 @@ export default function NoteTakingApp() {
   const [isAddFolderOpen, setIsAddFolderOpen] = useState(false)
   const [isAddNoteOpen, setIsAddNoteOpen] = useState(false)
   const [isAddDrawOpen, setIsAddDrawOpen] = useState(false)
-  const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false)
+  const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false);
+  const [pdfContent, setPdfContent] = useState<string | null>(null);
   const [isRenameOpen, setIsRenameOpen] = useState(false)
   const [renameNode, setRenameNode] = useState<any>(null)
   const isMobile = useIsMobile()
@@ -39,16 +46,14 @@ export default function NoteTakingApp() {
   }
 
   // Sélection note : switch auto sur éditeur ou canvas selon le type
-  function handleNoteSelect(path: string) {
-    setSelectedNote(path)
-    // Déterminer le type de fichier à partir de l'extension
-    const fileExtension = path.toLowerCase().split('.').pop()
-    if (fileExtension === 'draw') {
-      setActiveView("canvas")
-    } else {
-      setActiveView("editor")
-    }
-  }
+  useEffect(() => {
+    console.log("App: selectedNote updated", selectedNote)
+  }, [selectedNote])
+
+  // Debug activeView changes
+  useEffect(() => {
+    console.log("App: activeView changed to", activeView)
+  }, [activeView])
 
   // Function to load real data from config.json root path
   const loadRealData = async () => {
@@ -153,6 +158,63 @@ export default function NoteTakingApp() {
       window.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isResizing]);
+
+  const handleNoteSelect = useCallback(async (notePath: string) => {
+    console.log('handleNoteSelect called with:', notePath);
+    const fileExtension = notePath.toLowerCase().split('.').pop();
+
+    if (fileExtension === 'pdf') {
+      console.log('PDF file detected, loading PDF viewer...');
+
+      // Set PDF viewer FIRST to prevent any other logic from overriding
+      setActiveView('pdf_viewer');
+      setSelectedNote(notePath);
+
+      if (window.electronAPI?.readPdfFile) {
+        try {
+          const result = await window.electronAPI.readPdfFile(notePath);
+          if (result.success && result.data) {
+            const blob = new Blob([result.data], { type: 'application/pdf' });
+            const pdfUrl = URL.createObjectURL(blob);
+            setPdfContent(pdfUrl);
+            toast({
+              title: "PDF loaded successfully!",
+              variant: "success",
+            });
+            console.log('PDF viewer set successfully');
+          } else {
+            console.error('Failed to read PDF file:', result.error);
+            setPdfContent(null);
+            setActiveView("editor");
+            toast({
+              title: "Failed to read PDF file",
+              description: result.error || 'Unknown error',
+              variant: "destructive",
+            });
+          }
+        } catch (error) {
+          console.error('Error reading PDF file:', error);
+          setPdfContent(null);
+          setActiveView("editor");
+          toast({
+            title: "Error reading PDF file",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
+      } else {
+        console.warn('Electron API for reading PDF not available.');
+        setPdfContent(null);
+        setActiveView("editor");
+      }
+    } else if (fileExtension === 'draw') {
+      setSelectedNote(notePath);
+      setActiveView("canvas");
+    } else {
+      setSelectedNote(notePath);
+      setActiveView("editor");
+    }
+  }, []);
 
   return (
     <div className="flex h-screen bg-background">
@@ -379,6 +441,16 @@ export default function NoteTakingApp() {
               <Upload className="h-4 w-4 mr-2" />
               Fichiers
             </Button>
+            {selectedNote && selectedNote.toLowerCase().endsWith(".pdf") && (
+              <Button
+                variant={activeView === "pdf_viewer" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setActiveView("pdf_viewer")}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                PDF Viewer
+              </Button>
+            )}
             <SettingsDialog>
               <Button variant="ghost" size="sm">
                 <Settings className="h-4 w-4" />
@@ -389,8 +461,9 @@ export default function NoteTakingApp() {
         <main className="flex-1 overflow-auto px-2 py-2 min-w-0">
           {activeView === "canvas" && <DrawingCanvas selectedNote={selectedNote} selectedFolder={selectedFolder} />}
           {activeView === "editor" && <NoteEditor selectedNote={selectedNote} selectedFolder={selectedFolder} />}
+          {activeView === "pdf_viewer" && pdfContent && <PdfViewer file={pdfContent} />}
           {activeView === "files" && (
-            <FileManager selectedFolder={selectedFolder} folderTree={folderTree} onFolderSelect={handleFolderSelect} />
+            <FileManager selectedFolder={selectedFolder} folderTree={folderTree} onFolderSelect={handleFolderSelect} onNoteSelect={handleNoteSelect} selectedNote={selectedNote} />
           )}
         </main>
       </div>
@@ -534,7 +607,6 @@ export default function NoteTakingApp() {
           }
         }}
       />
-
       <AddDocumentDialog
         open={isAddDocumentOpen}
         onOpenChange={setIsAddDocumentOpen}

@@ -1,22 +1,25 @@
 import React, { useState } from "react";
-import { Document, Page, pdfjs } from "react-pdf";
-import "react-pdf/dist/Page/AnnotationLayer.css";
-import "react-pdf/dist/Page/TextLayer.css";
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs`;
 
 interface PdfViewerProps {
-  file: string; // Base64 encoded string or URL
+  file: string; // Base64 string or URL
 }
 
 export const PdfViewer: React.FC<PdfViewerProps> = ({ file }) => {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
 
-  function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
+  console.log("PdfViewer: file prop received", file ? "yes" : "no", file ? file.substring(0, 50) + "..." : "");
+  console.log("PdfViewer: workerSrc", pdfjs.GlobalWorkerOptions.workerSrc);
+
+  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
     setPageNumber(1);
-  }
+  };
 
   const goToPrevPage = () =>
     setPageNumber((prevPageNumber) => Math.max(prevPageNumber - 1, 1));

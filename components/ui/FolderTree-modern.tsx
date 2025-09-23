@@ -424,7 +424,15 @@ export function ModernFolderTree({
   const handleSelect = useCallback((node: EnhancedFolderNode) => {
     console.log('handleSelect called with node:', node.path, 'type:', node.type);
     const fileType = getFileType(node);
-    if ((fileType === 'note' || fileType === 'draw') && onNoteSelect) {
+
+    // Check if it's a PDF file specifically
+    if (node.name.toLowerCase().endsWith('.pdf')) {
+      console.log('PDF file detected, calling onNoteSelect with path:', node.path);
+      onNoteSelect?.(node.path);
+      return;
+    }
+
+    if ((fileType === 'note' || fileType === 'draw' || fileType === 'document') && onNoteSelect) {
       console.log('Calling onNoteSelect with path:', node.path);
       onNoteSelect(node.path);
     } else if (onFolderSelect) {
