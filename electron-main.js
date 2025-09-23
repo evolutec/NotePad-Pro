@@ -438,16 +438,50 @@ ipcMain.handle('image:create', async (_event, imageData) => {
       return { success: false, error: 'rootPath not set' };
     }
 
-    const { name, type, parentPath, tags } = imageData;
+    const { name, type, parentPath, tags, content, isBinary } = imageData;
     const fileName = `${name}.${type}`;
     const fullPath = path.join(parentPath || rootPath, fileName);
+    console.log('Attempting to create image at:', fullPath);
 
     if (fs.existsSync(fullPath)) {
       console.log('image:create handler error: Image file already exists');
       return { success: false, error: 'Image file already exists' };
     }
 
-    fs.writeFileSync(fullPath, '', 'utf-8');
+    console.log('Writing image to:', fullPath, 'with content length:', content ? content.length : 0, 'isBinary:', isBinary);
+
+    // Handle binary image files
+    if (isBinary && content) {
+      try {
+        if (typeof content === 'string') {
+          // If content is base64 string, convert to buffer
+          const binaryData = Buffer.from(content, 'base64');
+          fs.writeFileSync(fullPath, binaryData);
+          console.log('Binary image file written successfully, size:', binaryData.length);
+        } else if (content instanceof ArrayBuffer) {
+          // If content is ArrayBuffer, convert to Buffer
+          const binaryData = Buffer.from(content);
+          fs.writeFileSync(fullPath, binaryData);
+          console.log('Binary image file (ArrayBuffer) written successfully, size:', binaryData.length);
+        } else if (content && typeof content === 'object' && content.type === 'Buffer') {
+          // If content is a Buffer-like object from Node.js
+          fs.writeFileSync(fullPath, Buffer.from(content.data));
+          console.log('Binary image file (Buffer) written successfully');
+        } else {
+          // Assume it's already a buffer or buffer-like
+          fs.writeFileSync(fullPath, content);
+          console.log('Binary image file written successfully');
+        }
+      } catch (writeError) {
+        console.error('Error writing binary image file:', writeError);
+        return { success: false, error: `Failed to write image file: ${writeError.message}` };
+      }
+    } else {
+      // For text-based formats or empty files, write as UTF-8
+      fs.writeFileSync(fullPath, content || '', 'utf-8');
+      console.log('Text image file written successfully');
+    }
+
     console.log('image:create handler returning success');
     return { success: true, path: fullPath };
   } catch (err) {

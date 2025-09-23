@@ -21,13 +21,14 @@ import { AddImageDialog } from "@/components/add-image_dialog"
 import { AddVideoDialog } from "@/components/add-video_dialog"
 import { AddCodeDialog } from "@/components/add-code_dialog"
 import { RenameDialog } from "@/components/rename-dialog"
+import { ImageViewer } from "@/components/image-viewer"
 
 const PdfViewer = dynamic(() => import('@/components/pdf-viewer').then(mod => mod.PdfViewer), {
   ssr: false,
 });
 
 export default function NoteTakingApp() {
-  const [activeView, setActiveView] = useState<"canvas" | "editor" | "files" | "pdf_viewer">("canvas")
+  const [activeView, setActiveView] = useState<"canvas" | "editor" | "files" | "pdf_viewer" | "image_viewer">("canvas")
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(256)
   const [isResizing, setIsResizing] = useState(false)
@@ -45,6 +46,10 @@ export default function NoteTakingApp() {
   const [pdfContent, setPdfContent] = useState<string | null>(null);
   const [isRenameOpen, setIsRenameOpen] = useState(false)
   const [renameNode, setRenameNode] = useState<any>(null)
+  const [imageViewerOpen, setImageViewerOpen] = useState(false)
+  const [imageViewerPath, setImageViewerPath] = useState("")
+  const [imageViewerName, setImageViewerName] = useState("")
+  const [imageViewerType, setImageViewerType] = useState("")
   const isMobile = useIsMobile()
 
   // Sélection dossier : switch auto sur fichiers
@@ -169,9 +174,30 @@ export default function NoteTakingApp() {
 
   const handleNoteSelect = useCallback(async (notePath: string) => {
     console.log('handleNoteSelect called with:', notePath);
-    const fileExtension = notePath.toLowerCase().split('.').pop();
+    console.log('Full path:', notePath);
 
-    if (fileExtension === 'pdf') {
+    // Extract file extension more reliably
+    const pathParts = notePath.split('.');
+    const fileExtension = pathParts.length > 1 ? pathParts.pop()?.toLowerCase() : '';
+    console.log('Detected file extension:', fileExtension);
+
+    // Check for image files first (most common case)
+    const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'bmp', 'ico'];
+    if (imageExtensions.includes(fileExtension || '')) {
+      console.log('Image file detected, loading image viewer...');
+
+      // Set image viewer FIRST to prevent any other logic from overriding
+      setActiveView('image_viewer');
+      setImageViewerPath(notePath);
+      setImageViewerName(notePath.split('\\').pop() || 'Image');
+      setImageViewerType(fileExtension || 'png');
+
+      toast({
+        title: "Image loaded successfully!",
+        variant: "default",
+      });
+      console.log('Image viewer set successfully');
+    } else if (fileExtension === 'pdf') {
       console.log('PDF file detected, loading PDF viewer...');
 
       // Set PDF viewer FIRST to prevent any other logic from overriding
@@ -499,6 +525,14 @@ export default function NoteTakingApp() {
               <FileText className="h-4 w-4 mr-2" />
               PDF Viewer
             </Button>
+            <Button
+              variant={activeView === "image_viewer" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setActiveView("image_viewer")}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Image Viewer
+            </Button>
             <SettingsDialog>
               <Button variant="ghost" size="sm">
                 <Settings className="h-4 w-4" />
@@ -510,6 +544,15 @@ export default function NoteTakingApp() {
           {activeView === "canvas" && <DrawingCanvas selectedNote={selectedNote} selectedFolder={selectedFolder} />}
           {activeView === "editor" && <NoteEditor selectedNote={selectedNote} selectedFolder={selectedFolder} />}
           {activeView === "pdf_viewer" && pdfContent && <PdfViewer file={pdfContent} />}
+          {activeView === "image_viewer" && (
+            <ImageViewer
+              open={activeView === "image_viewer"}
+              onOpenChange={(open) => !open && setActiveView("files")}
+              imagePath={imageViewerPath}
+              imageName={imageViewerName}
+              imageType={imageViewerType}
+            />
+          )}
           {activeView === "files" && (
             <FileManager selectedFolder={selectedFolder} folderTree={folderTree} onFolderSelect={handleFolderSelect} onNoteSelect={handleNoteSelect} selectedNote={selectedNote} />
           )}
