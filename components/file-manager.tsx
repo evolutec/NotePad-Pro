@@ -381,12 +381,12 @@ export function FileManager({
                 key={file.id}
                 className={cn(
                   "relative group flex flex-col items-center p-4 cursor-pointer",
-                  file.isDirectory ? "bg-blue-50 dark:bg-blue-950" : "bg-white dark:bg-gray-800"
+                  file.isDirectory ? "bg-yellow-50 dark:bg-yellow-950" : "bg-white dark:bg-gray-800"
                 )}
                 onClick={() => handleFileClick(file)}
               >
                 {file.isDirectory && (
-                  <FolderOpen className="h-12 w-12 text-blue-500 mb-2" />
+                  <FolderOpen className="h-12 w-12 text-yellow-500 mb-2" />
                 )}
                 {!file.isDirectory && renderFileIcon(file)}
                 <p className="text-sm font-medium text-center mt-2 break-all">{file.name}</p>

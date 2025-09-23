@@ -423,14 +423,17 @@ export function ModernFolderTree({
 
   const handleSelect = useCallback((node: EnhancedFolderNode) => {
     console.log('handleSelect called with node:', node.path, 'type:', node.type);
-    const fileType = getFileType(node);
 
-    // Check if it's a PDF file specifically
+    // Check if it's a PDF file specifically - this should take priority
     if (node.name.toLowerCase().endsWith('.pdf')) {
       console.log('PDF file detected, calling onNoteSelect with path:', node.path);
       onNoteSelect?.(node.path);
       return;
     }
+
+    // For other files, use the normal file type logic
+    const fileType = getFileType(node);
+    console.log('File type detected:', fileType, 'for file:', node.name);
 
     if ((fileType === 'note' || fileType === 'draw' || fileType === 'document') && onNoteSelect) {
       console.log('Calling onNoteSelect with path:', node.path);

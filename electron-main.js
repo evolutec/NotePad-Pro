@@ -300,7 +300,7 @@ ipcMain.handle('document:create', async (_event, documentData) => {
       return { success: false, error: 'rootPath not set' };
     }
 
-    const { name, parentPath, tags, content, type } = documentData;
+    const { name, parentPath, tags, content, type, isBinary } = documentData;
     const fileName = name; // Use the provided name directly to preserve original extension
     const fullPath = path.join(parentPath || rootPath, fileName);
     console.log('Attempting to create document at:', fullPath);
@@ -310,8 +310,36 @@ ipcMain.handle('document:create', async (_event, documentData) => {
       return { success: false, error: 'Document already exists' };
     }
 
-    console.log('Writing document to:', fullPath, 'with content length:', content ? content.length : 0);
-    fs.writeFileSync(fullPath, content || '', 'utf-8');
+    console.log('Writing document to:', fullPath, 'with content length:', content ? content.length : 0, 'isBinary:', isBinary);
+
+    // Handle binary files (like PDFs) differently from text files
+    if (isBinary) {
+      // For binary files, write as binary data
+      if (typeof content === 'string') {
+        // If content is base64 string, convert to buffer
+        const binaryData = Buffer.from(content, 'base64');
+        fs.writeFileSync(fullPath, binaryData);
+        console.log('Binary file written successfully');
+      } else if (content instanceof ArrayBuffer) {
+        // If content is ArrayBuffer, convert to Buffer
+        const binaryData = Buffer.from(content);
+        fs.writeFileSync(fullPath, binaryData);
+        console.log('Binary file (ArrayBuffer) written successfully');
+      } else if (content && typeof content === 'object' && content.type === 'Buffer') {
+        // If content is a Buffer-like object from Node.js
+        fs.writeFileSync(fullPath, Buffer.from(content.data));
+        console.log('Binary file (Buffer) written successfully');
+      } else {
+        // Assume it's already a buffer or buffer-like
+        fs.writeFileSync(fullPath, content);
+        console.log('Binary file written successfully');
+      }
+    } else {
+      // For text files, write as UTF-8
+      fs.writeFileSync(fullPath, content || '', 'utf-8');
+      console.log('Text file written successfully');
+    }
+
     console.log('document:create handler returning success');
     return { success: true, path: fullPath };
   } catch (err) {
@@ -495,6 +523,24 @@ ipcMain.handle('file:read', async (_event, filePath) => {
     const content = fs.readFileSync(filePath);
     return { success: true, data: content.toString('base64') };
   } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Handler to read PDF file content
+ipcMain.handle('readPdfFile', async (_event, filePath) => {
+  try {
+    console.log('[Electron] readPdfFile called with:', filePath);
+    if (!fs.existsSync(filePath)) {
+      console.log('[Electron] PDF file not found:', filePath);
+      return { success: false, error: 'PDF file not found' };
+    }
+
+    const content = fs.readFileSync(filePath);
+    console.log('[Electron] PDF file read successfully, size:', content.length);
+    return { success: true, data: content };
+  } catch (err) {
+    console.error('[Electron] Error reading PDF file:', err.message);
     return { success: false, error: err.message };
   }
 });

@@ -44,11 +44,25 @@ export function AddDocumentDialog({ open, onOpenChange, parentPath, onDocumentCr
     const file = event.target.files?.[0];
     if (file) {
       setSelectedFile(file);
-      setDocumentName(file.name.split('.').slice(0, -1).join('.')); // Set document name from file name
+      // Keep the original filename with extension
+      setDocumentName(file.name);
     } else {
       setSelectedFile(null);
       setDocumentName("");
     }
+  };
+
+  const isBinaryFile = (file: File): boolean => {
+    const binaryTypes = [
+      'application/pdf',
+      'image/',
+      'video/',
+      'audio/',
+      'application/zip',
+      'application/x-zip-compressed'
+    ];
+    return binaryTypes.some(type => file.type.startsWith(type)) ||
+           file.name.toLowerCase().endsWith('.pdf');
   };
 
   const handleCreateDocument = async () => {
@@ -65,10 +79,21 @@ export function AddDocumentDialog({ open, onOpenChange, parentPath, onDocumentCr
       finalParentPath = parentFolder?.path || parentPath;
     }
 
-    let fileContent: string | undefined = undefined;
+    let fileContent: string | ArrayBuffer | undefined = undefined;
+    let isBinary = false;
+
     if (selectedFile) {
       try {
-        fileContent = await selectedFile.text(); // Read file content as text
+        // Check if it's a binary file
+        if (isBinaryFile(selectedFile)) {
+          console.log('Reading binary file:', selectedFile.name);
+          fileContent = await selectedFile.arrayBuffer(); // Read as binary
+          isBinary = true;
+        } else {
+          console.log('Reading text file:', selectedFile.name);
+          fileContent = await selectedFile.text(); // Read as text
+          isBinary = false;
+        }
       } catch (error) {
         setCreationError("Erreur lors de la lecture du fichier.");
         return;
@@ -80,8 +105,9 @@ export function AddDocumentDialog({ open, onOpenChange, parentPath, onDocumentCr
         name: documentName.trim(),
         parentPath: finalParentPath,
         tags,
-        content: fileContent, // Pass file content
+        content: fileContent, // Pass file content (binary or text)
         type: selectedFile?.type || 'text/plain', // Infer type from file or default
+        isBinary, // Flag to indicate binary file
       });
 
       if (!result.success) {
@@ -95,7 +121,7 @@ export function AddDocumentDialog({ open, onOpenChange, parentPath, onDocumentCr
         parentPath: finalParentPath,
         createdAt: new Date().toISOString(),
         tags,
-        content: fileContent,
+        content: typeof fileContent === 'string' ? fileContent : undefined,
       };
 
       setCreationSuccess("Document créé avec succès !");

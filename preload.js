@@ -33,4 +33,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return ipcRenderer.invoke('document:create', documentData);
   },
   readFile: (filePath) => ipcRenderer.invoke('file:read', filePath),
+  readPdfFile: (filePath) => {
+    console.log('Preload: Calling readPdfFile with', filePath);
+    return ipcRenderer.invoke('readPdfFile', filePath);
+  },
 });

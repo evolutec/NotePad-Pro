@@ -170,12 +170,34 @@ export default function NoteTakingApp() {
       setActiveView('pdf_viewer');
       setSelectedNote(notePath);
 
-      if (window.electronAPI?.readPdfFile) {
+      // Check if we're in Electron mode with proper API detection
+      const isElectronMode = !!(window.electronAPI || window.require);
+      console.log('Electron mode check:', isElectronMode, 'electronAPI:', !!window.electronAPI, 'require:', !!window.require);
+
+      if (isElectronMode && window.electronAPI?.readPdfFile) {
         try {
+          console.log('Attempting to read PDF with Electron API:', notePath);
           const result = await window.electronAPI.readPdfFile(notePath);
+          console.log('PDF read result:', result);
+
           if (result.success && result.data) {
-            const blob = new Blob([result.data], { type: 'application/pdf' });
+            console.log('PDF data received, type:', typeof result.data, 'length:', result.data.length);
+
+            // Ensure we have proper binary data
+            let pdfData;
+            if (result.data instanceof Buffer) {
+              pdfData = result.data;
+            } else if (typeof result.data === 'string') {
+              // If it's a base64 string, convert it
+              pdfData = Buffer.from(result.data, 'base64');
+            } else {
+              // Assume it's already a buffer-like object
+              pdfData = result.data;
+            }
+
+            const blob = new Blob([pdfData], { type: 'application/pdf' });
             const pdfUrl = URL.createObjectURL(blob);
+            console.log('PDF blob created, URL:', pdfUrl);
             setPdfContent(pdfUrl);
             toast({
               title: "PDF loaded successfully!",
@@ -203,9 +225,21 @@ export default function NoteTakingApp() {
           });
         }
       } else {
-        console.warn('Electron API for reading PDF not available.');
+        console.warn('Electron API not available or readPdfFile method missing. Current mode:', isElectronMode ? 'Electron (API issue)' : 'Browser');
+
+        // In browser mode, we can't load local files directly due to CORS
+        // Show a helpful message to the user
         setPdfContent(null);
-        setActiveView("editor");
+        setActiveView("pdf_viewer"); // Keep PDF viewer active but show message
+
+        toast({
+          title: "PDF Viewer - Mode Info",
+          description: isElectronMode
+            ? "PDF loading issue detected. Please check Electron API configuration."
+            : "PDF files require Electron mode to view. Please run the app with 'npm run electron' to view PDFs.",
+          variant: "default",
+        });
+        console.log('PDF viewer activated - showing mode-specific message');
       }
     } else if (fileExtension === 'draw') {
       setSelectedNote(notePath);
@@ -441,16 +475,14 @@ export default function NoteTakingApp() {
               <Upload className="h-4 w-4 mr-2" />
               Fichiers
             </Button>
-            {selectedNote && selectedNote.toLowerCase().endsWith(".pdf") && (
-              <Button
-                variant={activeView === "pdf_viewer" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setActiveView("pdf_viewer")}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                PDF Viewer
-              </Button>
-            )}
+            <Button
+              variant={activeView === "pdf_viewer" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setActiveView("pdf_viewer")}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              PDF Viewer
+            </Button>
             <SettingsDialog>
               <Button variant="ghost" size="sm">
                 <Settings className="h-4 w-4" />
