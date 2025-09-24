@@ -1,12 +1,12 @@
 import * as React from "react";
 import { useState, useEffect, useRef } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Image as ImageIcon, FilePlus, Crop as CropIcon, RotateCw, ZoomIn, ZoomOut, Plus, Minus } from "lucide-react";
 import Cropper from 'react-easy-crop';
 import { Point, Area } from 'react-easy-crop';
+import { GenericModal, ModalField, ModalButton } from "@/components/ui/generic-modal";
 
 export interface ImageMeta {
   id: string;
@@ -278,187 +278,139 @@ export function AddImageDialog({ open, onOpenChange, parentPath, onImageCreated,
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ImageIcon className="h-5 w-5" /> {/* Image icon */}
-            Créer une nouvelle image
-          </DialogTitle>
-          <div className="h-1 w-full bg-green-500 mt-2" /> {/* Green line for images */}
-        </DialogHeader>
-        <div className="space-y-6">
-          {/* Image Upload and Preview Section */}
-          <div className="space-y-4">
-            <Label htmlFor="image-file">Importer une image</Label>
-            <Input
-              id="image-file"
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="cursor-pointer"
-            />
-            {selectedFile && (
-              <div className="text-sm text-muted-foreground">
-                Fichier sélectionné: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
-              </div>
-            )}
-          </div>
+  // Define fields for the GenericModal
+  const fields: ModalField[] = [
+    {
+      id: 'file',
+      label: 'Importer une image',
+      type: 'file',
+      accept: 'image/*',
+      required: false
+    },
+    {
+      id: 'name',
+      label: 'Nom de l\'image',
+      type: 'text',
+      placeholder: 'Ex: Photo de vacances, Logo, Icône...',
+      required: true
+    },
+    {
+      id: 'parent',
+      label: 'Dossier parent',
+      type: 'select',
+      placeholder: 'Sélectionner le dossier parent...',
+      required: false,
+      options: [
+        { label: 'Dossier sélectionné par défaut', value: '' },
+        ...existingFolders.map(folder => ({ label: folder.name, value: folder.id }))
+      ]
+    },
+    {
+      id: 'type',
+      label: 'Type d\'image',
+      type: 'select',
+      placeholder: 'Sélectionner le type d\'image...',
+      required: true,
+      options: [
+        { label: 'PNG', value: 'png' },
+        { label: 'JPG', value: 'jpg' },
+        { label: 'SVG', value: 'svg' }
+      ]
+    },
+    {
+      id: 'tags',
+      label: 'Étiquettes',
+      type: 'tags',
+      placeholder: 'Ajouter une étiquette...',
+      required: false
+    }
+  ];
 
-          {/* Image Preview and Cropping */}
-          {showCrop && imageSrc && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label>Aperçu et recadrage</Label>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={zoomIn} title="Zoom avant">
-                    <ZoomIn className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={zoomOut} title="Zoom arrière">
-                    <ZoomOut className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={rotateImage} title="Rotation 90°">
-                    <RotateCw className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setShowCrop(false)} title="Fermer le recadrage">
-                    <CropIcon className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+  // Define buttons for the GenericModal
+  const buttons: ModalButton[] = [
+    {
+      label: 'Créer l\'image',
+      variant: 'default',
+      onClick: handleCreateImage,
+      disabled: !imageName.trim() || (!selectedFile && !imageSrc)
+    }
+  ];
 
-              <div className="border rounded-lg p-4 bg-muted/50 relative" style={{ height: '400px' }}>
-                <Cropper
-                  image={imageSrc}
-                  crop={crop}
-                  rotation={imageRotation}
-                  zoom={imageScale}
-                  aspect={undefined}
-                  onCropChange={setCrop}
-                  onCropComplete={(_, croppedAreaPixels) => {
-                    setCompletedCrop(croppedAreaPixels);
-                  }}
-                  onZoomChange={setImageScale}
-                  onRotationChange={setImageRotation}
-                  cropShape="rect"
-                  showGrid={true}
-                  style={{
-                    containerStyle: {
-                      width: '100%',
-                      height: '100%',
-                      background: '#333',
-                    },
-                  }}
-                />
-              </div>
-
-              {completedCrop && (
-                <div className="text-sm text-muted-foreground">
-                  Zone sélectionnée: {Math.round(completedCrop.width || 0)} x {Math.round(completedCrop.height || 0)} pixels
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Basic Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="image-name">Nom de l'image</Label>
-              <Input
-                id="image-name"
-                placeholder="Ex: Photo de vacances, Logo, Icône..."
-                value={imageName}
-                onChange={(e) => setImageName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Dossier parent <span className="text-xs text-muted-foreground">(optionnel)</span></Label>
-              <select
-                className="w-full border rounded p-2 bg-background shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                value={parentId || ""}
-                onChange={(e) => setParentId(e.target.value || undefined)}
-              >
-                <option value="">Dossier sélectionné par défaut</option>
-                {existingFolders.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Type d'image</Label>
-            <div className="grid grid-cols-3 gap-2">
-              <Button
-                variant={imageType === "png" ? "default" : "outline"}
-                onClick={() => setImageType("png")}
-                className="h-10 px-4 py-2"
-              >
-                <span className="font-mono text-xs mr-1">.png</span> PNG
-              </Button>
-              <Button
-                variant={imageType === "jpg" ? "default" : "outline"}
-                onClick={() => setImageType("jpg")}
-                className="h-10 px-4 py-2"
-              >
-                <span className="font-mono text-xs mr-1">.jpg</span> JPG
-              </Button>
-              <Button
-                variant={imageType === "svg" ? "default" : "outline"}
-                onClick={() => setImageType("svg")}
-                className="h-10 px-4 py-2"
-              >
-                <span className="font-mono text-xs mr-1">.svg</span> SVG
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Étiquettes</Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Ajouter une étiquette..."
-                value={currentTag}
-                onChange={(e) => setCurrentTag(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="flex-1"
-              />
-              <Button type="button" onClick={addTag} size="sm" variant="outline">
-                Ajouter
-              </Button>
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {tags.map((tag) => (
-                <span key={tag} className="bg-muted px-2 py-1 rounded text-xs cursor-pointer" onClick={() => removeTag(tag)}>
-                  {tag} ×
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {creationError && (
-            <div className="text-sm text-red-500 bg-red-50 p-3 rounded">{creationError}</div>
-          )}
-          {creationSuccess && (
-            <div className="text-sm text-green-600 bg-green-50 p-3 rounded">{creationSuccess}</div>
-          )}
-
-          <div className="flex gap-2 pt-4 border-t">
-            <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
-              Annuler
-            </Button>
-            <Button
-              onClick={handleCreateImage}
-              disabled={!imageName.trim() || (!selectedFile && !imageSrc)}
-              className="flex-1"
-            >
-              Créer l'image
-            </Button>
-          </div>
+  // Custom content for image preview and cropping
+  const imagePreviewContent = showCrop && imageSrc ? (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Label>Aperçu et recadrage</Label>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={zoomIn} title="Zoom avant">
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={zoomOut} title="Zoom arrière">
+            <ZoomOut className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={rotateImage} title="Rotation 90°">
+            <RotateCw className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowCrop(false)} title="Fermer le recadrage">
+            <CropIcon className="h-4 w-4" />
+          </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+
+      <div className="border rounded-lg p-4 bg-muted/50 relative" style={{ height: '400px' }}>
+        <Cropper
+          image={imageSrc}
+          crop={crop}
+          rotation={imageRotation}
+          zoom={imageScale}
+          aspect={undefined}
+          onCropChange={setCrop}
+          onCropComplete={(_, croppedAreaPixels) => {
+            setCompletedCrop(croppedAreaPixels);
+          }}
+          onZoomChange={setImageScale}
+          onRotationChange={setImageRotation}
+          cropShape="rect"
+          showGrid={true}
+          style={{
+            containerStyle: {
+              width: '100%',
+              height: '100%',
+              background: '#333',
+            },
+          }}
+        />
+      </div>
+
+      {completedCrop && (
+        <div className="text-sm text-muted-foreground">
+          Zone sélectionnée: {Math.round(completedCrop.width || 0)} x {Math.round(completedCrop.height || 0)} pixels
+        </div>
+      )}
+    </div>
+  ) : null;
+
+  return (
+    <GenericModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Créer une nouvelle image"
+      icon={<ImageIcon className="h-6 w-6" />}
+      description="Importez et modifiez une image depuis votre ordinateur"
+      colorTheme="green"
+      fileType="image"
+      size="xl"
+      fields={fields}
+      buttons={buttons}
+      showCancelButton={true}
+      cancelLabel="Annuler"
+      error={creationError}
+      success={creationSuccess}
+      showCloseButton={true}
+      closeButtonPosition="top-right"
+      showFooter={true}
+    >
+      {imagePreviewContent}
+    </GenericModal>
   );
 }

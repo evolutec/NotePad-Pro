@@ -1,12 +1,14 @@
 "use client"
 
 import * as React from "react"
+import { forwardRef, useCallback, useMemo, useState, useImperativeHandle } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { X, FolderOpen, Plus, Upload, Camera, Image, Mic } from "lucide-react"
+import { X, FolderOpen, Plus, Upload, Camera, Image, Mic, AlertCircle, CheckCircle2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   FileType,
@@ -57,6 +59,12 @@ export interface ModalField {
   multiple?: boolean
 }
 
+export interface GenericModalRef {
+  reset: () => void
+  validate: () => boolean
+  getFormData: () => Record<string, any>
+}
+
 export interface GenericModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -98,81 +106,100 @@ export interface GenericModalProps {
   success?: string | null
 }
 
+// Modern color themes with enhanced gradients
 const colorThemes = {
   yellow: {
-    primary: 'bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900 dark:hover:bg-yellow-800 text-yellow-600 dark:text-yellow-400',
-    accent: 'bg-yellow-500 hover:bg-yellow-600 text-white',
+    primary: 'bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-white shadow-lg',
+    accent: 'bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white shadow-lg',
     border: 'border-yellow-200 dark:border-yellow-800',
-    gradient: 'from-yellow-500 to-yellow-600',
-    line: 'bg-yellow-500'
+    gradient: 'from-yellow-400 via-yellow-500 to-yellow-600',
+    line: 'bg-gradient-to-r from-yellow-400 to-yellow-600',
+    background: 'from-yellow-50/30 via-yellow-100/20 to-yellow-50/30 dark:from-yellow-900/10 dark:via-yellow-800/5 dark:to-yellow-900/10',
+    tabActive: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-100 data-[state=active]:to-yellow-200 data-[state=active]:text-yellow-800 data-[state=active]:shadow-lg data-[state=active]:border-yellow-300 dark:data-[state=active]:from-yellow-900/50 dark:data-[state=active]:to-yellow-800/50 dark:data-[state=active]:text-yellow-200 dark:data-[state=active]:border-yellow-600'
   },
   blue: {
-    primary: 'bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400',
-    accent: 'bg-blue-500 hover:bg-blue-600 text-white',
+    primary: 'bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white shadow-lg',
+    accent: 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg',
     border: 'border-blue-200 dark:border-blue-800',
-    gradient: 'from-blue-500 to-blue-600',
-    line: 'bg-blue-500'
+    gradient: 'from-blue-400 via-blue-500 to-blue-600',
+    line: 'bg-gradient-to-r from-blue-400 to-blue-600',
+    background: 'from-blue-50/30 via-blue-100/20 to-blue-50/30 dark:from-blue-900/10 dark:via-blue-800/5 dark:to-blue-900/10',
+    tabActive: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-100 data-[state=active]:to-blue-200 data-[state=active]:text-blue-800 data-[state=active]:shadow-lg data-[state=active]:border-blue-300 dark:data-[state=active]:from-blue-900/50 dark:data-[state=active]:to-blue-800/50 dark:data-[state=active]:text-blue-200 dark:data-[state=active]:border-blue-600'
   },
   purple: {
-    primary: 'bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400',
-    accent: 'bg-purple-500 hover:bg-purple-600 text-white',
+    primary: 'bg-gradient-to-r from-purple-400 to-purple-600 hover:from-purple-500 hover:to-purple-700 text-white shadow-lg',
+    accent: 'bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg',
     border: 'border-purple-200 dark:border-purple-800',
-    gradient: 'from-purple-500 to-purple-600',
-    line: 'bg-purple-500'
+    gradient: 'from-purple-400 via-purple-500 to-purple-600',
+    line: 'bg-gradient-to-r from-purple-400 to-purple-600',
+    background: 'from-purple-50/30 via-purple-100/20 to-purple-50/30 dark:from-purple-900/10 dark:via-purple-800/5 dark:to-purple-900/10',
+    tabActive: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-100 data-[state=active]:to-purple-200 data-[state=active]:text-purple-800 data-[state=active]:shadow-lg data-[state=active]:border-purple-300 dark:data-[state=active]:from-purple-900/50 dark:data-[state=active]:to-purple-800/50 dark:data-[state=active]:text-purple-200 dark:data-[state=active]:border-purple-600'
   },
   red: {
-    primary: 'bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-600 dark:text-red-400',
-    accent: 'bg-red-500 hover:bg-red-600 text-white',
+    primary: 'bg-gradient-to-r from-red-400 to-red-600 hover:from-red-500 hover:to-red-700 text-white shadow-lg',
+    accent: 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg',
     border: 'border-red-200 dark:border-red-800',
-    gradient: 'from-red-500 to-red-600',
-    line: 'bg-red-500'
+    gradient: 'from-red-400 via-red-500 to-red-600',
+    line: 'bg-gradient-to-r from-red-400 to-red-600',
+    background: 'from-red-50/30 via-red-100/20 to-red-50/30 dark:from-red-900/10 dark:via-red-800/5 dark:to-red-900/10',
+    tabActive: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-100 data-[state=active]:to-red-200 data-[state=active]:text-red-800 data-[state=active]:shadow-lg data-[state=active]:border-red-300 dark:data-[state=active]:from-red-900/50 dark:data-[state=active]:to-red-800/50 dark:data-[state=active]:text-red-200 dark:data-[state=active]:border-red-600'
   },
   green: {
-    primary: 'bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-600 dark:text-green-400',
-    accent: 'bg-green-500 hover:bg-green-600 text-white',
+    primary: 'bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white shadow-lg',
+    accent: 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg',
     border: 'border-green-200 dark:border-green-800',
-    gradient: 'from-green-500 to-green-600',
-    line: 'bg-green-500'
+    gradient: 'from-green-400 via-green-500 to-green-600',
+    line: 'bg-gradient-to-r from-green-400 to-green-600',
+    background: 'from-green-50/30 via-green-100/20 to-green-50/30 dark:from-green-900/10 dark:via-green-800/5 dark:to-green-900/10',
+    tabActive: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-100 data-[state=active]:to-green-200 data-[state=active]:text-green-800 data-[state=active]:shadow-lg data-[state=active]:border-green-300 dark:data-[state=active]:from-green-900/50 dark:data-[state=active]:to-green-800/50 dark:data-[state=active]:text-green-200 dark:data-[state=active]:border-green-600'
   },
   pink: {
-    primary: 'bg-pink-100 hover:bg-pink-200 dark:bg-pink-900 dark:hover:bg-pink-800 text-pink-600 dark:text-pink-400',
-    accent: 'bg-pink-500 hover:bg-pink-600 text-white',
+    primary: 'bg-gradient-to-r from-pink-400 to-pink-600 hover:from-pink-500 hover:to-pink-700 text-white shadow-lg',
+    accent: 'bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white shadow-lg',
     border: 'border-pink-200 dark:border-pink-800',
-    gradient: 'from-pink-500 to-pink-600',
-    line: 'bg-pink-500'
+    gradient: 'from-pink-400 via-pink-500 to-pink-600',
+    line: 'bg-gradient-to-r from-pink-400 to-pink-600',
+    background: 'from-pink-50/30 via-pink-100/20 to-pink-50/30 dark:from-pink-900/10 dark:via-pink-800/5 dark:to-pink-900/10',
+    tabActive: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-pink-100 data-[state=active]:to-pink-200 data-[state=active]:text-pink-800 data-[state=active]:shadow-lg data-[state=active]:border-pink-300 dark:data-[state=active]:from-pink-900/50 dark:data-[state=active]:to-pink-800/50 dark:data-[state=active]:text-pink-200 dark:data-[state=active]:border-pink-600'
   },
   orange: {
-    primary: 'bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-600 dark:text-orange-400',
-    accent: 'bg-orange-500 hover:bg-orange-600 text-white',
+    primary: 'bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white shadow-lg',
+    accent: 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg',
     border: 'border-orange-200 dark:border-orange-800',
-    gradient: 'from-orange-500 to-orange-600',
-    line: 'bg-orange-500'
+    gradient: 'from-orange-400 via-orange-500 to-orange-600',
+    line: 'bg-gradient-to-r from-orange-400 to-orange-600',
+    background: 'from-orange-50/30 via-orange-100/20 to-orange-50/30 dark:from-orange-900/10 dark:via-orange-800/5 dark:to-orange-900/10',
+    tabActive: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-100 data-[state=active]:to-orange-200 data-[state=active]:text-orange-800 data-[state=active]:shadow-lg data-[state=active]:border-orange-300 dark:data-[state=active]:from-orange-900/50 dark:data-[state=active]:to-orange-800/50 dark:data-[state=active]:text-orange-200 dark:data-[state=active]:border-orange-600'
   },
   gray: {
-    primary: 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-900 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400',
-    accent: 'bg-gray-500 hover:bg-gray-600 text-white',
+    primary: 'bg-gradient-to-r from-gray-400 to-gray-600 hover:from-gray-500 hover:to-gray-700 text-white shadow-lg',
+    accent: 'bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white shadow-lg',
     border: 'border-gray-200 dark:border-gray-800',
-    gradient: 'from-gray-500 to-gray-600',
-    line: 'bg-gray-500'
+    gradient: 'from-gray-400 via-gray-500 to-gray-600',
+    line: 'bg-gradient-to-r from-gray-400 to-gray-600',
+    background: 'from-gray-50/30 via-gray-100/20 to-gray-50/30 dark:from-gray-900/10 dark:via-gray-800/5 dark:to-gray-900/10',
+    tabActive: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-gray-100 data-[state=active]:to-gray-200 data-[state=active]:text-gray-800 data-[state=active]:shadow-lg data-[state=active]:border-gray-300 dark:data-[state=active]:from-gray-900/50 dark:data-[state=active]:to-gray-800/50 dark:data-[state=active]:text-gray-200 dark:data-[state=active]:border-gray-600'
   },
   black: {
-    primary: 'bg-black hover:bg-gray-800 text-white',
-    accent: 'bg-black hover:bg-gray-800 text-white',
+    primary: 'bg-gradient-to-r from-gray-800 to-black hover:from-gray-700 hover:to-gray-900 text-white shadow-lg',
+    accent: 'bg-gradient-to-r from-black to-gray-800 hover:from-gray-800 hover:to-black text-white shadow-lg',
     border: 'border-gray-800',
-    gradient: 'from-black to-gray-800',
-    line: 'bg-black'
+    gradient: 'from-gray-800 via-gray-900 to-black',
+    line: 'bg-gradient-to-r from-gray-800 to-black',
+    background: 'from-gray-900 via-black to-gray-900',
+    tabActive: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-gray-800 data-[state=active]:to-gray-700 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:border-gray-600'
   }
 }
 
 const sizeClasses = {
-  sm: 'sm:max-w-md',
-  md: 'sm:max-w-lg',
-  lg: 'sm:max-w-2xl',
-  xl: 'sm:max-w-4xl',
-  full: 'sm:max-w-[95vw]'
+  sm: 'sm:max-w-md max-w-[95vw]',
+  md: 'sm:max-w-lg max-w-[95vw]',
+  lg: 'sm:max-w-2xl max-w-[95vw]',
+  xl: 'sm:max-w-4xl max-w-[95vw]',
+  full: 'sm:max-w-[95vw] max-w-[98vw]'
 }
 
-export function GenericModal({
+export const GenericModal = forwardRef<GenericModalRef, GenericModalProps>(({
   open,
   onOpenChange,
   title,
@@ -197,57 +224,126 @@ export function GenericModal({
   loading = false,
   error,
   success
-}: GenericModalProps) {
+}, ref) => {
 
   // Use file type configuration if provided, otherwise use color theme
-  const fileTypeConfig = fileType ? getFileTypeConfig(fileType) : null
-  const effectiveColorTheme = fileType ? fileTypeConfig?.colorTheme || 'blue' : colorTheme
-  const theme = colorThemes[effectiveColorTheme]
-  const sizeClass = sizeClasses[size]
+  const fileTypeConfig = useMemo(() => fileType ? getFileTypeConfig(fileType) : null, [fileType])
+  const effectiveColorTheme = useMemo(() => fileType ? fileTypeConfig?.colorTheme || 'blue' : colorTheme, [fileType, fileTypeConfig, colorTheme])
+  const theme = useMemo(() => colorThemes[effectiveColorTheme], [effectiveColorTheme])
+  const sizeClass = useMemo(() => sizeClasses[size], [size])
 
   // Use file type icon if no custom icon provided
-  const effectiveIcon = icon || (fileType ? getModalIcon(fileType) : null)
+  const effectiveIcon = useMemo(() => icon || (fileType ? getModalIcon(fileType) : null), [icon, fileType])
 
-  const handleCancel = () => {
+  // Form state management
+  const [formData, setFormData] = useState<Record<string, any>>({})
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+
+  // Reset form when modal opens/closes
+  React.useEffect(() => {
+    if (open) {
+      setFormData({})
+      setFormErrors({})
+    }
+  }, [open])
+
+  const handleCancel = useCallback(() => {
     if (onCancel) {
       onCancel()
     } else {
       onOpenChange(false)
     }
-  }
+  }, [onCancel, onOpenChange])
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     onOpenChange(false)
-  }
+  }, [onOpenChange])
 
-  const renderField = (field: ModalField) => {
-    const [value, setValue] = React.useState('')
-    const [tags, setTags] = React.useState<string[]>([])
-    const [currentTag, setCurrentTag] = React.useState('')
+  const updateFormData = useCallback((fieldId: string, value: any) => {
+    setFormData(prev => ({ ...prev, [fieldId]: value }))
+    // Clear error when user starts typing
+    if (formErrors[fieldId]) {
+      setFormErrors(prev => ({ ...prev, [fieldId]: '' }))
+    }
+  }, [formErrors])
 
-    const addTag = () => {
+  const validateForm = useCallback(() => {
+    const errors: Record<string, string> = {}
+    
+    fields?.forEach(field => {
+      const value = formData[field.id]
+      if (field.required && (!value || value === '')) {
+        errors[field.id] = `${field.label} est requis`
+      }
+      if (validationRules?.[field.id]) {
+        const customError = validationRules[field.id](value)
+        if (customError) {
+          errors[field.id] = customError
+        }
+      }
+    })
+    
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
+  }, [fields, formData, validationRules])
+
+  const getFormData = useCallback(() => formData, [formData])
+
+  const reset = useCallback(() => {
+    setFormData({})
+    setFormErrors({})
+  }, [])
+
+  // Expose methods via ref
+  useImperativeHandle(ref, () => ({
+    reset,
+    validate: validateForm,
+    getFormData
+  }), [reset, validateForm, getFormData])
+
+  const renderField = useCallback((field: ModalField) => {
+    const [localValue, setLocalValue] = useState('')
+    const [tags, setTags] = useState<string[]>([])
+    const [currentTag, setCurrentTag] = useState('')
+
+    const addTag = useCallback(() => {
       if (currentTag.trim() && !tags.includes(currentTag.trim())) {
-        setTags([...tags, currentTag.trim()])
+        const newTags = [...tags, currentTag.trim()]
+        setTags(newTags)
+        updateFormData(field.id, newTags)
         setCurrentTag('')
       }
-    }
+    }, [currentTag, tags, field.id, updateFormData])
 
-    const removeTag = (tagToRemove: string) => {
-      setTags(tags.filter(tag => tag !== tagToRemove))
-    }
+    const removeTag = useCallback((tagToRemove: string) => {
+      const newTags = tags.filter(tag => tag !== tagToRemove)
+      setTags(newTags)
+      updateFormData(field.id, newTags)
+    }, [tags, field.id, updateFormData])
 
-    const handleKeyPress = (e: React.KeyboardEvent) => {
+    const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault()
         addTag()
       }
-    }
+    }, [addTag])
+
+    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      const value = e.target.value
+      setLocalValue(value)
+      updateFormData(field.id, value)
+    }, [field.id, updateFormData])
+
+    const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files
+      updateFormData(field.id, files ? (field.multiple ? Array.from(files) : files[0]) : null)
+    }, [field.id, field.multiple, updateFormData])
 
     switch (field.type) {
       case 'text':
         return (
           <div key={field.id} className="space-y-2">
-            <Label htmlFor={field.id}>
+            <Label htmlFor={field.id} className="text-sm font-medium">
               {field.label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </Label>
@@ -255,17 +351,27 @@ export function GenericModal({
               id={field.id}
               type="text"
               placeholder={field.placeholder}
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
+              value={localValue}
+              onChange={handleInputChange}
               required={field.required}
+              className={cn(
+                "transition-all duration-200 focus:ring-2 focus:ring-opacity-50",
+                formErrors[field.id] && "border-red-500 focus:ring-red-500"
+              )}
             />
+            {formErrors[field.id] && (
+              <p className="text-sm text-red-600 flex items-center gap-1">
+                <AlertCircle className="h-4 w-4" />
+                {formErrors[field.id]}
+              </p>
+            )}
           </div>
         )
 
       case 'file':
         return (
           <div key={field.id} className="space-y-2">
-            <Label htmlFor={field.id}>
+            <Label htmlFor={field.id} className="text-sm font-medium">
               {field.label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </Label>
@@ -275,21 +381,37 @@ export function GenericModal({
               accept={field.accept}
               multiple={field.multiple}
               required={field.required}
+              onChange={handleFileChange}
+              className={cn(
+                "transition-all duration-200 focus:ring-2 focus:ring-opacity-50",
+                formErrors[field.id] && "border-red-500 focus:ring-red-500"
+              )}
             />
+            {formErrors[field.id] && (
+              <p className="text-sm text-red-600 flex items-center gap-1">
+                <AlertCircle className="h-4 w-4" />
+                {formErrors[field.id]}
+              </p>
+            )}
           </div>
         )
 
       case 'select':
         return (
           <div key={field.id} className="space-y-2">
-            <Label htmlFor={field.id}>
+            <Label htmlFor={field.id} className="text-sm font-medium">
               {field.label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </Label>
             <select
               id={field.id}
-              className="w-full border rounded p-2 bg-background shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              value={localValue}
+              onChange={handleInputChange}
               required={field.required}
+              className={cn(
+                "w-full border rounded-md px-3 py-2 bg-background shadow-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200",
+                formErrors[field.id] && "border-red-500 focus:ring-red-500"
+              )}
             >
               <option value="">Sélectionner...</option>
               {field.options?.map(option => (
@@ -298,13 +420,47 @@ export function GenericModal({
                 </option>
               ))}
             </select>
+            {formErrors[field.id] && (
+              <p className="text-sm text-red-600 flex items-center gap-1">
+                <AlertCircle className="h-4 w-4" />
+                {formErrors[field.id]}
+              </p>
+            )}
+          </div>
+        )
+
+      case 'textarea':
+        return (
+          <div key={field.id} className="space-y-2">
+            <Label htmlFor={field.id} className="text-sm font-medium">
+              {field.label}
+              {field.required && <span className="text-red-500 ml-1">*</span>}
+            </Label>
+            <Textarea
+              id={field.id}
+              placeholder={field.placeholder}
+              value={localValue}
+              onChange={handleInputChange}
+              required={field.required}
+              rows={4}
+              className={cn(
+                "resize-none transition-all duration-200 focus:ring-2 focus:ring-opacity-50",
+                formErrors[field.id] && "border-red-500 focus:ring-red-500"
+              )}
+            />
+            {formErrors[field.id] && (
+              <p className="text-sm text-red-600 flex items-center gap-1">
+                <AlertCircle className="h-4 w-4" />
+                {formErrors[field.id]}
+              </p>
+            )}
           </div>
         )
 
       case 'tags':
         return (
           <div key={field.id} className="space-y-2">
-            <Label>{field.label}</Label>
+            <Label className="text-sm font-medium">{field.label}</Label>
             <div className="flex gap-2">
               <Input
                 placeholder={field.placeholder || "Ajouter une étiquette..."}
@@ -313,7 +469,7 @@ export function GenericModal({
                 onKeyPress={handleKeyPress}
                 className="flex-1"
               />
-              <Button type="button" onClick={addTag} size="sm" variant="outline">
+              <Button type="button" onClick={addTag} size="sm" variant="outline" className="px-3">
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
@@ -321,7 +477,7 @@ export function GenericModal({
               {tags.map((tag) => (
                 <span
                   key={tag}
-                  className="bg-muted px-2 py-1 rounded text-xs cursor-pointer hover:bg-muted/80"
+                  className="bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 px-2 py-1 rounded-md text-xs cursor-pointer hover:from-gray-200 hover:to-gray-300 dark:hover:from-gray-600 dark:hover:to-gray-500 transition-all duration-200 flex items-center gap-1"
                   onClick={() => removeTag(tag)}
                 >
                   {tag} ×
@@ -334,7 +490,7 @@ export function GenericModal({
       default:
         return null
     }
-  }
+  }, [formData, formErrors, updateFormData])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -342,8 +498,9 @@ export function GenericModal({
         showCloseButton={false}
         className={cn(
           sizeClass,
-          "max-h-[95vh] overflow-y-auto",
-          colorTheme === 'black' ? 'bg-black text-white' : 'bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800',
+          "max-h-[95vh] overflow-hidden flex flex-col",
+          `bg-gradient-to-br ${theme.background}`,
+          "border-0 shadow-2xl",
           className
         )}
       >
@@ -351,72 +508,66 @@ export function GenericModal({
         {showCloseButton && (
           <button
             className={cn(
-              "absolute z-50 flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200",
-              "focus:outline-none focus:ring-2 focus:ring-offset-2",
-              colorTheme === 'black'
-                ? 'top-4 right-4 text-white hover:bg-white/10 focus:ring-white/50'
-                : 'top-4 right-4 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 focus:ring-gray-500',
+              "absolute z-50 flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 shadow-lg hover:scale-110",
+              "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white/50",
+              "top-4 right-4 text-gray-500 hover:bg-white/10 focus:ring-white/50",
               closeButtonPosition === 'top-right' && "top-4 right-4",
               closeButtonPosition === 'top-left' && "top-4 left-4",
               closeButtonPosition === 'header-right' && "top-4 right-4"
             )}
             onClick={handleClose}
             title="Fermer"
+            aria-label="Fermer la modal"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
         )}
 
-        <DialogHeader className="pb-6">
-          <DialogTitle className="flex items-center gap-3 text-2xl font-bold">
-            {icon && (
+        <DialogHeader className="pb-6 pt-2">
+          <DialogTitle className="flex items-center gap-4 text-2xl font-bold">
+            {effectiveIcon && (
               <div className={cn(
-                "p-2 rounded-full",
-                colorTheme === 'black'
-                  ? 'bg-white/10 text-white'
-                  : `${theme.primary} border ${theme.border}`
+                "p-3 rounded-xl shadow-lg",
+                theme.primary
               )}>
-                {icon}
+                {effectiveIcon}
               </div>
             )}
-            <span className={colorTheme === 'black' ? 'text-white' : ''}>
+            <span className="text-gray-800 dark:text-gray-100">
               {title}
             </span>
           </DialogTitle>
           {description && (
-            <p className={cn(
-              "text-muted-foreground mt-2",
-              colorTheme === 'black' && 'text-gray-300'
-            )}>
+            <p className="text-gray-600 dark:text-gray-300 mt-3 text-sm leading-relaxed">
               {description}
             </p>
           )}
           <div className={cn(
-            "h-1 w-full rounded-full mt-3",
-            colorTheme === 'black' ? 'bg-white/20' : `bg-gradient-to-r ${theme.gradient}`
+            "h-1 w-full rounded-full mt-4 shadow-sm",
+            theme.line
           )} />
         </DialogHeader>
 
-        <div className={cn("space-y-6", contentClassName)}>
+        <div className={cn("flex-1 overflow-y-auto space-y-6 px-1", contentClassName)}>
           {/* Error/Success Messages */}
           {error && (
             <div className={cn(
-              "text-sm p-3 rounded-lg border",
-              colorTheme === 'black'
-                ? 'text-red-300 bg-red-900/20 border-red-800'
-                : 'text-red-600 bg-red-50 border-red-200'
+              "text-sm p-4 rounded-xl border shadow-sm animate-in slide-in-from-top-2",
+              "text-red-700 bg-red-50 border-red-200 dark:text-red-300 dark:bg-red-900/20 dark:border-red-800",
+              "flex items-center gap-2"
             )}>
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
               {error}
             </div>
           )}
 
           {success && (
             <div className={cn(
-              "text-sm p-3 rounded-lg border",
-              colorTheme === 'black'
-                ? 'text-green-300 bg-green-900/20 border-green-800'
-                : 'text-green-600 bg-green-50 border-green-200'
+              "text-sm p-4 rounded-xl border shadow-sm animate-in slide-in-from-top-2",
+              "text-green-700 bg-green-50 border-green-200 dark:text-green-300 dark:bg-green-900/20 dark:border-green-800",
+              "flex items-center gap-2"
             )}>
+              <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
               {success}
             </div>
           )}
@@ -425,29 +576,21 @@ export function GenericModal({
           {tabs && tabs.length > 0 && (
             <Tabs defaultValue={tabs[0].id} className="w-full">
               <TabsList className={cn(
-                "grid w-full grid-cols-2 h-14 p-1 rounded-xl shadow-inner",
-                colorTheme === 'black'
-                  ? 'bg-gray-800 border-gray-700'
-                  : 'bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700'
+                "grid w-full h-14 p-1 rounded-xl shadow-inner bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm",
+                "border border-gray-200 dark:border-gray-700"
               )}>
                 {tabs.map((tab) => (
                   <TabsTrigger
                     key={tab.id}
                     value={tab.id}
                     className={cn(
-                      "flex items-center gap-3 px-6 py-3 rounded-lg font-medium transition-all duration-200",
-                      colorTheme === 'black'
-                        ? 'data-[state=active]:bg-gray-700 data-[state=active]:text-white data-[state=active]:border-gray-600'
-                        : 'data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:border-2 data-[state=active]:border-gray-200 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:border-gray-600'
+                      "flex items-center gap-3 px-6 py-3 rounded-lg font-medium transition-all duration-300",
+                      "data-[state=active]:shadow-lg data-[state=active]:border-2",
+                      theme.tabActive
                     )}
                   >
                     {tab.icon && (
-                      <div className={cn(
-                        "p-2 rounded-full",
-                        colorTheme === 'black'
-                          ? 'bg-gray-700'
-                          : 'bg-gray-100 dark:bg-gray-800'
-                      )}>
+                      <div className="p-2 rounded-full bg-white/50 dark:bg-gray-700/50">
                         {tab.icon}
                       </div>
                     )}
@@ -468,7 +611,7 @@ export function GenericModal({
 
           {/* Fields */}
           {fields && fields.length > 0 && (
-            <div className="space-y-4">
+            <div className="space-y-5">
               {fields.map(renderField)}
             </div>
           )}
@@ -478,13 +621,10 @@ export function GenericModal({
 
           {/* Loading State */}
           {loading && (
-            <div className={cn(
-              "flex items-center justify-center py-8",
-              colorTheme === 'black' ? 'text-white' : ''
-            )}>
+            <div className="flex items-center justify-center py-12">
               <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                <p>Chargement...</p>
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-gray-600 dark:text-gray-300">Chargement...</p>
               </div>
             </div>
           )}
@@ -493,16 +633,16 @@ export function GenericModal({
         {/* Footer */}
         {showFooter && (
           <div className={cn(
-            "flex gap-2 pt-4 border-t",
-            colorTheme === 'black' ? 'border-gray-800' : 'border-gray-200 dark:border-gray-700'
+            "flex gap-3 pt-6 border-t border-gray-200 dark:border-gray-700",
+            "bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-b-lg"
           )}>
             {showCancelButton && (
               <Button
                 variant="outline"
                 onClick={handleCancel}
                 className={cn(
-                  "flex-1",
-                  colorTheme === 'black' && 'border-gray-600 text-white hover:bg-gray-800'
+                  "flex-1 h-12 text-base font-semibold transition-all duration-200 hover:scale-105",
+                  "border-2 hover:border-gray-300 dark:hover:border-gray-600"
                 )}
                 disabled={loading}
               >
@@ -517,7 +657,8 @@ export function GenericModal({
                 onClick={button.onClick}
                 disabled={button.disabled || loading}
                 className={cn(
-                  button.variant === 'default' && `flex-1 bg-gradient-to-r ${theme.gradient} hover:opacity-90`,
+                  "flex-1 h-12 text-base font-semibold transition-all duration-200 hover:scale-105",
+                  button.variant === 'default' && theme.accent,
                   button.className
                 )}
               >
@@ -534,6 +675,8 @@ export function GenericModal({
       </DialogContent>
     </Dialog>
   )
-}
+})
+
+GenericModal.displayName = 'GenericModal'
 
 export default GenericModal

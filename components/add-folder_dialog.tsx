@@ -1,12 +1,12 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { FolderPlus, BookOpen, Calendar, Tag, Archive, FileText, Palette } from "lucide-react"
+import { GenericModal, ModalField, ModalButton } from "@/components/ui/generic-modal"
 import type { FolderData } from "@/components/folder-manager"
 
 const FOLDER_COLORS = [
@@ -139,156 +139,107 @@ export function AddFolderDialog({ folders, onFolderAdded, open, onOpenChange }: 
     }
   };
 
-  // Affichage
+  // Define fields for the GenericModal
+  const fields: ModalField[] = [
+    {
+      id: 'icon',
+      label: 'Icône personnalisée',
+      type: 'select',
+      placeholder: 'Sélectionner une icône...',
+      required: false,
+      options: [
+        { label: 'Aucune icône', value: '' },
+        ...ICONS.map(icon => ({ label: icon.name, value: icon.name }))
+      ]
+    },
+    {
+      id: 'parent',
+      label: 'Dossier parent',
+      type: 'select',
+      placeholder: 'Sélectionner le dossier parent...',
+      required: false,
+      options: [
+        { label: 'Aucun (racine)', value: '' },
+        ...existingFolders.map(folder => ({ label: folder.name, value: folder.id }))
+      ]
+    },
+    {
+      id: 'name',
+      label: 'Nom du dossier',
+      type: 'text',
+      placeholder: 'Ex: Projets, Réunions, Idées...',
+      required: true
+    },
+    {
+      id: 'description',
+      label: 'Description',
+      type: 'textarea',
+      placeholder: 'Décrivez le contenu de ce dossier...',
+      required: false
+    },
+    {
+      id: 'color',
+      label: 'Couleur',
+      type: 'select',
+      placeholder: 'Sélectionner une couleur...',
+      required: true,
+      options: FOLDER_COLORS.map(color => ({ label: color.name, value: color.value }))
+    },
+    {
+      id: 'tags',
+      label: 'Étiquettes',
+      type: 'tags',
+      placeholder: 'Ajouter une étiquette...',
+      required: false
+    }
+  ];
+
+  // Define buttons for the GenericModal
+  const buttons: ModalButton[] = [
+    {
+      label: 'Créer le dossier',
+      variant: 'default',
+      onClick: handleCreateFolder,
+      disabled: !folderName.trim()
+    }
+  ];
+
+  // Custom content for the preview section
+  const previewContent = (
+    <div className="p-3 bg-muted rounded-lg">
+      <div className="flex items-center gap-2 mb-2">
+        <div className={`w-3 h-3 rounded-full ${selectedColor.value}`} />
+        <span className="font-medium">{folderName || "Nom du dossier"}</span>
+      </div>
+      {folderDescription && <p className="text-sm text-card-foreground mb-2">{folderDescription}</p>}
+      <div className="flex items-center gap-2 text-xs text-card-foreground">
+        <Calendar className="h-3 w-3" />
+        Créé le {new Date().toLocaleDateString("fr-FR")}
+      </div>
+    </div>
+  );
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FolderPlus className="h-5 w-5" />
-            Créer un nouveau dossier
-          </DialogTitle>
-          <div className="h-1 w-full bg-yellow-500 mt-2"></div>
-        </DialogHeader>
-        <div className="space-y-4">
-          {/* Sélecteur visuel d'icône Lucide (optionnel) */}
-          <div className="space-y-2">
-            <Label>Icône personnalisée <span className="text-xs text-muted-foreground">(optionnel)</span></Label>
-            <div className="grid grid-cols-4 gap-2">
-              {ICONS.map(({ name, Comp }) => (
-                <button
-                  key={name}
-                  type="button"
-                  className={`p-2 rounded border h-10 w-10 flex items-center justify-center ${icon === name ? "border-primary bg-accent" : "border-border"}`}
-                  onClick={() => setIcon(name)}
-                  title={name}
-                >
-                  <Comp className="h-6 w-6" />
-                </button>
-              ))}
-              <button
-                type="button"
-                className={`p-2 rounded border h-10 w-10 flex items-center justify-center ${icon === "" ? "border-primary bg-accent" : "border-border"}`}
-                onClick={() => setIcon("")}
-                title="Aucune icône"
-              >
-                <span className="text-xs">Aucune</span>
-              </button>
-            </div>
-          </div>
-          {/* Sélecteur arborescent du dossier parent (optionnel) */}
-          <div className="space-y-2">
-            <Label>Dossier parent <span className="text-xs text-muted-foreground">(optionnel)</span></Label>
-            <select
-              className="w-full border rounded p-2 bg-zinc-900 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              value={parentId || ""}
-              onChange={(e) => setParentId(e.target.value || undefined)}
-            >
-              <option value="">Aucun (racine)</option>
-              {existingFolders.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          {/* Nom du dossier */}
-          <div className="space-y-2">
-            <Label htmlFor="folder-name">Nom du dossier</Label>
-            <Input
-              id="folder-name"
-              placeholder="Ex: Projets, Réunions, Idées..."
-              value={folderName}
-              onChange={(e) => setFolderName(e.target.value)}
-            />
-          </div>
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="folder-description">Description (optionnel)</Label>
-            <Textarea
-              id="folder-description"
-              placeholder="Décrivez le contenu de ce dossier..."
-              value={folderDescription}
-              onChange={(e) => setFolderDescription(e.target.value)}
-              rows={2}
-            />
-          </div>
-          {/* Couleur */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <Palette className="h-4 w-4" />
-              Couleur
-            </Label>
-            <div className="grid grid-cols-4 gap-2">
-              {FOLDER_COLORS.map((color) => (
-                <button
-                  key={color.value}
-                  type="button"
-                  className={`w-12 h-12 rounded-lg ${color.value} border-2 transition-all hover:scale-105 ${selectedColor.value === color.value ? `${color.border} border-2` : "border-transparent"}`}
-                  onClick={() => setSelectedColor(color)}
-                  title={color.name}
-                />
-              ))}
-            </div>
-          </div>
-          {/* Tags */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <Tag className="h-4 w-4" />
-              Étiquettes
-            </Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Ajouter une étiquette..."
-                value={currentTag}
-                onChange={(e) => setCurrentTag(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="flex-1"
-              />
-              <Button type="button" onClick={addTag} size="sm" variant="outline">
-                Ajouter
-              </Button>
-            </div>
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="cursor-pointer" onClick={() => removeTag(tag)}>
-                    {tag} ×
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
-          {/* Preview */}
-          <div className="p-3 bg-muted rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <div className={`w-3 h-3 rounded-full ${selectedColor.value}`} />
-              <span className="font-medium">{folderName || "Nom du dossier"}</span>
-            </div>
-            {folderDescription && <p className="text-sm text-card-foreground mb-2">{folderDescription}</p>}
-            <div className="flex items-center gap-2 text-xs text-card-foreground">
-              <Calendar className="h-3 w-3" />
-              Créé le {new Date().toLocaleDateString("fr-FR")}
-            </div>
-          </div>
-          {/* Feedback création dossier */}
-          {creationError && (
-            <div className="text-sm text-red-500 mb-2">{creationError}</div>
-          )}
-          {creationSuccess && (
-            <div className="text-sm text-green-600 mb-2">{creationSuccess}</div>
-          )}
-          {/* Actions */}
-          <div className="flex gap-2 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
-              Annuler
-            </Button>
-            <Button onClick={handleCreateFolder} disabled={!folderName.trim()} className="flex-1">
-              Créer le dossier
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+    <GenericModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Créer un nouveau dossier"
+      icon={<FolderPlus className="h-6 w-6" />}
+      description="Organisez vos fichiers et notes dans des dossiers personnalisés"
+      colorTheme="yellow"
+      fileType="folder"
+      size="md"
+      fields={fields}
+      buttons={buttons}
+      showCancelButton={true}
+      cancelLabel="Annuler"
+      error={creationError}
+      success={creationSuccess}
+      showCloseButton={true}
+      closeButtonPosition="top-right"
+      showFooter={true}
+    >
+      {previewContent}
+    </GenericModal>
   );
 }

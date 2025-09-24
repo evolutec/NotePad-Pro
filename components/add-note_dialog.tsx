@@ -1,10 +1,10 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { FilePlus, FileText } from "lucide-react";
+import { GenericModal, ModalField, ModalButton } from "@/components/ui/generic-modal";
 
 export interface NoteMeta {
   id: string;
@@ -102,99 +102,75 @@ export function AddNoteDialog({ open, onOpenChange, parentPath, onNoteCreated }:
     }
   };
 
+  // Define fields for the GenericModal
+  const fields: ModalField[] = [
+    {
+      id: 'parent',
+      label: 'Dossier parent',
+      type: 'select',
+      placeholder: 'Sélectionner le dossier parent...',
+      required: false,
+      options: [
+        { label: 'Dossier sélectionné par défaut', value: '' },
+        ...existingFolders.map(folder => ({ label: folder.name, value: folder.id }))
+      ]
+    },
+    {
+      id: 'name',
+      label: 'Nom de la note',
+      type: 'text',
+      placeholder: 'Ex: Compte rendu, Idée, TODO...',
+      required: true
+    },
+    {
+      id: 'type',
+      label: 'Type de fichier',
+      type: 'select',
+      placeholder: 'Sélectionner le type de fichier...',
+      required: true,
+      options: [
+        { label: 'Texte', value: 'text' },
+        { label: 'Markdown', value: 'markdown' }
+      ]
+    },
+    {
+      id: 'tags',
+      label: 'Étiquettes',
+      type: 'tags',
+      placeholder: 'Ajouter une étiquette...',
+      required: false
+    }
+  ];
+
+  // Define buttons for the GenericModal
+  const buttons: ModalButton[] = [
+    {
+      label: 'Créer la note',
+      variant: 'default',
+      onClick: handleCreateNote,
+      disabled: !noteName.trim()
+    }
+  ];
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FilePlus className="h-5 w-5" />
-            Créer une nouvelle note
-          </DialogTitle>
-          <div className="h-1 w-full bg-blue-500 mt-2" />
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Dossier parent <span className="text-xs text-muted-foreground">(optionnel)</span></Label>
-            <select
-              className="w-full border rounded p-2 bg-zinc-900 text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              value={parentId || ""}
-              onChange={(e) => setParentId(e.target.value || undefined)}
-            >
-              <option value="">Dossier sélectionné par défaut</option>
-              {existingFolders.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="note-name">Nom de la note</Label>
-            <Input
-              id="note-name"
-              placeholder="Ex: Compte rendu, Idée, TODO..."
-              value={noteName}
-              onChange={(e) => setNoteName(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Type de fichier</Label>
-            <div className="flex gap-2">
-              <Button
-                variant={noteType === "text" ? "default" : "outline"}
-                onClick={() => setNoteType("text")}
-                className="h-10 px-4 py-2"
-              >
-                <FileText className="w-4 h-4 mr-1" /> Texte
-              </Button>
-              <Button
-                variant={noteType === "markdown" ? "default" : "outline"}
-                onClick={() => setNoteType("markdown")}
-                className="h-10 px-4 py-2"
-              >
-                <span className="font-mono text-xs mr-1">.md</span> Markdown
-              </Button>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Étiquettes</Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Ajouter une étiquette..."
-                value={currentTag}
-                onChange={(e) => setCurrentTag(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="flex-1"
-              />
-              <Button type="button" onClick={addTag} size="sm" variant="outline">
-                Ajouter
-              </Button>
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {tags.map((tag) => (
-                <span key={tag} className="bg-muted px-2 py-1 rounded text-xs cursor-pointer" onClick={() => removeTag(tag)}>
-                  {tag} ×
-                </span>
-              ))}
-            </div>
-          </div>
-          {creationError && (
-            <div className="text-sm text-red-500 mb-2">{creationError}</div>
-          )}
-          {creationSuccess && (
-            <div className="text-sm text-green-600 mb-2">{creationSuccess}</div>
-          )}
-          <div className="flex gap-2 pt-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
-              Annuler
-            </Button>
-            <Button onClick={handleCreateNote} disabled={!noteName.trim()} className="flex-1">
-              Créer la note
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+    <GenericModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Créer une nouvelle note"
+      icon={<FilePlus className="h-6 w-6" />}
+      description="Créez une note textuelle ou markdown pour organiser vos idées"
+      colorTheme="blue"
+      fileType="note"
+      size="lg"
+      fields={fields}
+      buttons={buttons}
+      showCancelButton={true}
+      cancelLabel="Annuler"
+      error={creationError}
+      success={creationSuccess}
+      showCloseButton={true}
+      closeButtonPosition="top-right"
+      showFooter={true}
+    />
   );
 }
-

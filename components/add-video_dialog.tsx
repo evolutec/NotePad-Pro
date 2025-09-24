@@ -1,11 +1,10 @@
 import * as React from "react";
 import { useState, useEffect, useRef } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Video as VideoIcon, Camera, Square, Upload, Image, Mic, FolderOpen } from "lucide-react";
+import { GenericModal, ModalTab, ModalField, ModalButton } from "@/components/ui/generic-modal";
 
 export interface VideoMeta {
   id: string;
@@ -438,332 +437,318 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-5xl max-h-[95vh] overflow-y-auto bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
-        <DialogHeader className="pb-6">
-          <DialogTitle className="flex items-center gap-3 text-2xl font-bold">
-            <div className="p-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 text-white">
-              <VideoIcon className="h-6 w-6" />
+  // Define tabs for the GenericModal
+  const tabs: ModalTab[] = [
+    {
+      id: 'upload',
+      label: 'Importer',
+      icon: <Upload className="h-5 w-5" />,
+      content: (
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="upload-path">Dossier de destination</Label>
+            <div className="flex gap-2">
+              <Input
+                id="upload-path"
+                value={selectedPath}
+                onChange={(e) => setSelectedPath(e.target.value)}
+                placeholder="Sélectionner le dossier..."
+                className="flex-1"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  if (window.electronAPI?.selectFolder) {
+                    const result = await window.electronAPI.selectFolder();
+                    if (result && typeof result === 'object' && 'filePaths' in result && result.filePaths && result.filePaths.length > 0) {
+                      setSelectedPath(result.filePaths[0]);
+                    }
+                  }
+                }}
+              >
+                <FolderOpen className="h-4 w-4" />
+              </Button>
             </div>
-            Créer une nouvelle vidéo
-          </DialogTitle>
-          <div className="h-1 w-full bg-gradient-to-r from-blue-500 to-purple-600 mt-3 rounded-full" />
-        </DialogHeader>
+          </div>
 
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'upload' | 'record')} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 h-14 p-1 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-inner">
-            <TabsTrigger
-              value="upload"
-              className="flex items-center gap-3 px-6 py-3 rounded-lg font-medium transition-all duration-200 data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:text-blue-600 data-[state=active]:border-2 data-[state=active]:border-blue-200 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-blue-400 dark:data-[state=active]:border-blue-600"
-            >
-              <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30">
-                <Upload className="h-5 w-5" />
-              </div>
-              <div className="text-left">
-                <div className="font-semibold">Importer</div>
-                <div className="text-xs opacity-75">Fichier existant</div>
-              </div>
-            </TabsTrigger>
-            <TabsTrigger
-              value="record"
-              className="flex items-center gap-3 px-6 py-3 rounded-lg font-medium transition-all duration-200 data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:text-green-600 data-[state=active]:border-2 data-[state=active]:border-green-200 dark:data-[state=active]:bg-gray-700 dark:data-[state=active]:text-green-400 dark:data-[state=active]:border-green-600"
-            >
-              <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/30">
-                <Camera className="h-5 w-5" />
-              </div>
-              <div className="text-left">
-                <div className="font-semibold">Enregistrer</div>
-                <div className="text-xs opacity-75">Nouvelle vidéo</div>
-              </div>
-            </TabsTrigger>
-          </TabsList>
+          <div className="space-y-2">
+            <Label htmlFor="video-name">Nom de la vidéo</Label>
+            <Input
+              id="video-name"
+              placeholder="Ex: Conférence, Vlog, Tutoriel..."
+              value={videoName}
+              onChange={(e) => setVideoName(e.target.value)}
+            />
+          </div>
 
-          {/* Upload Tab */}
-          <TabsContent value="upload" className="space-y-4 mt-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="upload-path">Dossier de destination</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="upload-path"
-                    value={selectedPath}
-                    onChange={(e) => setSelectedPath(e.target.value)}
-                    placeholder="Sélectionner le dossier..."
-                    className="flex-1"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      if (window.electronAPI?.selectFolder) {
-                        const result = await window.electronAPI.selectFolder();
-                        if (result && typeof result === 'object' && 'filePaths' in result && result.filePaths && result.filePaths.length > 0) {
-                          setSelectedPath(result.filePaths[0]);
-                        }
-                      }
-                    }}
-                  >
-                    <FolderOpen className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+          <div className="space-y-2">
+            <Label htmlFor="file-upload">Fichier vidéo</Label>
+            <Input
+              id="file-upload"
+              type="file"
+              accept="video/*"
+              onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+              ref={fileInputRef}
+            />
+          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="video-name">Nom de la vidéo</Label>
-                <Input
-                  id="video-name"
-                  placeholder="Ex: Conférence, Vlog, Tutoriel..."
-                  value={videoName}
-                  onChange={(e) => setVideoName(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="file-upload">Fichier vidéo</Label>
-                <Input
-                  id="file-upload"
-                  type="file"
-                  accept="video/*"
-                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                  ref={fileInputRef}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Étiquettes</Label>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Ajouter une étiquette..."
-                    value={currentTag}
-                    onChange={(e) => setCurrentTag(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    className="flex-1"
-                  />
-                  <Button type="button" onClick={addTag} size="sm" variant="outline">
-                    Ajouter
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {tags.map((tag) => (
-                    <span key={tag} className="bg-muted px-2 py-1 rounded text-xs cursor-pointer" onClick={() => removeTag(tag)}>
-                      {tag} ×
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-4">
-                <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
-                  Annuler
-                </Button>
-                <Button disabled={!videoName.trim() || !selectedFile} className="flex-1" onClick={importVideo}>
-                  Importer la vidéo
-                </Button>
-              </div>
+          <div className="space-y-2">
+            <Label>Étiquettes</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Ajouter une étiquette..."
+                value={currentTag}
+                onChange={(e) => setCurrentTag(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="flex-1"
+              />
+              <Button type="button" onClick={addTag} size="sm" variant="outline">
+                Ajouter
+              </Button>
             </div>
-          </TabsContent>
+            <div className="flex flex-wrap gap-1">
+              {tags.map((tag) => (
+                <span key={tag} className="bg-muted px-2 py-1 rounded text-xs cursor-pointer" onClick={() => removeTag(tag)}>
+                  {tag} ×
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'record',
+      label: 'Enregistrer',
+      icon: <Camera className="h-5 w-5" />,
+      content: (
+        <div className="space-y-4">
+          {/* Device Selection */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="camera-select">Caméra</Label>
+              <select
+                id="camera-select"
+                className="w-full border rounded p-2 bg-zinc-900 text-white shadow-sm"
+                value={selectedCameraId}
+                onChange={e => setSelectedCameraId(e.target.value)}
+              >
+                {cameras.map(cam => (
+                  <option key={cam.deviceId} value={cam.deviceId}>
+                    {cam.label || `Caméra ${cam.deviceId.slice(0, 8)}`}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* Record Tab */}
-          <TabsContent value="record" className="space-y-4 mt-6">
-            <div className="space-y-4">
-              {/* Device Selection */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="camera-select">Caméra</Label>
-                  <select
-                    id="camera-select"
-                    className="w-full border rounded p-2 bg-zinc-900 text-white shadow-sm"
-                    value={selectedCameraId}
-                    onChange={e => setSelectedCameraId(e.target.value)}
-                  >
-                    {cameras.map(cam => (
-                      <option key={cam.deviceId} value={cam.deviceId}>
-                        {cam.label || `Caméra ${cam.deviceId.slice(0, 8)}`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="microphone-select">Microphone</Label>
+              <select
+                id="microphone-select"
+                className="w-full border rounded p-2 bg-zinc-900 text-white shadow-sm"
+                value={selectedMicrophoneId}
+                onChange={e => setSelectedMicrophoneId(e.target.value)}
+              >
+                {microphones.map(mic => (
+                  <option key={mic.deviceId} value={mic.deviceId}>
+                    {mic.label || `Microphone ${mic.deviceId.slice(0, 8)}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="microphone-select">Microphone</Label>
-                  <select
-                    id="microphone-select"
-                    className="w-full border rounded p-2 bg-zinc-900 text-white shadow-sm"
-                    value={selectedMicrophoneId}
-                    onChange={e => setSelectedMicrophoneId(e.target.value)}
-                  >
-                    {microphones.map(mic => (
-                      <option key={mic.deviceId} value={mic.deviceId}>
-                        {mic.label || `Microphone ${mic.deviceId.slice(0, 8)}`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+          <div className="space-y-2">
+            <Label htmlFor="record-path">Dossier de destination</Label>
+            <div className="flex gap-2">
+              <Input
+                id="record-path"
+                value={selectedPath}
+                onChange={(e) => setSelectedPath(e.target.value)}
+                placeholder="Sélectionner le dossier..."
+                className="flex-1"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  if (window.electronAPI?.selectFolder) {
+                    const result = await window.electronAPI.selectFolder();
+                    if (result && typeof result === 'object' && 'filePaths' in result && result.filePaths && result.filePaths.length > 0) {
+                      setSelectedPath(result.filePaths[0]);
+                    }
+                  }
+                }}
+              >
+                <FolderOpen className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="record-path">Dossier de destination</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="record-path"
-                    value={selectedPath}
-                    onChange={(e) => setSelectedPath(e.target.value)}
-                    placeholder="Sélectionner le dossier..."
-                    className="flex-1"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      if (window.electronAPI?.selectFolder) {
-                        const result = await window.electronAPI.selectFolder();
-                        if (result && typeof result === 'object' && 'filePaths' in result && result.filePaths && result.filePaths.length > 0) {
-                          setSelectedPath(result.filePaths[0]);
-                        }
-                      }
-                    }}
-                  >
-                    <FolderOpen className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+          <div className="space-y-2">
+            <Label htmlFor="record-name">Nom de la vidéo</Label>
+            <Input
+              id="record-name"
+              placeholder="Ex: Enregistrement caméra..."
+              value={videoName}
+              onChange={(e) => setVideoName(e.target.value)}
+            />
+          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="record-name">Nom de la vidéo</Label>
-                <Input
-                  id="record-name"
-                  placeholder="Ex: Enregistrement caméra..."
-                  value={videoName}
-                  onChange={(e) => setVideoName(e.target.value)}
+          {/* Live Preview - Centered Square */}
+          <div className="space-y-3">
+            <Label className="text-base font-semibold flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-500"></div>
+              Aperçu en direct
+            </Label>
+            <div className="flex justify-center">
+              <div className="relative bg-black rounded-xl overflow-hidden border-2 border-gray-300 shadow-2xl" style={{ width: '400px', height: '400px' }}>
+                <canvas
+                  ref={videoPreviewRef}
+                  width={400}
+                  height={400}
+                  style={{
+                    display: 'block',
+                    width: '400px',
+                    height: '400px',
+                    backgroundColor: '#000000',
+                    opacity: 1,
+                    position: 'relative',
+                    border: '3px solid #00ff00',
+                    borderRadius: '12px',
+                  }}
                 />
-              </div>
 
-              {/* Live Preview - Centered Square */}
-              <div className="space-y-3">
-                <Label className="text-base font-semibold flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                  Aperçu en direct
-                </Label>
-                <div className="flex justify-center">
-                  <div className="relative bg-black rounded-xl overflow-hidden border-2 border-gray-300 shadow-2xl" style={{ width: '400px', height: '400px' }}>
-                    <canvas
-                      ref={videoPreviewRef}
-                      width={400}
-                      height={400}
-                      style={{
-                        display: 'block',
-                        width: '400px',
-                        height: '400px',
-                        backgroundColor: '#000000',
-                        opacity: 1,
-                        position: 'relative',
-                        border: '3px solid #00ff00',
-                        borderRadius: '12px',
-                      }}
-                    />
-
-                    {!stream && (
-                      <div className="absolute inset-0 flex items-center justify-center text-white bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl">
-                        <div className="text-center p-8">
-                          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-700 flex items-center justify-center">
-                            <Camera className="h-10 w-10 opacity-50" />
-                          </div>
-                          <p className="text-lg font-medium mb-2">Aperçu de la caméra</p>
-                          <p className="text-sm opacity-75">Sélectionnez une caméra pour voir l'aperçu</p>
-                        </div>
+                {!stream && (
+                  <div className="absolute inset-0 flex items-center justify-center text-white bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl">
+                    <div className="text-center p-8">
+                      <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-700 flex items-center justify-center">
+                        <Camera className="h-10 w-10 opacity-50" />
                       </div>
-                    )}
-
-                    {stream && (
-                      <div className="absolute top-3 right-3 bg-gradient-to-r from-green-500 to-green-600 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg animate-pulse">
-                        ● En direct
-                      </div>
-                    )}
-
-                    {/* Recording indicator */}
-                    {isRecording && (
-                      <div className="absolute top-3 left-3 bg-gradient-to-r from-red-500 to-red-600 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg">
-                        🔴 Enregistrement
-                      </div>
-                    )}
+                      <p className="text-lg font-medium mb-2">Aperçu de la caméra</p>
+                      <p className="text-sm opacity-75">Sélectionnez une caméra pour voir l'aperçu</p>
+                    </div>
                   </div>
-                </div>
-              </div>
+                )}
 
-              {/* Action Buttons */}
-              <div className="flex gap-3 p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 rounded-xl border">
-                <Button
-                  variant="outline"
-                  className="flex-1 h-12 text-base font-semibold transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={!stream}
-                  onClick={takePhoto}
-                >
-                  <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30 mr-3">
-                    <Image className="h-5 w-5" />
+                {stream && (
+                  <div className="absolute top-3 right-3 bg-gradient-to-r from-green-500 to-green-600 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg animate-pulse">
+                    ● En direct
+                  </div>
+                )}
+
+                {/* Recording indicator */}
+                {isRecording && (
+                  <div className="absolute top-3 left-3 bg-gradient-to-r from-red-500 to-red-600 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg">
+                    🔴 Enregistrement
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-3 p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 rounded-xl border">
+            <Button
+              variant="outline"
+              className="flex-1 h-12 text-base font-semibold transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!stream}
+              onClick={takePhoto}
+            >
+              <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30 mr-3">
+                <Image className="h-5 w-5" />
+              </div>
+              <div className="text-left">
+                <div className="font-semibold">Prendre une photo</div>
+                <div className="text-xs opacity-75">Capture instantanée</div>
+              </div>
+            </Button>
+            <Button
+              disabled={!stream || isRecording}
+              className="flex-1 h-12 text-base font-semibold transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+              onClick={toggleRecording}
+            >
+              {isRecording ? (
+                <>
+                  <div className="p-2 rounded-full bg-red-100 mr-3">
+                    <Square className="h-5 w-5" />
                   </div>
                   <div className="text-left">
-                    <div className="font-semibold">Prendre une photo</div>
-                    <div className="text-xs opacity-75">Capture instantanée</div>
+                    <div className="font-semibold">Arrêter</div>
+                    <div className="text-xs opacity-90">{Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}</div>
                   </div>
-                </Button>
-                <Button
-                  disabled={!stream || isRecording}
-                  className="flex-1 h-12 text-base font-semibold transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
-                  onClick={toggleRecording}
-                >
-                  {isRecording ? (
-                    <>
-                      <div className="p-2 rounded-full bg-red-100 mr-3">
-                        <Square className="h-5 w-5" />
-                      </div>
-                      <div className="text-left">
-                        <div className="font-semibold">Arrêter</div>
-                        <div className="text-xs opacity-90">{Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}</div>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="p-2 rounded-full bg-green-100 mr-3">
-                        <Camera className="h-5 w-5" />
-                      </div>
-                      <div className="text-left">
-                        <div className="font-semibold">Enregistrer</div>
-                        <div className="text-xs opacity-90">Démarrer la vidéo</div>
-                      </div>
-                    </>
-                  )}
-                </Button>
-              </div>
+                </>
+              ) : (
+                <>
+                  <div className="p-2 rounded-full bg-green-100 mr-3">
+                    <Camera className="h-5 w-5" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-semibold">Enregistrer</div>
+                    <div className="text-xs opacity-90">Démarrer la vidéo</div>
+                  </div>
+                </>
+              )}
+            </Button>
+          </div>
 
-              <div className="space-y-2">
-                <Label>Étiquettes</Label>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Ajouter une étiquette..."
-                    value={currentTag}
-                    onChange={(e) => setCurrentTag(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    className="flex-1"
-                  />
-                  <Button type="button" onClick={addTag} size="sm" variant="outline">
-                    Ajouter
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {tags.map((tag) => (
-                    <span key={tag} className="bg-muted px-2 py-1 rounded text-xs cursor-pointer" onClick={() => removeTag(tag)}>
-                      {tag} ×
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-
+          <div className="space-y-2">
+            <Label>Étiquettes</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Ajouter une étiquette..."
+                value={currentTag}
+                onChange={(e) => setCurrentTag(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="flex-1"
+              />
+              <Button type="button" onClick={addTag} size="sm" variant="outline">
+                Ajouter
+              </Button>
             </div>
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
+            <div className="flex flex-wrap gap-1">
+              {tags.map((tag) => (
+                <span key={tag} className="bg-muted px-2 py-1 rounded text-xs cursor-pointer" onClick={() => removeTag(tag)}>
+                  {tag} ×
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )
+    }
+  ];
+
+  // Define buttons for the GenericModal
+  const buttons: ModalButton[] = [
+    {
+      label: 'Importer la vidéo',
+      variant: 'default',
+      onClick: importVideo,
+      disabled: !videoName.trim() || !selectedFile
+    }
+  ];
+
+  return (
+    <GenericModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Créer une nouvelle vidéo"
+      icon={<VideoIcon className="h-6 w-6" />}
+      description="Importez un fichier vidéo existant ou enregistrez une nouvelle vidéo avec votre caméra"
+      colorTheme="purple"
+      fileType="video"
+      size="xl"
+      tabs={tabs}
+      buttons={buttons}
+      showCancelButton={true}
+      cancelLabel="Annuler"
+      error={creationError}
+      success={creationSuccess}
+      showCloseButton={true}
+      closeButtonPosition="top-right"
+      showFooter={true}
+    />
   );
 }
