@@ -35,6 +35,8 @@ interface FileManagerProps {
   folderTree?: any // Ajout de la structure des dossiers
   onFolderSelect?: (folderPath: string) => void
   onNoteSelect?: (notePath: string) => void
+  onImageSelect?: (imagePath: string, imageName: string, imageType: string) => void
+  onVideoSelect?: (videoPath: string, videoName: string, videoType: string) => void
   selectedNote?: string | null; // Add selectedNote prop
 }
 
@@ -67,7 +69,7 @@ const FILE_TYPES: {
   note: { icon: FileCode, color: "text-blue-500", extensions: ["md"] },
   draw: { icon: Palette, color: "text-purple-600 dark:text-purple-400", extensions: ["draw"] },
   audio: { icon: Music, color: "text-purple-500", extensions: ["mp3", "wav", "ogg", "m4a"] },
-  video: { icon: Video, color: "text-blue-500", extensions: ["mp4", "avi", "mov", "webm"] },
+  video: { icon: Video, color: "text-blue-500", extensions: ["mp4", "webm", "ogg", "avi", "mov", "mkv", "wmv", "flv", "3gp"] },
   archive: { icon: Archive, color: "text-gray-500", extensions: ["zip", "rar", "7z", "tar"] },
   link: { icon: Link, color: "text-cyan-600", extensions: [] },
   code: { icon: FileCode, color: "text-orange-500", extensions: ["js", "ts", "jsx", "tsx", "py", "java", "cpp", "cs", "html", "css", "json"] },
@@ -79,6 +81,8 @@ export function FileManager({
   folderTree,
   onFolderSelect,
   onNoteSelect,
+  onImageSelect,
+  onVideoSelect,
   selectedNote, // Add selectedNote here
 }: FileManagerProps) {
   console.log("FileManager: Component re-rendered with selectedNote", selectedNote);
@@ -303,12 +307,34 @@ export function FileManager({
   };
 
   const handleFileClick = useCallback(async (file: FileItem) => {
+    console.log('FileManager: handleFileClick called with file:', file.name, 'type:', file.type, 'isDirectory:', file.isDirectory);
+
     if (file.isDirectory) {
+      console.log('FileManager: Folder clicked, calling onFolderSelect');
       onFolderSelect?.(file.id);
       return;
     }
+
+    // Check if it's an image file
+    if (file.type === 'image' && onImageSelect) {
+      console.log('FileManager: Image file clicked, calling onImageSelect');
+      const fileExtension = file.name.split('.').pop()?.toLowerCase() || 'png';
+      onImageSelect(file.id, file.name, fileExtension);
+      return;
+    }
+
+    // Check if it's a video file
+    if (file.type === 'video' && onVideoSelect) {
+      console.log('FileManager: Video file clicked, calling onVideoSelect');
+      const fileExtension = file.name.split('.').pop()?.toLowerCase() || 'mp4';
+      onVideoSelect(file.id, file.name, fileExtension);
+      return;
+    }
+
+    // For other files, use the note handler
+    console.log('FileManager: Other file clicked, calling onNoteSelect');
     onNoteSelect?.(file.id);
-  }, [onFolderSelect, onNoteSelect]);
+  }, [onFolderSelect, onNoteSelect, onImageSelect, onVideoSelect]);
 
   const filteredFiles = files.filter((file) =>
     file.name.toLowerCase().includes(searchQuery.toLowerCase())

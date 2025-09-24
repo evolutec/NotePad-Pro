@@ -186,7 +186,7 @@ ipcMain.handle('foldersScan', async () => {
             fileType = 'draw';
           } else if (['mp3', 'wav', 'ogg', 'm4a'].includes(fileExtension)) {
             fileType = 'audio';
-          } else if (['mp4', 'avi', 'mov', 'webm'].includes(fileExtension)) {
+          } else if (['mp4', 'webm', 'ogg', 'avi', 'mov', 'mkv', 'wmv', 'flv', '3gp'].includes(fileExtension)) {
             fileType = 'video';
           } else if (['zip', 'rar', '7z', 'tar'].includes(fileExtension)) {
             fileType = 'archive';
@@ -195,11 +195,24 @@ ipcMain.handle('foldersScan', async () => {
           } else if (item.startsWith("http://") || item.startsWith("https://")) {
             fileType = 'link';
           }
+
+          // Get file size
+          let fileSize = 0;
+          try {
+            const stats = fs.statSync(itemPath);
+            fileSize = stats.size;
+          } catch (err) {
+            console.log(`Could not get size for file ${item}:`, err.message);
+          }
+
           node.children.push({
             name: item,
             path: itemPath,
             type: fileType,
             isDirectory: false,
+            size: fileSize,
+            modifiedAt: itemStats.mtime,
+            createdAt: itemStats.birthtime
           });
         }
       }
@@ -972,15 +985,20 @@ ipcMain.handle('file:rename', async (_event, oldPath, newName) => {
   }
 });
 
-// Handler to read file content
+// Handler to read file content (for videos, images, etc.)
 ipcMain.handle('file:read', async (_event, filePath) => {
   try {
+    console.log('[Electron] file:read called with:', filePath);
     if (!fs.existsSync(filePath)) {
+      console.log('[Electron] File not found:', filePath);
       return { success: false, error: 'File not found' };
     }
+
     const content = fs.readFileSync(filePath);
-    return { success: true, data: content.toString('base64') };
+    console.log('[Electron] File read successfully, size:', content.length);
+    return { success: true, data: content };
   } catch (err) {
+    console.error('[Electron] Error reading file:', err.message);
     return { success: false, error: err.message };
   }
 });

@@ -76,7 +76,7 @@ const getFileType = (node: EnhancedFolderNode): FileType => {
 
   if (node.name.match(/\.(doc|docx|odt)$/i)) return 'document';
   if (node.name.match(/\.(jpg|jpeg|png|gif|svg|webp)$/i)) return 'image';
-  if (node.name.match(/\.(mp4|avi|mov|mkv)$/i)) return 'video';
+  if (node.name.match(/\.(mp4|webm|ogg|avi|mov|mkv|wmv|flv|3gp)$/i)) return 'video';
   if (node.name.match(/\.(mp3|wav|flac|aac)$/i)) return 'audio';
   if (node.name.match(/\.(js|ts|jsx|tsx|py|java|cpp|cs|html|css|json)$/i)) return 'code';
   if (node.name.match(/\.(zip|rar|7z|tar|gz)$/i)) return 'archive';
@@ -379,6 +379,7 @@ export function ModernFolderTree({
   onNoteSelect,
   selectedNote,
   onImageSelect,
+  onVideoSelect,
   onDelete,
   onRename,
   onDuplicate,
@@ -391,6 +392,7 @@ export function ModernFolderTree({
   onNoteSelect?: (path: string) => void;
   selectedNote?: string | null;
   onImageSelect?: (path: string, name: string, type: string) => void;
+  onVideoSelect?: (path: string, name: string, type: string) => void;
   onDelete?: (node: EnhancedFolderNode) => void;
   onRename?: (node: EnhancedFolderNode) => void;
   onDuplicate?: (node: EnhancedFolderNode) => void;
@@ -465,7 +467,10 @@ export function ModernFolderTree({
     const fileType = getFileType(node);
     console.log('File type detected:', fileType, 'for file:', node.name);
 
-    if (fileType === 'image' && onImageSelect) {
+    if (fileType === 'video' && onVideoSelect) {
+      console.log('Video file detected, calling onVideoSelect with path:', node.path, 'name:', node.name, 'type:', fileType);
+      onVideoSelect(node.path, node.name, fileType);
+    } else if (fileType === 'image' && onImageSelect) {
       console.log('Image file detected, calling onImageSelect with path:', node.path, 'name:', node.name, 'type:', fileType);
       onImageSelect(node.path, node.name, fileType);
     } else if ((fileType === 'note' || fileType === 'draw' || fileType === 'document') && onNoteSelect) {
@@ -475,7 +480,7 @@ export function ModernFolderTree({
       console.log('Calling onFolderSelect with path:', node.path);
       onFolderSelect(node.path);
     }
-  }, [onFolderSelect, onNoteSelect, onImageSelect]);
+  }, [onFolderSelect, onNoteSelect, onImageSelect, onVideoSelect]);
 
   const renderTree = (node: EnhancedFolderNode | null, depth = 0): React.ReactNode => {
     if (!node) return null;
