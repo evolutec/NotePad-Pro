@@ -20,9 +20,10 @@ export interface AddDocumentDialogProps {
   onOpenChange: (open: boolean) => void;
   parentPath: string;
   onDocumentCreated: (document: DocumentMeta) => void;
+  onRefreshTree?: () => void;
 }
 
-export function AddDocumentDialog({ open, onOpenChange, parentPath, onDocumentCreated }: AddDocumentDialogProps) {
+export function AddDocumentDialog({ open, onOpenChange, parentPath, onDocumentCreated, onRefreshTree }: AddDocumentDialogProps) {
   const [documentName, setDocumentName] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null); // New state for selected file
   const [tags, setTags] = useState<string[]>([]);
@@ -126,6 +127,10 @@ export function AddDocumentDialog({ open, onOpenChange, parentPath, onDocumentCr
 
       setCreationSuccess("Document créé avec succès !");
       if (onDocumentCreated) onDocumentCreated(newDocument);
+      // Trigger tree refresh
+      if (onRefreshTree) {
+        onRefreshTree();
+      }
       setTimeout(() => {
         setDocumentName("");
         setSelectedFile(null);
@@ -156,7 +161,7 @@ export function AddDocumentDialog({ open, onOpenChange, parentPath, onDocumentCr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />

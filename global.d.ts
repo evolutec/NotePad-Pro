@@ -2,7 +2,7 @@ declare global {
   interface ElectronAPI {
     deleteFolder: (path: string) => Promise<{ success: boolean; error?: string }>;
     foldersSave: (folders: any[]) => Promise<void>;
-    selectFolder?: () => Promise<string>;
+    selectFolder?: () => Promise<{ filePaths?: string[]; canceled?: boolean } | string>;
     foldersScan?: () => Promise<any>;
     foldersLoad?: () => Promise<any>;
     folderCreate?: (data: any) => Promise<any>;

@@ -290,6 +290,13 @@ export default function NoteTakingApp() {
       <ModernSidebar
         onFolderSelect={handleFolderSelect}
         onNoteSelect={handleNoteSelect}
+        onImageSelect={(path, name, type) => {
+          console.log('Image selected from sidebar:', path, name, type);
+          setActiveView('image_viewer');
+          setImageViewerPath(path);
+          setImageViewerName(name);
+          setImageViewerType(type);
+        }}
         selectedFolder={selectedFolder}
         selectedNote={selectedNote}
         tree={folderTree}
@@ -742,6 +749,15 @@ export default function NoteTakingApp() {
             if (result && result.length > 0) {
               setFolderTree(result[0])
             }
+          }
+        }}
+        onRefreshTree={() => {
+          if (window.electronAPI?.foldersScan) {
+            window.electronAPI.foldersScan().then(result => {
+              if (result && result.length > 0) {
+                setFolderTree(result[0])
+              }
+            })
           }
         }}
       />

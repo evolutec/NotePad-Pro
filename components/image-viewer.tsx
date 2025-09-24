@@ -47,7 +47,7 @@ export function ImageViewer({ open, onOpenChange, imagePath, imageName, imageTyp
               setImageSrc(result.data);
             } else {
               // Assume it's base64 data from Electron API
-              console.log('Converting base64 string to blob');
+              console.log('Converting base64 string to data URL');
               try {
                 const mimeType = getMimeType(imageType);
                 const dataUrl = `data:${mimeType};base64,${result.data}`;
@@ -63,7 +63,23 @@ export function ImageViewer({ open, onOpenChange, imagePath, imageName, imageTyp
             console.log('Creating blob from binary data');
             try {
               const mimeType = getMimeType(imageType);
-              const blob = new Blob([result.data], { type: mimeType });
+              console.log('Creating blob with MIME type:', mimeType);
+
+              // Ensure result.data is treated as binary data
+              let binaryData: ArrayBuffer;
+              if (result.data instanceof ArrayBuffer) {
+                binaryData = result.data;
+              } else if (result.data && typeof result.data === 'object' && 'buffer' in result.data) {
+                // Handle Uint8Array-like objects
+                const uint8Array = result.data as Uint8Array;
+                binaryData = uint8Array.buffer.slice(uint8Array.byteOffset, uint8Array.byteOffset + uint8Array.byteLength) as ArrayBuffer;
+              } else {
+                // Convert other formats to ArrayBuffer
+                const uint8Array = new Uint8Array(result.data as any);
+                binaryData = uint8Array.buffer as ArrayBuffer;
+              }
+
+              const blob = new Blob([binaryData], { type: mimeType });
               const blobUrl = URL.createObjectURL(blob);
               console.log('Created blob URL:', blobUrl);
               setImageSrc(blobUrl);
@@ -95,7 +111,8 @@ export function ImageViewer({ open, onOpenChange, imagePath, imageName, imageTyp
       'svg': 'image/svg+xml',
       'webp': 'image/webp',
       'bmp': 'image/bmp',
-      'ico': 'image/x-icon'
+      'ico': 'image/x-icon',
+      'pdf': 'application/pdf'
     };
     return mimeTypes[type.toLowerCase()] || 'image/png';
   };

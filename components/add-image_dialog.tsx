@@ -22,9 +22,10 @@ export interface AddImageDialogProps {
   onOpenChange: (open: boolean) => void;
   parentPath: string;
   onImageCreated: (image: ImageMeta) => void;
+  onRefreshTree?: () => void;
 }
 
-export function AddImageDialog({ open, onOpenChange, parentPath, onImageCreated }: AddImageDialogProps) {
+export function AddImageDialog({ open, onOpenChange, parentPath, onImageCreated, onRefreshTree }: AddImageDialogProps) {
   const [imageName, setImageName] = useState("");
   const [imageType, setImageType] = useState<string>("png"); // Default to png image
   const [tags, setTags] = useState<string[]>([]);
@@ -241,6 +242,10 @@ export function AddImageDialog({ open, onOpenChange, parentPath, onImageCreated 
 
         setCreationSuccess("Image créée avec succès !");
         if (onImageCreated) onImageCreated(newImage);
+        // Trigger tree refresh
+        if (onRefreshTree) {
+          onRefreshTree();
+        }
         setTimeout(() => {
           setImageName("");
           setImageType("png");
@@ -275,7 +280,7 @@ export function AddImageDialog({ open, onOpenChange, parentPath, onImageCreated 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ImageIcon className="h-5 w-5" /> {/* Image icon */}

@@ -20,9 +20,10 @@ export interface AddAudioDialogProps {
   onOpenChange: (open: boolean) => void;
   parentPath: string;
   onAudioCreated: (audio: AudioMeta) => void;
+  onRefreshTree?: () => void;
 }
 
-export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated }: AddAudioDialogProps) {
+export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated, onRefreshTree }: AddAudioDialogProps) {
   const [audioName, setAudioName] = useState("");
   const [audioType, setAudioType] = useState<string>("mp3"); // Default to mp3 audio
   const [tags, setTags] = useState<string[]>([]);
@@ -75,6 +76,10 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated 
 
       setCreationSuccess("Audio créé avec succès !");
       if (onAudioCreated) onAudioCreated(newAudio);
+      // Trigger tree refresh
+      if (onRefreshTree) {
+        onRefreshTree();
+      }
       setTimeout(() => {
         setAudioName("");
         setAudioType("mp3");
@@ -105,7 +110,7 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MusicIcon className="h-5 w-5" /> {/* Audio icon */}

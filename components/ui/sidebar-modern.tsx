@@ -47,6 +47,7 @@ interface ModernSidebarProps {
   selectedFolder?: string | null;
   onNoteSelect?: (notePath: string) => void;
   selectedNote?: string | null;
+  onImageSelect?: (path: string, name: string, type: string) => void;
   onDelete?: (node: EnhancedFolderNode) => void;
   onRename?: (node: EnhancedFolderNode) => void;
   onDuplicate?: (node: EnhancedFolderNode) => void;
@@ -64,6 +65,7 @@ export function ModernSidebar({
   selectedFolder,
   onNoteSelect,
   selectedNote,
+  onImageSelect,
   onDelete,
   onRename,
   onDuplicate,
@@ -504,6 +506,7 @@ export function ModernSidebar({
                         selectedFolder={selectedFolder}
                         onNoteSelect={onNoteSelect}
                         selectedNote={selectedNote}
+                        onImageSelect={onImageSelect}
                         onDelete={onDelete}
                         onRename={onRename}
                         onDuplicate={onDuplicate}

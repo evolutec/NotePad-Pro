@@ -372,12 +372,13 @@ const TreeItem = React.memo(({
 TreeItem.displayName = 'TreeItem';
 
 // Main Modern Folder Tree Component
-export function ModernFolderTree({ 
-  tree, 
-  onFolderSelect, 
-  selectedFolder, 
-  onNoteSelect, 
+export function ModernFolderTree({
+  tree,
+  onFolderSelect,
+  selectedFolder,
+  onNoteSelect,
   selectedNote,
+  onImageSelect,
   onDelete,
   onRename,
   onDuplicate,
@@ -389,6 +390,7 @@ export function ModernFolderTree({
   selectedFolder?: string | null;
   onNoteSelect?: (path: string) => void;
   selectedNote?: string | null;
+  onImageSelect?: (path: string, name: string, type: string) => void;
   onDelete?: (node: EnhancedFolderNode) => void;
   onRename?: (node: EnhancedFolderNode) => void;
   onDuplicate?: (node: EnhancedFolderNode) => void;
@@ -463,14 +465,17 @@ export function ModernFolderTree({
     const fileType = getFileType(node);
     console.log('File type detected:', fileType, 'for file:', node.name);
 
-    if ((fileType === 'note' || fileType === 'draw' || fileType === 'document') && onNoteSelect) {
+    if (fileType === 'image' && onImageSelect) {
+      console.log('Image file detected, calling onImageSelect with path:', node.path, 'name:', node.name, 'type:', fileType);
+      onImageSelect(node.path, node.name, fileType);
+    } else if ((fileType === 'note' || fileType === 'draw' || fileType === 'document') && onNoteSelect) {
       console.log('Calling onNoteSelect with path:', node.path);
       onNoteSelect(node.path);
     } else if (onFolderSelect) {
       console.log('Calling onFolderSelect with path:', node.path);
       onFolderSelect(node.path);
     }
-  }, [onFolderSelect, onNoteSelect]);
+  }, [onFolderSelect, onNoteSelect, onImageSelect]);
 
   const renderTree = (node: EnhancedFolderNode | null, depth = 0): React.ReactNode => {
     if (!node) return null;
