@@ -51,12 +51,15 @@ export interface ModalTab {
 export interface ModalField {
   id: string
   label: string
-  type: 'text' | 'file' | 'select' | 'textarea' | 'tags'
+  type: 'text' | 'file' | 'select' | 'textarea' | 'tags' | 'custom'
   placeholder?: string
   required?: boolean
   options?: { label: string; value: string }[]
   accept?: string
   multiple?: boolean
+  content?: React.ReactNode
+  value?: string
+  onChange?: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void
 }
 
 export interface GenericModalRef {
@@ -225,7 +228,8 @@ export const GenericModal = forwardRef<GenericModalRef, GenericModalProps>(({
   error,
   success
 }, ref) => {
-
+  // Create a ref for the Dialog content
+  const dialogRef = React.useRef<HTMLDivElement>(null)
   // Use file type configuration if provided, otherwise use color theme
   const fileTypeConfig = useMemo(() => fileType ? getFileTypeConfig(fileType) : null, [fileType])
   const effectiveColorTheme = useMemo(() => fileType ? fileTypeConfig?.colorTheme || 'blue' : colorTheme, [fileType, fileTypeConfig, colorTheme])
@@ -233,7 +237,14 @@ export const GenericModal = forwardRef<GenericModalRef, GenericModalProps>(({
   const sizeClass = useMemo(() => sizeClasses[size], [size])
 
   // Use file type icon if no custom icon provided
-  const effectiveIcon = useMemo(() => icon || (fileType ? getModalIcon(fileType) : null), [icon, fileType])
+  const effectiveIcon = useMemo(() => {
+    if (icon) return icon;
+    if (fileType) {
+      const IconComponent = getModalIcon(fileType);
+      return IconComponent ? React.createElement(IconComponent) : null;
+    }
+    return null;
+  }, [icon, fileType])
 
   // Form state management
   const [formData, setFormData] = useState<Record<string, any>>({})
@@ -332,7 +343,11 @@ export const GenericModal = forwardRef<GenericModalRef, GenericModalProps>(({
       const value = e.target.value
       setLocalValue(value)
       updateFormData(field.id, value)
-    }, [field.id, updateFormData])
+      // Also call the field's onChange if provided
+      if (field.onChange) {
+        field.onChange(e)
+      }
+    }, [field.id, updateFormData, field.onChange])
 
     const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files
@@ -351,7 +366,7 @@ export const GenericModal = forwardRef<GenericModalRef, GenericModalProps>(({
               id={field.id}
               type="text"
               placeholder={field.placeholder}
-              value={localValue}
+              value={field.value !== undefined ? field.value : localValue}
               onChange={handleInputChange}
               required={field.required}
               className={cn(
@@ -484,6 +499,27 @@ export const GenericModal = forwardRef<GenericModalRef, GenericModalProps>(({
                 </span>
               ))}
             </div>
+          </div>
+        )
+
+      case 'custom':
+        return (
+          <div key={field.id} className="space-y-2">
+            {field.label && (
+              <Label className="text-sm font-medium">
+                {field.label}
+                {field.required && <span className="text-red-500 ml-1">*</span>}
+              </Label>
+            )}
+            <div className="min-h-[40px]">
+              {field.content}
+            </div>
+            {formErrors[field.id] && (
+              <p className="text-sm text-red-600 flex items-center gap-1">
+                <AlertCircle className="h-4 w-4" />
+                {formErrors[field.id]}
+              </p>
+            )}
           </div>
         )
 

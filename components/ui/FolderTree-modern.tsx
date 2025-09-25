@@ -224,8 +224,22 @@ const TreeItem = React.memo(({
             isNoteSelected && "bg-blue-50 dark:bg-blue-950 ring-2 ring-blue-200 dark:ring-blue-800 shadow-sm",
             "border border-transparent hover:border-border/50"
           )}
-          style={{ marginLeft: depth * 16 }}
-          onClick={onSelect}
+          style={{
+            marginLeft: depth * 16,
+            pointerEvents: 'auto',
+            zIndex: 10,
+            position: 'relative'
+          }}
+          onClick={(e) => {
+            console.log('=== TREEITEM CLICK DETECTED ===');
+            console.log('Event:', e);
+            console.log('Node:', node.name, node.path);
+            onSelect();
+          }}
+          onMouseDown={(e) => {
+            console.log('=== TREEITEM MOUSEDOWN ===');
+            e.stopPropagation();
+          }}
         >
           {/* Connection lines */}
           {depth > 0 && (
@@ -402,44 +416,59 @@ export function ModernFolderTree({
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [treeVersion, setTreeVersion] = useState(0);
 
-  // Update expanded state when tree changes to remove invalid paths
+  // Update tree version when tree changes (but don't clear expanded paths)
   React.useEffect(() => {
     if (tree) {
-      console.log('Tree updated, validating expanded paths...');
+      console.log('Tree updated, incrementing version...');
       setTreeVersion(prev => prev + 1);
-      setExpanded(prev => {
-        const validPaths = new Set<string>();
-        
-        // Collect all valid paths from the tree
-        const collectPaths = (node: EnhancedFolderNode) => {
-          validPaths.add(node.path);
+    }
+  }, [tree]);
+
+  // Auto-expand path to selectedFolder
+  React.useEffect(() => {
+    if (selectedFolder && tree) {
+      console.log('Auto-expanding path to selectedFolder:', selectedFolder);
+
+      // Function to collect all ancestor paths of selectedFolder
+      const collectAncestorPaths = (targetPath: string, tree: EnhancedFolderNode): string[] => {
+        const paths: string[] = [];
+
+        const findAncestors = (node: EnhancedFolderNode, currentPath: string = ''): boolean => {
+          const nodePath = node.path;
+          if (nodePath === targetPath) {
+            paths.push(nodePath);
+            return true;
+          }
+
           if (node.children) {
-            node.children.forEach(collectPaths);
+            for (const child of node.children) {
+              const childPath = child.path;
+              if (findAncestors(child, childPath)) {
+                paths.push(nodePath);
+                return true;
+              }
+            }
           }
+          return false;
         };
-        
-        collectPaths(tree);
-        
-        // Filter expanded set to only include valid paths
-        const newExpanded = new Set<string>();
-        const removedPaths: string[] = [];
-        prev.forEach(path => {
-          if (validPaths.has(path)) {
-            newExpanded.add(path);
-          } else {
-            removedPaths.push(path);
-          }
+
+        findAncestors(tree);
+        return paths;
+      };
+
+      const pathsToExpand = collectAncestorPaths(selectedFolder, tree);
+      console.log('Paths to expand:', pathsToExpand);
+
+      // Expand all ancestor paths
+      setExpanded(prev => {
+        const newExpanded = new Set(prev);
+        pathsToExpand.forEach(path => {
+          newExpanded.add(path);
         });
-        
-        if (removedPaths.length > 0) {
-          console.log('Removed invalid paths from expanded:', removedPaths);
-        }
-        console.log('Valid expanded paths:', Array.from(newExpanded));
-        
         return newExpanded;
       });
     }
-  }, [tree]);
+  }, [selectedFolder, tree]);
 
   const toggleExpand = useCallback((path: string) => {
     setExpanded(prev => {
@@ -454,7 +483,10 @@ export function ModernFolderTree({
   }, []);
 
   const handleSelect = useCallback((node: EnhancedFolderNode) => {
+    console.log('=== FOLDERTREE CLICK DEBUG ===');
     console.log('handleSelect called with node:', node.path, 'type:', node.type);
+    console.log('Node details:', node);
+    console.log('Available handlers:', { onFolderSelect, onNoteSelect, onImageSelect, onVideoSelect });
 
     // Check if it's a PDF file specifically - this should take priority
     if (node.name.toLowerCase().endsWith('.pdf')) {
@@ -479,7 +511,10 @@ export function ModernFolderTree({
     } else if (onFolderSelect) {
       console.log('Calling onFolderSelect with path:', node.path);
       onFolderSelect(node.path);
+    } else {
+      console.log('No handler available for this node type');
     }
+    console.log('=== FOLDERTREE CLICK END ===');
   }, [onFolderSelect, onNoteSelect, onImageSelect, onVideoSelect]);
 
   const renderTree = (node: EnhancedFolderNode | null, depth = 0): React.ReactNode => {

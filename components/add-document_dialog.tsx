@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { FileText, FilePlus } from "lucide-react";
 import { GenericModal, ModalField, ModalButton } from "@/components/ui/generic-modal";
+import { FolderTreeSelector, type FolderNode } from "@/components/ui/folder-tree-selector";
 
 export interface DocumentMeta {
   id: string;
@@ -40,6 +41,27 @@ export function AddDocumentDialog({ open, onOpenChange, parentPath, onDocumentCr
       });
     }
   }, [open]);
+
+  // Convert folders to FolderNode format for the tree selector
+  const folderNodes: FolderNode[] = React.useMemo(() => {
+    const buildTree = (folders: any[], parentId?: string): FolderNode[] => {
+      return folders
+        .filter(folder => folder.parentId === parentId)
+        .map(folder => ({
+          id: folder.id,
+          name: folder.name,
+          path: folder.path || folder.name,
+          children: buildTree(folders, folder.id),
+          parent: parentId
+        }));
+    };
+    return buildTree(existingFolders);
+  }, [existingFolders]);
+
+  // Handle folder selection
+  const handleFolderSelect = (folderId: string | null, folderPath: string) => {
+    setParentId(folderId || undefined);
+  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -162,17 +184,6 @@ export function AddDocumentDialog({ open, onOpenChange, parentPath, onDocumentCr
   // Define fields for the GenericModal
   const fields: ModalField[] = [
     {
-      id: 'parent',
-      label: 'Dossier parent',
-      type: 'select',
-      placeholder: 'Sélectionner le dossier parent...',
-      required: false,
-      options: [
-        { label: 'Dossier sélectionné par défaut', value: '' },
-        ...existingFolders.map(folder => ({ label: folder.name, value: folder.id }))
-      ]
-    },
-    {
       id: 'file',
       label: 'Importer un fichier',
       type: 'file',
@@ -205,6 +216,20 @@ export function AddDocumentDialog({ open, onOpenChange, parentPath, onDocumentCr
     }
   ];
 
+  // Custom content for the folder tree selector
+  const customContent = (
+    <div className="space-y-2">
+      <Label className="text-sm font-medium">Dossier parent</Label>
+      <FolderTreeSelector
+        folders={folderNodes}
+        selectedFolderId={parentId}
+        onFolderSelect={handleFolderSelect}
+        placeholder="Sélectionner un dossier parent..."
+        className="w-full"
+      />
+    </div>
+  );
+
   return (
     <GenericModal
       open={open}
@@ -224,6 +249,8 @@ export function AddDocumentDialog({ open, onOpenChange, parentPath, onDocumentCr
       showCloseButton={true}
       closeButtonPosition="top-right"
       showFooter={true}
-    />
+    >
+      {customContent}
+    </GenericModal>
   );
 }

@@ -7,6 +7,7 @@ import { Image as ImageIcon, FilePlus, Crop as CropIcon, RotateCw, ZoomIn, ZoomO
 import Cropper from 'react-easy-crop';
 import { Point, Area } from 'react-easy-crop';
 import { GenericModal, ModalField, ModalButton } from "@/components/ui/generic-modal";
+import { FolderTreeSelector, type FolderNode } from "@/components/ui/folder-tree-selector";
 
 export interface ImageMeta {
   id: string;
@@ -53,6 +54,27 @@ export function AddImageDialog({ open, onOpenChange, parentPath, onImageCreated,
       });
     }
   }, [open]);
+
+  // Convert folders to FolderNode format for the tree selector
+  const folderNodes: FolderNode[] = React.useMemo(() => {
+    const buildTree = (folders: any[], parentId?: string): FolderNode[] => {
+      return folders
+        .filter(folder => folder.parentId === parentId)
+        .map(folder => ({
+          id: folder.id,
+          name: folder.name,
+          path: folder.path || folder.name,
+          children: buildTree(folders, folder.id),
+          parent: parentId
+        }));
+    };
+    return buildTree(existingFolders);
+  }, [existingFolders]);
+
+  // Handle folder selection
+  const handleFolderSelect = (folderId: string | null, folderPath: string) => {
+    setParentId(folderId || undefined);
+  };
 
   // Reset states when dialog opens/closes
   useEffect(() => {
@@ -294,17 +316,7 @@ export function AddImageDialog({ open, onOpenChange, parentPath, onImageCreated,
       placeholder: 'Ex: Photo de vacances, Logo, Icône...',
       required: true
     },
-    {
-      id: 'parent',
-      label: 'Dossier parent',
-      type: 'select',
-      placeholder: 'Sélectionner le dossier parent...',
-      required: false,
-      options: [
-        { label: 'Dossier sélectionné par défaut', value: '' },
-        ...existingFolders.map(folder => ({ label: folder.name, value: folder.id }))
-      ]
-    },
+
     {
       id: 'type',
       label: 'Type d\'image',
@@ -336,59 +348,76 @@ export function AddImageDialog({ open, onOpenChange, parentPath, onImageCreated,
     }
   ];
 
-  // Custom content for image preview and cropping
-  const imagePreviewContent = showCrop && imageSrc ? (
+  // Custom content for folder tree selector and image preview
+  const customContent = (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <Label>Aperçu et recadrage</Label>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={zoomIn} title="Zoom avant">
-            <ZoomIn className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={zoomOut} title="Zoom arrière">
-            <ZoomOut className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={rotateImage} title="Rotation 90°">
-            <RotateCw className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowCrop(false)} title="Fermer le recadrage">
-            <CropIcon className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      <div className="border rounded-lg p-4 bg-muted/50 relative" style={{ height: '400px' }}>
-        <Cropper
-          image={imageSrc}
-          crop={crop}
-          rotation={imageRotation}
-          zoom={imageScale}
-          aspect={undefined}
-          onCropChange={setCrop}
-          onCropComplete={(_, croppedAreaPixels) => {
-            setCompletedCrop(croppedAreaPixels);
-          }}
-          onZoomChange={setImageScale}
-          onRotationChange={setImageRotation}
-          cropShape="rect"
-          showGrid={true}
-          style={{
-            containerStyle: {
-              width: '100%',
-              height: '100%',
-              background: '#333',
-            },
-          }}
+      {/* Folder Tree Selector */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">Dossier parent</Label>
+        <FolderTreeSelector
+          folders={folderNodes}
+          selectedFolderId={parentId}
+          onFolderSelect={handleFolderSelect}
+          placeholder="Sélectionner un dossier parent..."
+          className="w-full"
         />
       </div>
 
-      {completedCrop && (
-        <div className="text-sm text-muted-foreground">
-          Zone sélectionnée: {Math.round(completedCrop.width || 0)} x {Math.round(completedCrop.height || 0)} pixels
+      {/* Image Preview and Cropping */}
+      {showCrop && imageSrc && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Label>Aperçu et recadrage</Label>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={zoomIn} title="Zoom avant">
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={zoomOut} title="Zoom arrière">
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={rotateImage} title="Rotation 90°">
+                <RotateCw className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowCrop(false)} title="Fermer le recadrage">
+                <CropIcon className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="border rounded-lg p-4 bg-muted/50 relative" style={{ height: '400px' }}>
+            <Cropper
+              image={imageSrc}
+              crop={crop}
+              rotation={imageRotation}
+              zoom={imageScale}
+              aspect={undefined}
+              onCropChange={setCrop}
+              onCropComplete={(_, croppedAreaPixels) => {
+                setCompletedCrop(croppedAreaPixels);
+              }}
+              onZoomChange={setImageScale}
+              onRotationChange={setImageRotation}
+              cropShape="rect"
+              showGrid={true}
+              style={{
+                containerStyle: {
+                  width: '100%',
+                  height: '100%',
+                  background: '#333',
+                },
+              }}
+            />
+          </div>
+
+          {completedCrop && (
+            <div className="text-sm text-muted-foreground">
+              Zone sélectionnée: {Math.round(completedCrop.width || 0)} x {Math.round(completedCrop.height || 0)} pixels
+            </div>
+          )}
         </div>
       )}
     </div>
-  ) : null;
+  );
 
   return (
     <GenericModal
@@ -410,7 +439,7 @@ export function AddImageDialog({ open, onOpenChange, parentPath, onImageCreated,
       closeButtonPosition="top-right"
       showFooter={true}
     >
-      {imagePreviewContent}
+      {customContent}
     </GenericModal>
   );
 }

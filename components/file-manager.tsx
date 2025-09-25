@@ -94,6 +94,7 @@ export function FileManager({
 
   const [selectedFileContent, setSelectedFileContent] = useState<string | null>(null);
   const [selectedFileForView, setSelectedFileForView] = useState<FileItem | null>(null);
+  const [existingFolders, setExistingFolders] = useState<any[]>([]);
 
   useEffect(() => {
     console.log("FileManager: useEffect for selectedNote triggered", selectedNote);
@@ -158,7 +159,25 @@ export function FileManager({
 
   const deleteFolder = async (folder: any) => {
     console.log(`Deleting folder ${folder.name}`);
-    // Implement actual delete logic
+    try {
+      if (window.electronAPI?.fileDelete) {
+        const result = await window.electronAPI.fileDelete(folder.path || folder.id);
+        if (result.success) {
+          console.log(`Folder ${folder.name} deleted successfully`);
+          // Refresh the folder tree or reload folders
+          if (window.electronAPI?.foldersLoad) {
+            const updatedFolders = await window.electronAPI.foldersLoad();
+            setExistingFolders(updatedFolders);
+          }
+        } else {
+          console.error(`Failed to delete folder ${folder.name}:`, result.error);
+        }
+      } else {
+        console.error('Electron API fileDelete not available');
+      }
+    } catch (error) {
+      console.error(`Error deleting folder ${folder.name}:`, error);
+    }
   };
 
   // Actions kebab menu pour fichiers
@@ -169,7 +188,22 @@ export function FileManager({
 
   const handleDeleteFile = async (file: FileItem) => {
     console.log(`Deleting file ${file.name}`);
-    // Implement actual delete logic
+    try {
+      if (window.electronAPI?.fileDelete) {
+        const result = await window.electronAPI.fileDelete(file.id);
+        if (result.success) {
+          console.log(`File ${file.name} deleted successfully`);
+          // Refresh the file list or reload files
+          // This would need to be connected to your file state management
+        } else {
+          console.error(`Failed to delete file ${file.name}:`, result.error);
+        }
+      } else {
+        console.error('Electron API fileDelete not available');
+      }
+    } catch (error) {
+      console.error(`Error deleting file ${file.name}:`, error);
+    }
   };
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -204,11 +238,19 @@ export function FileManager({
   };
 
   const files = useMemo(() => {
-    if (!selectedFolder || !folderTree) return [];
+    if (!selectedFolder || !folderTree) {
+      console.log('FileManager: No selectedFolder or folderTree, returning empty array');
+      return [];
+    }
+
+    console.log('FileManager: Looking for selectedFolder:', selectedFolder);
+    console.log('FileManager: folderTree:', folderTree);
 
     // Function to find folder in tree structure
     const findFolderInTree = (tree: any, targetPath: string): any => {
+      console.log('FileManager: Checking tree node:', tree.path, 'against target:', targetPath);
       if (tree.path === targetPath) {
+        console.log('FileManager: Found matching folder:', tree.path);
         return tree;
       }
       if (tree.children) {
@@ -223,6 +265,8 @@ export function FileManager({
     const selectedFolderData = findFolderInTree(folderTree, selectedFolder);
 
     if (selectedFolderData) {
+      console.log('FileManager: Found selectedFolderData:', selectedFolderData);
+
       // Convert tree structure to FileItem array
       const convertToFileItems = (items: any[]): FileItem[] => {
         return items.map(item => ({
@@ -244,11 +288,47 @@ export function FileManager({
 
       if (selectedFolderData.children) {
         allItems.push(...convertToFileItems(selectedFolderData.children));
+        console.log('FileManager: Converted items:', allItems.length, 'items');
+      } else {
+        console.log('FileManager: No children in selectedFolderData');
       }
 
       return allItems;
+    } else {
+      console.log('FileManager: selectedFolder not found in tree:', selectedFolder);
+      console.log('FileManager: Available paths in tree:');
+      const collectPaths = (node: any, prefix = '') => {
+        const currentPath = prefix ? `${prefix}/${node.name}` : node.name;
+        console.log('  -', node.path || currentPath);
+        if (node.children) {
+          node.children.forEach((child: any) => collectPaths(child, node.path || currentPath));
+        }
+      };
+      if (folderTree) collectPaths(folderTree);
+
+      // Fallback: if selectedFolder is not found, try to find a close match or use root
+      console.log('FileManager: Attempting fallback...');
+      if (folderTree && folderTree.children) {
+        console.log('FileManager: Using root folder as fallback');
+        const convertToFileItems = (items: any[]): FileItem[] => {
+          return items.map(item => ({
+            id: item.path || item.id || item.name,
+            name: item.name,
+            type: item.type === 'folder' ? 'folder' : getFileType(item.name),
+            size: item.size || 0,
+            url: item.url,
+            uploadDate: item.modifiedAt ? new Date(item.modifiedAt) : new Date(),
+            folderId: item.parent,
+            thumbnail: item.thumbnail,
+            description: item.description,
+            isDirectory: item.type === 'folder' || item.isDirectory || !!item.children
+          }));
+        };
+        return convertToFileItems(folderTree.children);
+      }
     }
 
+    console.log('FileManager: Returning empty array');
     return [];
   }, [selectedFolder, folderTree]);
 
@@ -307,7 +387,10 @@ export function FileManager({
   };
 
   const handleFileClick = useCallback(async (file: FileItem) => {
+    console.log('=== FILEMANAGER CLICK DEBUG ===');
     console.log('FileManager: handleFileClick called with file:', file.name, 'type:', file.type, 'isDirectory:', file.isDirectory);
+    console.log('File details:', file);
+    console.log('Available handlers:', { onFolderSelect, onNoteSelect, onImageSelect, onVideoSelect });
 
     if (file.isDirectory) {
       console.log('FileManager: Folder clicked, calling onFolderSelect');
@@ -334,6 +417,7 @@ export function FileManager({
     // For other files, use the note handler
     console.log('FileManager: Other file clicked, calling onNoteSelect');
     onNoteSelect?.(file.id);
+    console.log('=== FILEMANAGER CLICK END ===');
   }, [onFolderSelect, onNoteSelect, onImageSelect, onVideoSelect]);
 
   const filteredFiles = files.filter((file) =>
@@ -437,7 +521,21 @@ export function FileManager({
                   "relative group flex flex-col items-center p-4 cursor-pointer",
                   file.isDirectory ? "bg-yellow-50 dark:bg-yellow-950" : "bg-white dark:bg-gray-800"
                 )}
-                onClick={() => handleFileClick(file)}
+                style={{
+                  pointerEvents: 'auto',
+                  zIndex: 10,
+                  position: 'relative'
+                }}
+                onClick={(e) => {
+                  console.log('=== FILEMANAGER CARD CLICK DETECTED ===');
+                  console.log('Event:', e);
+                  console.log('File:', file.name, file.id);
+                  handleFileClick(file);
+                }}
+                onMouseDown={(e) => {
+                  console.log('=== FILEMANAGER CARD MOUSEDOWN ===');
+                  e.stopPropagation();
+                }}
               >
                 {file.isDirectory && (
                   <FolderOpen className="h-12 w-12 text-yellow-500 mb-2" />

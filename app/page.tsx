@@ -36,6 +36,7 @@ export default function NoteTakingApp() {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null)
   const [selectedNote, setSelectedNote] = useState<string | null>(null)
   const [folderTree, setFolderTree] = useState<EnhancedFolderNode | null>(null)
+  const [treeVersion, setTreeVersion] = useState(0)
   const [isAddFolderOpen, setIsAddFolderOpen] = useState(false)
   const [isAddNoteOpen, setIsAddNoteOpen] = useState(false)
   const [isAddDrawOpen, setIsAddDrawOpen] = useState(false)
@@ -214,6 +215,7 @@ export default function NoteTakingApp() {
     <div className="flex h-screen bg-background">
       {/* Sidebar moderne, responsive */}
       <ModernSidebar
+        key={`sidebar-${treeVersion}`} // Force re-render when tree version changes
         onFolderSelect={handleFolderSelect}
         onNoteSelect={handleNoteSelect}
         onImageSelect={async (path, name, type) => {
@@ -238,13 +240,157 @@ export default function NoteTakingApp() {
         selectedNote={selectedNote}
         tree={folderTree}
         onDelete={async (node) => {
-          console.log('Delete:', node.path);
-          // ...existing code...
+          console.log('Delete:', node.path, 'type:', node.type);
+
+          try {
+            // Check if Electron API is available
+            if (!window.electronAPI?.fileDelete) {
+              console.error('Electron API fileDelete not available');
+              return;
+            }
+
+            // Determine the path to delete
+            const deletePath = node.path || node.id;
+            if (!deletePath) {
+              console.error('No path available for deletion');
+              return;
+            }
+
+            console.log('Attempting to delete:', deletePath);
+
+            // Call Electron API to delete the file/folder
+            const result = await window.electronAPI.fileDelete(deletePath);
+
+            if (result.success) {
+              console.log(`Successfully deleted: ${deletePath}`);
+
+              // Force complete refresh from root path after delete (same as working delete method)
+              try {
+                console.log('🔄 Forcing complete refresh from root path after delete...');
+
+                // Clear current tree first to force complete reload
+                setFolderTree(null);
+                setTreeVersion(prev => prev + 1);
+
+                // Small delay to ensure state is cleared
+                await new Promise(resolve => setTimeout(resolve, 50));
+
+                if (window.electronAPI?.foldersScan) {
+                  console.log('📁 Scanning root path for fresh tree data after delete...');
+
+                  const scanResult = await window.electronAPI.foldersScan();
+                  console.log('📊 Fresh scan result received after delete:', scanResult);
+
+                  if (scanResult && scanResult.length > 0) {
+                    const newTree = scanResult[0];
+                    console.log('🌳 Fresh tree structure after delete:', newTree?.name, newTree?.children?.length || 0, 'items');
+
+                    // Set the fresh tree data
+                    setFolderTree(newTree);
+                    setTreeVersion(prev => prev + 1); // Force re-render
+                    console.log('✅ Fresh folder tree loaded successfully after delete');
+                    console.log('🔄 Tree version incremented to:', treeVersion + 2);
+
+                    // Multiple forced updates to ensure navigation works
+                    setTimeout(() => {
+                      console.log('🔄 Triggering navigation refresh after delete...');
+                      setTreeVersion(prev => prev + 1);
+                    }, 100);
+
+                    setTimeout(() => {
+                      console.log('🔄 Final navigation check after delete...');
+                      setTreeVersion(prev => prev + 1);
+                    }, 300);
+
+                  } else {
+                    console.warn('⚠️ No fresh folder tree data received from foldersScan after delete');
+                    console.warn('📋 Scan result:', scanResult);
+                    // Restore previous tree if scan fails
+                    setFolderTree(folderTree);
+                  }
+                } else {
+                  console.warn('⚠️ Electron API foldersScan not available for refresh after delete');
+                  console.warn('🔌 Available APIs:', Object.keys(window.electronAPI || {}));
+                  // Restore previous tree if API not available
+                  setFolderTree(folderTree);
+                }
+              } catch (refreshError) {
+                console.error('❌ Error during complete refresh after delete:', refreshError);
+                console.error('🔍 Error details:', refreshError instanceof Error ? refreshError.message : refreshError, refreshError instanceof Error ? refreshError.stack : '');
+                // Restore previous tree on error
+                setFolderTree(folderTree);
+              }
+
+              // If the deleted item was selected, clear the selection
+              if (selectedFolder === deletePath) {
+                setSelectedFolder(null);
+                setActiveView("files");
+              }
+              if (selectedNote === deletePath) {
+                setSelectedNote(null);
+                setActiveView("canvas");
+              }
+
+            } else {
+              console.error(`Failed to delete ${deletePath}:`, result.error);
+            }
+          } catch (error) {
+            console.error('Error during deletion:', error);
+          }
         }}
         onRename={async (node) => {
-          console.log('Rename:', node.path);
-          setRenameNode(node);
-          setIsRenameOpen(true);
+          console.log('Rename:', node.path, 'type:', node.type);
+          console.log('Available Electron APIs:', Object.keys(window.electronAPI || {}));
+
+          try {
+            // Check if Electron API is available
+            if (!window.electronAPI) {
+              console.error('Electron API not available at all');
+              return;
+            }
+
+            // Check what rename methods are available
+            if (window.electronAPI.fileRename) {
+              console.log('fileRename method available');
+            } else if ((window.electronAPI as any).renameFile) {
+              console.log('renameFile method available');
+            } else if ((window.electronAPI as any).fs && (window.electronAPI as any).fs.rename) {
+              console.log('fs.rename method available');
+            } else {
+              console.error('No rename method available in Electron API');
+              console.log('Available methods:', Object.keys(window.electronAPI));
+              return;
+            }
+
+            // Set the node for the rename dialog
+            // Extract just the filename from the path for the dialog
+            const lastSeparatorIndex = Math.max(node.path.lastIndexOf('\\'), node.path.lastIndexOf('/'));
+            const fileName = lastSeparatorIndex >= 0 ? node.path.substring(lastSeparatorIndex + 1) : node.path;
+
+            console.log('=== FILENAME EXTRACTION DEBUG ===');
+            console.log('Original node path:', node.path);
+            console.log('Last separator index:', lastSeparatorIndex);
+            console.log('Extracted filename:', fileName);
+            console.log('Node.name before:', node.name);
+
+            const renameNodeForDialog = {
+              ...node,
+              name: fileName, // Use just the filename, not the full path
+              originalPath: node.path // Keep the original path for reference
+            };
+
+            console.log('RenameNodeForDialog.name:', renameNodeForDialog.name);
+            console.log('RenameNodeForDialog.path:', renameNodeForDialog.path);
+            console.log('Full renameNodeForDialog:', renameNodeForDialog);
+
+            setRenameNode(renameNodeForDialog);
+            setIsRenameOpen(true);
+
+            console.log('Rename dialog opened for:', fileName);
+            console.log('=== FILENAME EXTRACTION END ===');
+          } catch (error) {
+            console.error('Error opening rename dialog:', error);
+          }
         }}
         onDuplicate={async (node) => {
           console.log('Duplicate:', node.path);
@@ -457,6 +603,7 @@ export default function NoteTakingApp() {
           )}
           {activeView === "files" && (
             <FileManager
+              key={`filemanager-${treeVersion}`} // Force re-render when tree version changes
               selectedFolder={selectedFolder}
               folderTree={folderTree}
               onFolderSelect={handleFolderSelect}
@@ -519,7 +666,76 @@ export default function NoteTakingApp() {
         isFolder={renameNode?.type !== 'note'}
         onRename={async (newName) => {
           if (!renameNode) return;
-          // ...existing code...
+
+          console.log('=== RENAME DEBUG START ===');
+          console.log('RenameNode path:', renameNode.path);
+          console.log('RenameNode name:', renameNode.name);
+          console.log('NewName received:', newName);
+          console.log('Current activeView before rename:', activeView);
+
+          try {
+            // Check if Electron API is available
+            if (!window.electronAPI?.fileRename) {
+              console.error('Electron API fileRename not available');
+              return;
+            }
+
+            const oldPath = renameNode.path;
+            console.log('Original path:', oldPath);
+
+            // Call Electron API to rename the file/folder
+            // The API expects (oldPath, newName) where newName is just the filename
+            const result = await window.electronAPI.fileRename(oldPath, newName);
+
+            if (result.success) {
+              console.log(`Successfully renamed: ${oldPath} -> ${result.newPath || newName}`);
+
+              // Extract the parent directory from old path to construct new path
+              const parentDir = oldPath.substring(0, oldPath.lastIndexOf('\\'));
+              const correctNewPath = `${parentDir}\\${newName}`;
+              console.log('Correct new path:', correctNewPath);
+
+              // Refresh the folder tree
+              if (window.electronAPI?.foldersScan) {
+                const scanResult = await window.electronAPI.foldersScan();
+                if (scanResult && scanResult.length > 0) {
+                  const newTree = scanResult[0];
+                  console.log('Fresh tree loaded after rename');
+
+                  // Update tree and force re-render
+                  setFolderTree(newTree);
+                  setTreeVersion(prev => prev + 1);
+
+                  // CRITICAL: After rename, switch to files view and show parent folder content
+                  console.log('Switching to files view after rename, old activeView:', activeView);
+
+                  // Extract parent directory of the renamed item
+                  const parentDir = oldPath.substring(0, oldPath.lastIndexOf('\\'));
+                  console.log('Parent directory of renamed item:', parentDir);
+
+                  // Set selectedFolder to the parent directory to show its contents
+                  setSelectedFolder(parentDir);
+                  console.log('Set selectedFolder to parent directory:', parentDir);
+
+                  // Switch to files view to show the file manager with parent folder content
+                  setActiveView("files");
+                  console.log('Switched activeView to files after rename');
+
+                  // Update selections if they match the renamed item
+                  if (selectedNote === oldPath) {
+                    setSelectedNote(correctNewPath);
+                    console.log('Updated selected note path after rename');
+                  }
+
+                  console.log('✅ Rename operation completed successfully - switched to files view with parent folder content');
+                }
+              }
+            } else {
+              console.error(`❌ Failed to rename ${oldPath}:`, result.error);
+            }
+          } catch (error) {
+            console.error('Error during rename:', error);
+          }
         }}
       />
       <AddDrawDialog

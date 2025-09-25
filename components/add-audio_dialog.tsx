@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Music as MusicIcon, FilePlus } from "lucide-react";
 import { GenericModal, ModalField, ModalButton } from "@/components/ui/generic-modal";
+import { FolderTreeSelector, type FolderNode } from "@/components/ui/folder-tree-selector";
 
 export interface AudioMeta {
   id: string;
@@ -40,6 +41,27 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated,
       });
     }
   }, [open]);
+
+  // Convert folders to FolderNode format for the tree selector
+  const folderNodes: FolderNode[] = React.useMemo(() => {
+    const buildTree = (folders: any[], parentId?: string): FolderNode[] => {
+      return folders
+        .filter(folder => folder.parentId === parentId)
+        .map(folder => ({
+          id: folder.id,
+          name: folder.name,
+          path: folder.path || folder.name,
+          children: buildTree(folders, folder.id),
+          parent: parentId
+        }));
+    };
+    return buildTree(existingFolders);
+  }, [existingFolders]);
+
+  // Handle folder selection
+  const handleFolderSelect = (folderId: string | null, folderPath: string) => {
+    setParentId(folderId || undefined);
+  };
 
   const handleCreateAudio = async () => {
     setCreationError(null);
@@ -111,17 +133,6 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated,
   // Define fields for the GenericModal
   const fields: ModalField[] = [
     {
-      id: 'parent',
-      label: 'Dossier parent',
-      type: 'select',
-      placeholder: 'Sélectionner le dossier parent...',
-      required: false,
-      options: [
-        { label: 'Dossier sélectionné par défaut', value: '' },
-        ...existingFolders.map(folder => ({ label: folder.name, value: folder.id }))
-      ]
-    },
-    {
       id: 'name',
       label: 'Nom de l\'audio',
       type: 'text',
@@ -159,6 +170,20 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated,
     }
   ];
 
+  // Custom content for the folder tree selector
+  const customContent = (
+    <div className="space-y-2">
+      <Label className="text-sm font-medium">Dossier parent</Label>
+      <FolderTreeSelector
+        folders={folderNodes}
+        selectedFolderId={parentId}
+        onFolderSelect={handleFolderSelect}
+        placeholder="Sélectionner un dossier parent..."
+        className="w-full"
+      />
+    </div>
+  );
+
   return (
     <GenericModal
       open={open}
@@ -178,6 +203,8 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated,
       showCloseButton={true}
       closeButtonPosition="top-right"
       showFooter={true}
-    />
+    >
+      {customContent}
+    </GenericModal>
   );
 }
