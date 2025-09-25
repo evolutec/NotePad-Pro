@@ -1,16 +1,16 @@
 "use client";
 import React, { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ChevronRight, 
-  ChevronDown, 
-  Folder, 
-  FolderOpen, 
-  FileText, 
-  File, 
-  FileCode, 
-  FileImage, 
-  FileAudio, 
+import {
+  ChevronRight,
+  ChevronDown,
+  Folder,
+  FolderOpen,
+  FileText,
+  File,
+  FileCode,
+  FileImage,
+  FileAudio,
   FileVideo,
   FileArchive,
   MoreVertical,
@@ -27,6 +27,9 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from '@/components/ui/context-menu';
+
+// CSS import - side-effect import for styles
+// @ts-ignore - Suppress TypeScript error for CSS import
 import './tree-styles.css';
 
 // Custom PDF icon component

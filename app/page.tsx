@@ -23,14 +23,16 @@ import { AddCodeDialog } from "@/components/add-code_dialog"
 import { RenameDialog } from "@/components/rename-dialog"
 import { ImageViewer } from "@/components/image-viewer"
 import { VideoViewer } from "@/components/video-viewer"
+import { LandingPage } from "@/components/landing-page"
 
 const PdfViewer = dynamic(() => import('@/components/pdf-viewer').then(mod => mod.PdfViewer), {
   ssr: false,
 });
 
 export default function NoteTakingApp() {
-  const [activeView, setActiveView] = useState<"canvas" | "editor" | "files" | "pdf_viewer" | "image_viewer" | "video_viewer">("canvas")
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [activeView, setActiveView] = useState<"canvas" | "editor" | "files" | "pdf_viewer" | "image_viewer" | "video_viewer" | "landing">("landing")
+  const [sidebarOpen, setSidebarOpen] = useState(false) // Start with collapsed sidebar for landing page
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true) // Track sidebar collapse state - collapsed by default
   const [sidebarWidth, setSidebarWidth] = useState(256)
   const [isResizing, setIsResizing] = useState(false)
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null)
@@ -213,310 +215,314 @@ export default function NoteTakingApp() {
   }, []);
   return (
     <div className="flex h-screen bg-background">
-      {/* Sidebar moderne, responsive */}
-      <ModernSidebar
-        key={`sidebar-${treeVersion}`} // Force re-render when tree version changes
-        onFolderSelect={handleFolderSelect}
-        onNoteSelect={handleNoteSelect}
-        onImageSelect={async (path, name, type) => {
-          // Only run on client side
-          if (typeof window === 'undefined') return;
-          console.log('Image selected from sidebar:', path, name, type);
-          setActiveView('image_viewer');
-          setImageViewerPath(path);
-          setImageViewerName(name);
-          setImageViewerType(type);
-        }}
-        onVideoSelect={(path, name, type) => {
-          // Only run on client side
-          if (typeof window === 'undefined') return;
-          console.log('Video selected from sidebar:', path, name, type);
-          setActiveView('video_viewer');
-          setVideoViewerPath(path);
-          setVideoViewerName(name);
-          setVideoViewerType(type);
-        }}
-        selectedFolder={selectedFolder}
-        selectedNote={selectedNote}
-        tree={folderTree}
-        onDelete={async (node) => {
-          console.log('Delete:', node.path, 'type:', node.type);
+      {/* Sidebar moderne, responsive - Hidden on landing page */}
+      {activeView !== "landing" && (
+        <ModernSidebar
+          key={`sidebar-${treeVersion}`} // Force re-render when tree version changes
+          onFolderSelect={handleFolderSelect}
+          onNoteSelect={handleNoteSelect}
+          onImageSelect={async (path, name, type) => {
+            // Only run on client side
+            if (typeof window === 'undefined') return;
+            console.log('Image selected from sidebar:', path, name, type);
+            setActiveView('image_viewer');
+            setImageViewerPath(path);
+            setImageViewerName(name);
+            setImageViewerType(type);
+          }}
+          onVideoSelect={(path, name, type) => {
+            // Only run on client side
+            if (typeof window === 'undefined') return;
+            console.log('Video selected from sidebar:', path, name, type);
+            setActiveView('video_viewer');
+            setVideoViewerPath(path);
+            setVideoViewerName(name);
+            setVideoViewerType(type);
+          }}
+          selectedFolder={selectedFolder}
+          selectedNote={selectedNote}
+          tree={folderTree}
+          isCollapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onDelete={async (node) => {
+            console.log('Delete:', node.path, 'type:', node.type);
 
-          try {
-            // Check if Electron API is available
-            if (!window.electronAPI?.fileDelete) {
-              console.error('Electron API fileDelete not available');
-              return;
-            }
+            try {
+              // Check if Electron API is available
+              if (!window.electronAPI?.fileDelete) {
+                console.error('Electron API fileDelete not available');
+                return;
+              }
 
-            // Determine the path to delete
-            const deletePath = node.path || node.id;
-            if (!deletePath) {
-              console.error('No path available for deletion');
-              return;
-            }
+              // Determine the path to delete
+              const deletePath = node.path || node.id;
+              if (!deletePath) {
+                console.error('No path available for deletion');
+                return;
+              }
 
-            console.log('Attempting to delete:', deletePath);
+              console.log('Attempting to delete:', deletePath);
 
-            // Call Electron API to delete the file/folder
-            const result = await window.electronAPI.fileDelete(deletePath);
+              // Call Electron API to delete the file/folder
+              const result = await window.electronAPI.fileDelete(deletePath);
 
-            if (result.success) {
-              console.log(`Successfully deleted: ${deletePath}`);
+              if (result.success) {
+                console.log(`Successfully deleted: ${deletePath}`);
 
-              // Force complete refresh from root path after delete (same as working delete method)
-              try {
-                console.log('🔄 Forcing complete refresh from root path after delete...');
+                // Force complete refresh from root path after delete (same as working delete method)
+                try {
+                  console.log('🔄 Forcing complete refresh from root path after delete...');
 
-                // Clear current tree first to force complete reload
-                setFolderTree(null);
-                setTreeVersion(prev => prev + 1);
+                  // Clear current tree first to force complete reload
+                  setFolderTree(null);
+                  setTreeVersion(prev => prev + 1);
 
-                // Small delay to ensure state is cleared
-                await new Promise(resolve => setTimeout(resolve, 50));
+                  // Small delay to ensure state is cleared
+                  await new Promise(resolve => setTimeout(resolve, 50));
 
-                if (window.electronAPI?.foldersScan) {
-                  console.log('📁 Scanning root path for fresh tree data after delete...');
+                  if (window.electronAPI?.foldersScan) {
+                    console.log('📁 Scanning root path for fresh tree data after delete...');
 
-                  const scanResult = await window.electronAPI.foldersScan();
-                  console.log('📊 Fresh scan result received after delete:', scanResult);
+                    const scanResult = await window.electronAPI.foldersScan();
+                    console.log('📊 Fresh scan result received after delete:', scanResult);
 
-                  if (scanResult && scanResult.length > 0) {
-                    const newTree = scanResult[0];
-                    console.log('🌳 Fresh tree structure after delete:', newTree?.name, newTree?.children?.length || 0, 'items');
+                    if (scanResult && scanResult.length > 0) {
+                      const newTree = scanResult[0];
+                      console.log('🌳 Fresh tree structure after delete:', newTree?.name, newTree?.children?.length || 0, 'items');
 
-                    // Set the fresh tree data
-                    setFolderTree(newTree);
-                    setTreeVersion(prev => prev + 1); // Force re-render
-                    console.log('✅ Fresh folder tree loaded successfully after delete');
-                    console.log('🔄 Tree version incremented to:', treeVersion + 2);
+                      // Set the fresh tree data
+                      setFolderTree(newTree);
+                      setTreeVersion(prev => prev + 1); // Force re-render
+                      console.log('✅ Fresh folder tree loaded successfully after delete');
+                      console.log('🔄 Tree version incremented to:', treeVersion + 2);
 
-                    // Multiple forced updates to ensure navigation works
-                    setTimeout(() => {
-                      console.log('🔄 Triggering navigation refresh after delete...');
-                      setTreeVersion(prev => prev + 1);
-                    }, 100);
+                      // Multiple forced updates to ensure navigation works
+                      setTimeout(() => {
+                        console.log('🔄 Triggering navigation refresh after delete...');
+                        setTreeVersion(prev => prev + 1);
+                      }, 100);
 
-                    setTimeout(() => {
-                      console.log('🔄 Final navigation check after delete...');
-                      setTreeVersion(prev => prev + 1);
-                    }, 300);
+                      setTimeout(() => {
+                        console.log('🔄 Final navigation check after delete...');
+                        setTreeVersion(prev => prev + 1);
+                      }, 300);
 
+                    } else {
+                      console.warn('⚠️ No fresh folder tree data received from foldersScan after delete');
+                      console.warn('📋 Scan result:', scanResult);
+                      // Restore previous tree if scan fails
+                      setFolderTree(folderTree);
+                    }
                   } else {
-                    console.warn('⚠️ No fresh folder tree data received from foldersScan after delete');
-                    console.warn('📋 Scan result:', scanResult);
-                    // Restore previous tree if scan fails
+                    console.warn('⚠️ Electron API foldersScan not available for refresh after delete');
+                    console.warn('🔌 Available APIs:', Object.keys(window.electronAPI || {}));
+                    // Restore previous tree if API not available
                     setFolderTree(folderTree);
                   }
-                } else {
-                  console.warn('⚠️ Electron API foldersScan not available for refresh after delete');
-                  console.warn('🔌 Available APIs:', Object.keys(window.electronAPI || {}));
-                  // Restore previous tree if API not available
+                } catch (refreshError) {
+                  console.error('❌ Error during complete refresh after delete:', refreshError);
+                  console.error('🔍 Error details:', refreshError instanceof Error ? refreshError.message : refreshError, refreshError instanceof Error ? refreshError.stack : '');
+                  // Restore previous tree on error
                   setFolderTree(folderTree);
                 }
-              } catch (refreshError) {
-                console.error('❌ Error during complete refresh after delete:', refreshError);
-                console.error('🔍 Error details:', refreshError instanceof Error ? refreshError.message : refreshError, refreshError instanceof Error ? refreshError.stack : '');
-                // Restore previous tree on error
-                setFolderTree(folderTree);
-              }
 
-              // If the deleted item was selected, clear the selection
-              if (selectedFolder === deletePath) {
-                setSelectedFolder(null);
-                setActiveView("files");
-              }
-              if (selectedNote === deletePath) {
-                setSelectedNote(null);
-                setActiveView("canvas");
-              }
-
-            } else {
-              console.error(`Failed to delete ${deletePath}:`, result.error);
-            }
-          } catch (error) {
-            console.error('Error during deletion:', error);
-          }
-        }}
-        onRename={async (node) => {
-          console.log('Rename:', node.path, 'type:', node.type);
-          console.log('Available Electron APIs:', Object.keys(window.electronAPI || {}));
-
-          try {
-            // Check if Electron API is available
-            if (!window.electronAPI) {
-              console.error('Electron API not available at all');
-              return;
-            }
-
-            // Check what rename methods are available
-            if (window.electronAPI.fileRename) {
-              console.log('fileRename method available');
-            } else if ((window.electronAPI as any).renameFile) {
-              console.log('renameFile method available');
-            } else if ((window.electronAPI as any).fs && (window.electronAPI as any).fs.rename) {
-              console.log('fs.rename method available');
-            } else {
-              console.error('No rename method available in Electron API');
-              console.log('Available methods:', Object.keys(window.electronAPI));
-              return;
-            }
-
-            // Set the node for the rename dialog
-            // Extract just the filename from the path for the dialog
-            const lastSeparatorIndex = Math.max(node.path.lastIndexOf('\\'), node.path.lastIndexOf('/'));
-            const fileName = lastSeparatorIndex >= 0 ? node.path.substring(lastSeparatorIndex + 1) : node.path;
-
-            console.log('=== FILENAME EXTRACTION DEBUG ===');
-            console.log('Original node path:', node.path);
-            console.log('Last separator index:', lastSeparatorIndex);
-            console.log('Extracted filename:', fileName);
-            console.log('Node.name before:', node.name);
-
-            const renameNodeForDialog = {
-              ...node,
-              name: fileName, // Use just the filename, not the full path
-              originalPath: node.path // Keep the original path for reference
-            };
-
-            console.log('RenameNodeForDialog.name:', renameNodeForDialog.name);
-            console.log('RenameNodeForDialog.path:', renameNodeForDialog.path);
-            console.log('Full renameNodeForDialog:', renameNodeForDialog);
-
-            setRenameNode(renameNodeForDialog);
-            setIsRenameOpen(true);
-
-            console.log('Rename dialog opened for:', fileName);
-            console.log('=== FILENAME EXTRACTION END ===');
-          } catch (error) {
-            console.error('Error opening rename dialog:', error);
-          }
-        }}
-        onDuplicate={async (node) => {
-          console.log('Duplicate:', node.path);
-
-          try {
-            // Check if Electron API is available
-            if (!window.electronAPI?.noteLoad) {
-              console.error('Electron API not available for note loading');
-              return;
-            }
-
-            // Load original note content
-            const loadResult = await window.electronAPI.noteLoad(node.path);
-            if (!loadResult.success || !loadResult.data) {
-              console.error('Failed to load note content:', loadResult.error);
-              return;
-            }
-
-            const originalContent = loadResult.data.content;
-            const originalTitle = loadResult.data.title;
-
-            // Generate new name
-            const baseName = node.name.replace(/\.(md|txt)$/i, '');
-            const ext = node.name.match(/\.(md|txt)$/i)?.[0] || '.md';
-            let counter = 1;
-            let newName = `${baseName}_copie${ext}`;
-
-            // Check if name exists and find unique name
-            const parentDir = node.path.substring(0, node.path.lastIndexOf('\\'));
-            const checkPath = `${parentDir}\\${newName}`;
-
-            if (window.electronAPI?.fileRename) {
-              // Use fileRename to check if path exists (it will fail if exists)
-              let exists = true;
-              while (exists) {
-                const testResult = await window.electronAPI.fileRename(checkPath, newName);
-                if (testResult.error?.includes('already exists')) {
-                  counter++;
-                  newName = `${baseName}_copie${counter}${ext}`;
-                } else {
-                  exists = false;
+                // If the deleted item was selected, clear the selection
+                if (selectedFolder === deletePath) {
+                  setSelectedFolder(null);
+                  setActiveView("files");
                 }
+                if (selectedNote === deletePath) {
+                  setSelectedNote(null);
+                  setActiveView("canvas");
+                }
+
+              } else {
+                console.error(`Failed to delete ${deletePath}:`, result.error);
               }
+            } catch (error) {
+              console.error('Error during deletion:', error);
             }
+          }}
+          onRename={async (node) => {
+            console.log('Rename:', node.path, 'type:', node.type);
+            console.log('Available Electron APIs:', Object.keys(window.electronAPI || {}));
 
-            // Create duplicate note
-            const parentPath = node.path.substring(0, node.path.lastIndexOf('\\'));
-            if (window.electronAPI?.noteCreate) {
-              const createResult = await window.electronAPI.noteCreate({
-                name: newName.replace(/\.(md|txt)$/i, ''),
-                type: ext === '.md' ? 'markdown' : 'txt',
-                parentPath: parentPath,
-                tags: node.tags || []
-              });
+            try {
+              // Check if Electron API is available
+              if (!window.electronAPI) {
+                console.error('Electron API not available at all');
+                return;
+              }
 
-              if (createResult.success) {
-                // Write the duplicated content
-                if (window.electronAPI?.noteSave) {
-                  const saveResult = await window.electronAPI.noteSave({
-                    path: createResult.path,
-                    content: originalContent
-                  });
+              // Check what rename methods are available
+              if (window.electronAPI.fileRename) {
+                console.log('fileRename method available');
+              } else if ((window.electronAPI as any).renameFile) {
+                console.log('renameFile method available');
+              } else if ((window.electronAPI as any).fs && (window.electronAPI as any).fs.rename) {
+                console.log('fs.rename method available');
+              } else {
+                console.error('No rename method available in Electron API');
+                console.log('Available methods:', Object.keys(window.electronAPI));
+                return;
+              }
 
-                  if (saveResult.success) {
-                    // Add to notes.json
-                    if (window.electronAPI?.notesLoad && window.electronAPI?.notesSave) {
-                      const notes = await window.electronAPI.notesLoad();
-                      const newNoteMeta = {
-                        id: Date.now().toString(),
-                        name: newName.replace(/\.(md|txt)$/i, ''),
-                        type: ext === '.md' ? 'markdown' : 'txt',
-                        parentPath: parentPath,
-                        path: createResult.path,
-                        createdAt: new Date().toISOString(),
-                        tags: node.tags || []
-                      };
-                      notes.push(newNoteMeta);
-                      await window.electronAPI.notesSave(notes);
-                    }
+              // Set the node for the rename dialog
+              // Extract just the filename from the path for the dialog
+              const lastSeparatorIndex = Math.max(node.path.lastIndexOf('\\'), node.path.lastIndexOf('/'));
+              const fileName = lastSeparatorIndex >= 0 ? node.path.substring(lastSeparatorIndex + 1) : node.path;
 
-                    console.log('Note duplicated successfully:', createResult.path);
+              console.log('=== FILENAME EXTRACTION DEBUG ===');
+              console.log('Original node path:', node.path);
+              console.log('Last separator index:', lastSeparatorIndex);
+              console.log('Extracted filename:', fileName);
+              console.log('Node.name before:', node.name);
 
-                    // Reload folder tree
-                    if (window.electronAPI?.foldersScan) {
-                      const result = await window.electronAPI.foldersScan();
-                      if (result && result.length > 0) {
-                        setFolderTree(result[0]);
-                      }
-                    }
+              const renameNodeForDialog = {
+                ...node,
+                name: fileName, // Use just the filename, not the full path
+                originalPath: node.path // Keep the original path for reference
+              };
+
+              console.log('RenameNodeForDialog.name:', renameNodeForDialog.name);
+              console.log('RenameNodeForDialog.path:', renameNodeForDialog.path);
+              console.log('Full renameNodeForDialog:', renameNodeForDialog);
+
+              setRenameNode(renameNodeForDialog);
+              setIsRenameOpen(true);
+
+              console.log('Rename dialog opened for:', fileName);
+              console.log('=== FILENAME EXTRACTION END ===');
+            } catch (error) {
+              console.error('Error opening rename dialog:', error);
+            }
+          }}
+          onDuplicate={async (node) => {
+            console.log('Duplicate:', node.path);
+
+            try {
+              // Check if Electron API is available
+              if (!window.electronAPI?.noteLoad) {
+                console.error('Electron API not available for note loading');
+                return;
+              }
+
+              // Load original note content
+              const loadResult = await window.electronAPI.noteLoad(node.path);
+              if (!loadResult.success || !loadResult.data) {
+                console.error('Failed to load note content:', loadResult.error);
+                return;
+              }
+
+              const originalContent = loadResult.data.content;
+              const originalTitle = loadResult.data.title;
+
+              // Generate new name
+              const baseName = node.name.replace(/\.(md|txt)$/i, '');
+              const ext = node.name.match(/\.(md|txt)$/i)?.[0] || '.md';
+              let counter = 1;
+              let newName = `${baseName}_copie${ext}`;
+
+              // Check if name exists and find unique name
+              const parentDir = node.path.substring(0, node.path.lastIndexOf('\\'));
+              const checkPath = `${parentDir}\\${newName}`;
+
+              if (window.electronAPI?.fileRename) {
+                // Use fileRename to check if path exists (it will fail if exists)
+                let exists = true;
+                while (exists) {
+                  const testResult = await window.electronAPI.fileRename(checkPath, newName);
+                  if (testResult.error?.includes('already exists')) {
+                    counter++;
+                    newName = `${baseName}_copie${counter}${ext}`;
                   } else {
-                    console.error('Failed to save duplicated content:', saveResult.error);
+                    exists = false;
                   }
                 }
-              } else {
-                console.error('Failed to create duplicate note:', createResult.error);
               }
+
+              // Create duplicate note
+              const parentPath = node.path.substring(0, node.path.lastIndexOf('\\'));
+              if (window.electronAPI?.noteCreate) {
+                const createResult = await window.electronAPI.noteCreate({
+                  name: newName.replace(/\.(md|txt)$/i, ''),
+                  type: ext === '.md' ? 'markdown' : 'txt',
+                  parentPath: parentPath,
+                  tags: node.tags || []
+                });
+
+                if (createResult.success) {
+                  // Write the duplicated content
+                  if (window.electronAPI?.noteSave) {
+                    const saveResult = await window.electronAPI.noteSave({
+                      path: createResult.path,
+                      content: originalContent
+                    });
+
+                    if (saveResult.success) {
+                      // Add to notes.json
+                      if (window.electronAPI?.notesLoad && window.electronAPI?.notesSave) {
+                        const notes = await window.electronAPI.notesLoad();
+                        const newNoteMeta = {
+                          id: Date.now().toString(),
+                          name: newName.replace(/\.(md|txt)$/i, ''),
+                          type: ext === '.md' ? 'markdown' : 'txt',
+                          parentPath: parentPath,
+                          path: createResult.path,
+                          createdAt: new Date().toISOString(),
+                          tags: node.tags || []
+                        };
+                        notes.push(newNoteMeta);
+                        await window.electronAPI.notesSave(notes);
+                      }
+
+                      console.log('Note duplicated successfully:', createResult.path);
+
+                      // Reload folder tree
+                      if (window.electronAPI?.foldersScan) {
+                        const result = await window.electronAPI.foldersScan();
+                        if (result && result.length > 0) {
+                          setFolderTree(result[0]);
+                        }
+                      }
+                    } else {
+                      console.error('Failed to save duplicated content:', saveResult.error);
+                    }
+                  }
+                } else {
+                  console.error('Failed to create duplicate note:', createResult.error);
+                }
+              }
+            } catch (error) {
+              console.error('Error during duplication:', error);
             }
-          } catch (error) {
-            console.error('Error during duplication:', error);
-          }
-        }}
-        onNewFolder={async (parentPath) => {
-          console.log('New folder:', parentPath)
-          setIsAddFolderOpen(true)
-        }}
-        onNewFile={async (parentPath, type) => {
-          console.log('New file:', parentPath, type)
-          if (type === 'document') {
-            setIsAddDocumentOpen(true)
-          } else if (type === 'note') {
-            setIsAddNoteOpen(true)
-          } else if (type === 'audio') {
-            setIsAddAudioOpen(true)
-          } else if (type === 'image') {
-            setIsAddImageOpen(true)
-          } else if (type === 'video') {
-            setIsAddVideoOpen(true)
-          } else if (type === 'code') {
-            setIsAddCodeOpen(true)
-          }
-        }}
-        onNewDraw={async () => {
-          console.log('New draw requested')
-          setIsAddDrawOpen(true)
-        }}
-      />
+          }}
+          onNewFolder={async (parentPath) => {
+            console.log('New folder:', parentPath)
+            setIsAddFolderOpen(true)
+          }}
+          onNewFile={async (parentPath, type) => {
+            console.log('New file:', parentPath, type)
+            if (type === 'document') {
+              setIsAddDocumentOpen(true)
+            } else if (type === 'note') {
+              setIsAddNoteOpen(true)
+            } else if (type === 'audio') {
+              setIsAddAudioOpen(true)
+            } else if (type === 'image') {
+              setIsAddImageOpen(true)
+            } else if (type === 'video') {
+              setIsAddVideoOpen(true)
+            } else if (type === 'code') {
+              setIsAddCodeOpen(true)
+            }
+          }}
+          onNewDraw={async () => {
+            console.log('New draw requested')
+            setIsAddDrawOpen(true)
+          }}
+        />
+      )}
       {/* Main Content flexible */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4">
@@ -580,6 +586,28 @@ export default function NoteTakingApp() {
           </div>
         </header>
         <main className="flex-1 overflow-auto px-2 py-2 min-w-0">
+          {activeView === "landing" && (
+            <LandingPage
+              onNavigateToFiles={() => {
+                // Set selectedFolder to root folder and switch to files view
+                if (folderTree) {
+                  setSelectedFolder(folderTree.path);
+                }
+                setActiveView("files");
+              }}
+              onNavigateToEditor={(filePath) => {
+                setSelectedNote(filePath);
+                setActiveView("editor");
+              }}
+              onCreateNew={(type) => {
+                // Handle creating new files from landing page
+                console.log('Creating new file of type:', type);
+                // You can add logic here to open the appropriate dialog
+              }}
+              folderTree={folderTree}
+              recentFiles={[]} // You can populate this with actual recent files
+            />
+          )}
           {activeView === "canvas" && <DrawingCanvas selectedNote={selectedNote} selectedFolder={selectedFolder} />}
           {activeView === "editor" && <NoteEditor selectedNote={selectedNote} selectedFolder={selectedFolder} />}
           {activeView === "pdf_viewer" && pdfContent && <PdfViewer file={pdfContent} />}

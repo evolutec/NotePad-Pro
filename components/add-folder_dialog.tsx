@@ -234,7 +234,7 @@ export function AddFolderDialog({ folders, onFolderAdded, open, onOpenChange }: 
       id: 'name',
       label: 'Nom du dossier',
       type: 'text',
-      placeholder: 'Ex: Projets, Réunions, Idées...',r
+      placeholder: 'Ex: Projets, Réunions, Idées...',
       required: true,
       value: folderName,
       onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
