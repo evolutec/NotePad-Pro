@@ -576,7 +576,7 @@ export const GenericModal = forwardRef<GenericModalRef, GenericModalProps>(({
           {tabs && tabs.length > 0 && (
             <Tabs defaultValue={tabs[0].id} className="w-full">
               <TabsList className={cn(
-                "grid w-full h-14 p-1 rounded-xl shadow-inner bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm",
+                "flex w-full h-14 p-1 rounded-xl shadow-inner bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm",
                 "border border-gray-200 dark:border-gray-700"
               )}>
                 {tabs.map((tab) => (
