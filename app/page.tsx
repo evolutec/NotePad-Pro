@@ -92,6 +92,60 @@ export default function NoteTakingApp() {
     initializeFolderTree();
   }, []);
 
+  // Listen for file move events and refresh UI immediately
+  useEffect(() => {
+    const handleFileMoved = (event: CustomEvent) => {
+      console.log('📱 File moved event received in main page:', event.detail);
+
+      // Force immediate refresh of all components
+      setTreeVersion(prev => prev + 1);
+
+      // Refresh folder tree from main process
+      if (window.electronAPI?.foldersScan) {
+        window.electronAPI.foldersScan().then(result => {
+          if (result && result.length > 0) {
+            console.log('📱 Refreshing folder tree after move event');
+            setFolderTree(result[0]);
+            setTreeVersion(prev => prev + 1);
+          }
+        }).catch(error => {
+          console.error('📱 Error refreshing tree after move event:', error);
+        });
+      }
+    };
+
+    const handleFolderTreeRefresh = () => {
+      console.log('📱 Folder tree refresh event received');
+      setTreeVersion(prev => prev + 1);
+
+      // Also refresh the actual tree data
+      if (window.electronAPI?.foldersScan) {
+        window.electronAPI.foldersScan().then(result => {
+          if (result && result.length > 0) {
+            setFolderTree(result[0]);
+          }
+        });
+      }
+    };
+
+    const handleFileManagerRefresh = () => {
+      console.log('📱 File manager refresh event received');
+      setTreeVersion(prev => prev + 1);
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('fileMoved', handleFileMoved as EventListener);
+      window.addEventListener('folderTreeRefresh', handleFolderTreeRefresh as EventListener);
+      window.addEventListener('fileManagerRefresh', handleFileManagerRefresh as EventListener);
+
+      return () => {
+        window.removeEventListener('fileMoved', handleFileMoved as EventListener);
+        window.removeEventListener('folderTreeRefresh', handleFolderTreeRefresh as EventListener);
+        window.removeEventListener('fileManagerRefresh', handleFileManagerRefresh as EventListener);
+      };
+    }
+  }, []);
+
   // Sélection dossier : switch auto sur fichiers
   function handleFolderSelect(path: string) {
     setSelectedFolder(path)

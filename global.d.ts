@@ -37,7 +37,15 @@ declare global {
     drawSave?: (filePath: string, drawingData: any) => Promise<{ success: boolean; error?: string }>;
     onFolderSelected?: (callback: (folderPath: string) => void) => void;
     loadSettings?: () => Promise<any>;
-        // Ajoutez ici d'autres méthodes exposées par preload.js si besoin
+
+    // Native file system APIs for more reliable file operations
+    fsExists?: (filePath: string) => Promise<{ success: boolean; exists: boolean; error?: string }>;
+    fsMove?: (oldPath: string, newPath: string) => Promise<{ success: boolean; newPath?: string; error?: string }>;
+    fsReaddir?: (dirPath: string) => Promise<{ success: boolean; items: string[]; error?: string }>;
+    fsUnlink?: (filePath: string) => Promise<{ success: boolean; error?: string }>;
+    fsMkdir?: (dirPath: string) => Promise<{ success: boolean; path?: string; error?: string }>;
+
+    // Ajoutez ici d'autres méthodes exposées par preload.js si besoin
   }
   interface Window {
     electron?: ElectronAPI;

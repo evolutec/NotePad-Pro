@@ -95,4 +95,30 @@ contextBridge.exposeInMainWorld('electronAPI', {
     console.log('Preload: Saving recording');
     return ipcRenderer.invoke('camera:saveRecording', videoData);
   },
+
+  // Native file system APIs for more reliable file operations
+  fsExists: (filePath) => {
+    console.log('Preload: Checking if file exists:', filePath);
+    return ipcRenderer.invoke('fs:exists', filePath);
+  },
+
+  fsMove: (oldPath, newPath) => {
+    console.log('Preload: Moving file from', oldPath, 'to', newPath);
+    return ipcRenderer.invoke('fs:move', oldPath, newPath);
+  },
+
+  fsReaddir: (dirPath) => {
+    console.log('Preload: Reading directory:', dirPath);
+    return ipcRenderer.invoke('fs:readdir', dirPath);
+  },
+
+  fsUnlink: (filePath) => {
+    console.log('Preload: Deleting file:', filePath);
+    return ipcRenderer.invoke('fs:unlink', filePath);
+  },
+
+  fsMkdir: (dirPath) => {
+    console.log('Preload: Creating directory:', dirPath);
+    return ipcRenderer.invoke('fs:mkdir', dirPath);
+  },
 });

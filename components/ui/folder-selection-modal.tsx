@@ -24,6 +24,7 @@ export interface FolderSelectionModalProps {
   onFolderSelect: (folderId: string | null, folderPath: string) => void;
   title?: string;
   description?: string;
+  showSearch?: boolean;
 }
 
 export function FolderSelectionModal({
@@ -33,10 +34,12 @@ export function FolderSelectionModal({
   selectedFolderId,
   onFolderSelect,
   title = "Sélectionner un dossier parent",
-  description = "Choisissez le dossier dans lequel créer le nouvel élément"
+  description = "Choisissez le dossier dans lequel créer le nouvel élément",
+  showSearch = true
 }: FolderSelectionModalProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedDestination, setSelectedDestination] = useState<{id: string | null, path: string} | null>(null);
 
   const toggleExpanded = useCallback((folderId: string) => {
     setExpandedFolders(prev => {
@@ -51,14 +54,19 @@ export function FolderSelectionModal({
   }, []);
 
   const handleFolderSelect = useCallback((folder: FolderNode) => {
-    onFolderSelect(folder.id, folder.path);
-    onOpenChange(false);
-  }, [onFolderSelect, onOpenChange]);
+    setSelectedDestination({id: folder.id, path: folder.path});
+  }, []);
 
   const handleRootSelect = useCallback(() => {
-    onFolderSelect(null, "");
+    setSelectedDestination({id: null, path: ""});
+  }, []);
+
+  const handleConfirm = useCallback(() => {
+    if (selectedDestination) {
+      onFolderSelect(selectedDestination.id, selectedDestination.path);
+    }
     onOpenChange(false);
-  }, [onFolderSelect, onOpenChange]);
+  }, [selectedDestination, onFolderSelect, onOpenChange]);
 
   const getSelectedFolderName = useCallback(() => {
     if (!selectedFolderId) return "Racine";
@@ -172,7 +180,7 @@ export function FolderSelectionModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-2xl max-h-[95vh] overflow-hidden flex flex-col">
         <DialogHeader className="pb-4">
           <DialogTitle className="flex items-center gap-2">
             <Folder className="h-5 w-5 text-yellow-500" />
@@ -185,36 +193,38 @@ export function FolderSelectionModal({
           )}
         </DialogHeader>
 
-        {/* Search */}
-        <div className="space-y-2 pb-4">
-          <Label htmlFor="folder-search" className="text-sm font-medium">
-            Rechercher un dossier
-          </Label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              id="folder-search"
-              placeholder="Tapez pour rechercher..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-            {searchTerm && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-                onClick={() => setSearchTerm("")}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
+        {/* Search - Only show if showSearch is true */}
+        {showSearch && (
+          <div className="space-y-2 pb-4">
+            <Label htmlFor="folder-search" className="text-sm font-medium">
+              Rechercher un dossier
+            </Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                id="folder-search"
+                placeholder="Tapez pour rechercher..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+              {searchTerm && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                  onClick={() => setSearchTerm("")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Folder Tree */}
-        <div className="flex-1 overflow-y-auto min-h-0">
-          <div className="space-y-2">
+        <div className="flex-1 overflow-y-auto min-h-0 max-h-[75vh]">
+          <div className="space-y-2 pr-2">
             {/* Root option */}
             <div
               className={cn(
@@ -253,13 +263,24 @@ export function FolderSelectionModal({
         {/* Footer */}
         <div className="flex justify-between items-center pt-4 border-t">
           <div className="text-sm text-muted-foreground">
-            Dossier sélectionné: <span className="font-medium text-foreground">{getSelectedFolderName()}</span>
+            {selectedDestination ? (
+              <>
+                Destination: <span className="font-medium text-foreground">
+                  {selectedDestination.id === null ? "Racine" : selectedDestination.path.split('\\').pop()}
+                </span>
+              </>
+            ) : (
+              "Aucune destination sélectionnée"
+            )}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Annuler
             </Button>
-            <Button onClick={() => onOpenChange(false)}>
+            <Button
+              onClick={handleConfirm}
+              disabled={!selectedDestination}
+            >
               Confirmer
             </Button>
           </div>

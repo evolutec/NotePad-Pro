@@ -970,16 +970,116 @@ ipcMain.handle('file:rename', async (_event, oldPath, newName) => {
     if (!fs.existsSync(oldPath)) {
       return { success: false, error: 'File or folder not found' };
     }
-    
+
     const dir = path.dirname(oldPath);
     const newPath = path.join(dir, newName);
-    
+
     if (fs.existsSync(newPath)) {
       return { success: false, error: 'A file or folder with that name already exists' };
     }
-    
+
     fs.renameSync(oldPath, newPath);
     return { success: true, newPath };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Handler pour vérifier l'existence d'un fichier avec fs.existsSync
+ipcMain.handle('fs:exists', async (_event, filePath) => {
+  try {
+    const exists = fs.existsSync(filePath);
+    return { success: true, exists };
+  } catch (err) {
+    return { success: false, error: err.message, exists: false };
+  }
+});
+
+// Handler pour déplacer un fichier (copy + delete) using native fs functions
+ipcMain.handle('fs:move', async (_event, oldPath, newPath) => {
+  try {
+    console.log('=== NATIVE FS MOVE OPERATION ===');
+    console.log('Source path:', oldPath);
+    console.log('Destination path:', newPath);
+
+    // Use native fs functions directly
+    if (!fs.existsSync(oldPath)) {
+      console.log('Source file does not exist:', oldPath);
+      return { success: false, error: 'Source file not found' };
+    }
+
+    // Ensure destination directory exists
+    const destDir = path.dirname(newPath);
+    console.log('Destination directory:', destDir);
+
+    if (!fs.existsSync(destDir)) {
+      console.log('Creating destination directory:', destDir);
+      fs.mkdirSync(destDir, { recursive: true });
+    }
+
+    // Check if destination already exists using native fs
+    if (fs.existsSync(newPath)) {
+      console.log('Destination file already exists:', newPath);
+      return { success: false, error: 'Destination file already exists' };
+    }
+
+    // Step 1: Copy the file to destination using native fs
+    console.log('Copying file using fs.copyFileSync...');
+    fs.copyFileSync(oldPath, newPath);
+    console.log('File copied successfully');
+
+    // Step 2: Delete the original file using native fs
+    console.log('Deleting original file using fs.unlinkSync...');
+    fs.unlinkSync(oldPath);
+    console.log('Original file deleted successfully');
+
+    console.log('=== NATIVE FS MOVE COMPLETED ===');
+    console.log('File moved successfully from', oldPath, 'to', newPath);
+    return { success: true, newPath };
+  } catch (err) {
+    console.error('=== NATIVE FS MOVE ERROR ===');
+    console.error('Error during file move:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Handler pour lister le contenu d'un dossier avec fs.readdirSync
+ipcMain.handle('fs:readdir', async (_event, dirPath) => {
+  try {
+    if (!fs.existsSync(dirPath)) {
+      return { success: false, error: 'Directory not found' };
+    }
+
+    const items = fs.readdirSync(dirPath);
+    return { success: true, items };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Handler pour supprimer un fichier avec fs.unlinkSync
+ipcMain.handle('fs:unlink', async (_event, filePath) => {
+  try {
+    if (!fs.existsSync(filePath)) {
+      return { success: false, error: 'File not found' };
+    }
+
+    fs.unlinkSync(filePath);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Handler pour créer un dossier avec fs.mkdirSync
+ipcMain.handle('fs:mkdir', async (_event, dirPath) => {
+  try {
+    if (fs.existsSync(dirPath)) {
+      return { success: false, error: 'Directory already exists' };
+    }
+
+    fs.mkdirSync(dirPath, { recursive: true });
+    return { success: true, path: dirPath };
   } catch (err) {
     return { success: false, error: err.message };
   }

@@ -27,6 +27,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from '@/components/ui/context-menu';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { FolderSelectionModal, type FolderNode } from '@/components/ui/folder-selection-modal';
 
 // CSS import - side-effect import for styles
 // @ts-ignore - Suppress TypeScript error for CSS import
@@ -164,6 +166,7 @@ const TreeItem = React.memo(({
   onDelete,
   onRename,
   onDuplicate,
+  onMove,
   onNewFolder,
   onNewFile,
 }: {
@@ -178,6 +181,7 @@ const TreeItem = React.memo(({
   onDelete: () => void;
   onRename: () => void;
   onDuplicate: () => void;
+  onMove: () => void;
   onNewFolder: () => void;
   onNewFile: () => void;
 }) => {
@@ -359,8 +363,11 @@ const TreeItem = React.memo(({
                     Dupliquer
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem onClick={onMove}>
+                  Déplacer
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={onDelete}
                   className="text-destructive"
                 >
@@ -420,6 +427,10 @@ export function ModernFolderTree({
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set(initialExpandedPaths));
   const [treeVersion, setTreeVersion] = useState(0);
+
+  // Move functionality state
+  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+  const [nodeToMove, setNodeToMove] = useState<EnhancedFolderNode | null>(null);
 
   // Update tree version when tree changes (but don't clear expanded paths)
   React.useEffect(() => {
@@ -522,6 +533,199 @@ export function ModernFolderTree({
     console.log('=== FOLDERTREE CLICK END ===');
   }, [onFolderSelect, onNoteSelect, onImageSelect, onVideoSelect]);
 
+  // Convert tree structure to FolderNode format for the modal
+  const convertToFolderNodes = useCallback((tree: EnhancedFolderNode | null): FolderNode[] => {
+    if (!tree) return [];
+
+    const convertNode = (node: EnhancedFolderNode): FolderNode => {
+      // Make all folders expanded by default in the move modal
+      const hasChildren = node.children && node.children.length > 0;
+      return {
+        id: node.id || node.path,
+        name: node.name,
+        path: node.path,
+        children: node.children?.map(convertNode),
+        parent: node.parent,
+        isExpanded: hasChildren // Expand all folders that have children
+      };
+    };
+
+    return [convertNode(tree)];
+  }, []);
+
+  // Handle move functionality
+  const handleMove = useCallback((node: EnhancedFolderNode) => {
+    console.log('Opening move modal for:', node.name, node.path);
+    setNodeToMove(node);
+    setIsMoveModalOpen(true);
+  }, []);
+
+  // Handle folder selection in move modal
+  const handleMoveDestinationSelect = useCallback(async (folderId: string | null, folderPath: string) => {
+    if (!nodeToMove) return;
+
+    console.log('=== MOVE DEBUG ===');
+    console.log('folderId:', folderId);
+    console.log('folderPath:', folderPath);
+    console.log('nodeToMove.path:', nodeToMove.path);
+    console.log('nodeToMove.name:', nodeToMove.name);
+
+    try {
+      // Check if Electron API is available
+      if (!window.electronAPI?.fileRename) {
+        console.error('Electron API fileRename not available for move operation');
+        return;
+      }
+
+      // Properly construct the new path
+      let newPath: string;
+      if (folderId === null || folderPath === '') {
+        // Moving to root - just use the filename in the same directory level
+        const pathParts = nodeToMove.path.split('\\');
+        pathParts.pop(); // Remove the filename
+        newPath = `${pathParts.join('\\')}\\${nodeToMove.name}`;
+        console.log('Moving to root, new path:', newPath);
+      } else {
+        // Moving to a specific folder
+        console.log('Moving to folder, folderPath:', folderPath);
+
+        // Check if folderPath already contains the full path or just the folder path
+        if (folderPath.includes(nodeToMove.path)) {
+          // folderPath contains the full source path - this is wrong
+          console.error('ERROR: folderPath contains source path - this should not happen');
+          console.error('Source path:', nodeToMove.path);
+          console.error('Destination path:', folderPath);
+          return;
+        }
+
+        // If folderPath is already a full path to a file, get its directory
+        if (folderPath.includes('.')) {
+          // This looks like a file path, get its directory
+          const pathParts = folderPath.split('\\');
+          pathParts.pop(); // Remove the filename
+          newPath = `${pathParts.join('\\')}\\${nodeToMove.name}`;
+          console.log('Folder path was actually a file path, corrected to:', newPath);
+        } else {
+          // This is a proper folder path
+          const cleanDestinationPath = folderPath.endsWith('\\') ? folderPath.slice(0, -1) : folderPath;
+          newPath = `${cleanDestinationPath}\\${nodeToMove.name}`;
+          console.log('Proper folder path, new path:', newPath);
+        }
+      }
+
+      console.log('=== TRUE MOVE OPERATION ===');
+      console.log('Final constructed new path:', newPath);
+      console.log('Source path:', nodeToMove.path);
+      console.log('Destination path:', newPath);
+
+      // Check if destination file already exists
+      const destinationFileName = newPath.split('\\').pop() || nodeToMove.name;
+      console.log('- destination filename only:', destinationFileName);
+
+      // Use the native fs:exists API to check if destination exists
+      // This is more reliable than the Electron API wrapper
+      try {
+        if (window.electronAPI?.fsExists) {
+          const existsResult = await window.electronAPI.fsExists(newPath);
+          if (existsResult.success && existsResult.exists) {
+            console.log('File already exists at destination:', newPath);
+            alert(`Un fichier avec le nom "${destinationFileName}" existe déjà dans le dossier de destination.`);
+            return;
+          }
+        }
+      } catch (existsError) {
+        // File doesn't exist, which is what we want - continue with move
+        console.log('Destination file does not exist, proceeding with move');
+      }
+
+      // Use the native fs:move API which does copy + delete (true move)
+      console.log('About to call electronAPI.fsMove with:');
+      console.log('- source:', nodeToMove.path);
+      console.log('- destination:', newPath);
+      console.log('- operation: COPY + DELETE (true move)');
+
+      if (!window.electronAPI?.fsMove) {
+        console.error('fsMove API not available');
+        return;
+      }
+
+      const result = await window.electronAPI.fsMove(nodeToMove.path, newPath);
+
+      console.log('API call result:', result);
+
+      if (result.success) {
+        console.log(`Successfully moved: ${nodeToMove.path} -> ${result.newPath || newPath}`);
+
+        // Force immediate UI refresh with multiple mechanisms
+        setTreeVersion(prev => prev + 1);
+
+        // Trigger multiple global refresh events for different components
+        if (typeof window !== 'undefined') {
+          // Main refresh event for all components
+          window.dispatchEvent(new CustomEvent('fileMoved', {
+            detail: {
+              oldPath: nodeToMove.path,
+              newPath: result.newPath || newPath,
+              type: nodeToMove.type,
+              timestamp: Date.now()
+            }
+          }));
+
+          // Specific event for folder tree refresh
+          window.dispatchEvent(new CustomEvent('folderTreeRefresh', {
+            detail: { timestamp: Date.now() }
+          }));
+
+          // Specific event for file manager refresh
+          window.dispatchEvent(new CustomEvent('fileManagerRefresh', {
+            detail: { timestamp: Date.now() }
+          }));
+        }
+
+        // Refresh the folder tree from the main process
+        if (window.electronAPI?.foldersScan) {
+          try {
+            const scanResult = await window.electronAPI.foldersScan();
+            if (scanResult && scanResult.length > 0) {
+              console.log('Tree refreshed after move from main process');
+              // Force another re-render after scan completes
+              setTreeVersion(prev => prev + 2);
+            }
+          } catch (scanError) {
+            console.error('Error refreshing tree after move:', scanError);
+          }
+        }
+
+        // Force immediate re-render by updating component state
+        setTimeout(() => {
+          setTreeVersion(prev => prev + 3);
+        }, 50);
+
+        // Force a complete page refresh as fallback
+        setTimeout(() => {
+          if (typeof window !== 'undefined' && window.location) {
+            // Trigger a subtle refresh by updating a timestamp in the URL
+            const url = new URL(window.location.href);
+            url.searchParams.set('t', Date.now().toString());
+            window.history.replaceState({}, '', url.toString());
+          }
+        }, 100);
+
+        console.log('Move operation completed successfully - UI should refresh immediately');
+
+      } else {
+        console.error(`Failed to move ${nodeToMove.path}:`, result.error);
+        alert(`Erreur lors du déplacement: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error during move:', error);
+    }
+
+    // Close modal and clear state
+    setIsMoveModalOpen(false);
+    setNodeToMove(null);
+  }, [nodeToMove]);
+
   const renderTree = (node: EnhancedFolderNode | null, depth = 0): React.ReactNode => {
     if (!node) return null;
     
@@ -547,6 +751,7 @@ export function ModernFolderTree({
           onDelete={() => onDelete?.(node)}
           onRename={() => onRename?.(node)}
           onDuplicate={() => onDuplicate?.(node)}
+          onMove={() => handleMove(node)}
           onNewFolder={() => onNewFolder?.(node.path)}
           onNewFile={() => onNewFile?.(node.path)}
         />
@@ -583,6 +788,18 @@ export function ModernFolderTree({
       <div className="space-y-1 p-2" key={treeVersion}>
         {renderTree(tree)}
       </div>
+
+      {/* Move Modal */}
+      <FolderSelectionModal
+        open={isMoveModalOpen}
+        onOpenChange={setIsMoveModalOpen}
+        folders={convertToFolderNodes(tree)}
+        selectedFolderId={undefined}
+        onFolderSelect={handleMoveDestinationSelect}
+        title="Sélectionner la destination"
+        description={`Déplacer "${nodeToMove?.name}" vers le dossier choisi`}
+        showSearch={false}
+      />
     </TooltipProvider>
   );
 }
