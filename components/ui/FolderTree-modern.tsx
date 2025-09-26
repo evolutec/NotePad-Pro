@@ -402,6 +402,7 @@ export function ModernFolderTree({
   onDuplicate,
   onNewFolder,
   onNewFile,
+  initialExpandedPaths = [],
 }: {
   tree: EnhancedFolderNode | null;
   onFolderSelect?: (path: string) => void;
@@ -415,8 +416,9 @@ export function ModernFolderTree({
   onDuplicate?: (node: EnhancedFolderNode) => void;
   onNewFolder?: (parentPath: string) => void;
   onNewFile?: (parentPath: string) => void;
+  initialExpandedPaths?: string[];
 }) {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set(initialExpandedPaths));
   const [treeVersion, setTreeVersion] = useState(0);
 
   // Update tree version when tree changes (but don't clear expanded paths)

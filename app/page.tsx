@@ -527,7 +527,7 @@ export default function NoteTakingApp() {
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4">
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold text-card-foreground">NotePad Pro</h1>
+            <h1 className="text-xl font-semibold text-card-foreground">FUSION</h1>
           </div>
           <div className="flex items-center gap-2">
             <Button

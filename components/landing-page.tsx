@@ -134,6 +134,7 @@ export function LandingPage({
           }}
           selectedFolder={null} // No selection in landing page
           selectedNote={null} // No selection in landing page
+          initialExpandedPaths={folderTree ? [folderTree.path] : []} // Expand root folder by default
         />
       </div>
     )
@@ -257,17 +258,54 @@ export function LandingPage({
             transition={{ delay: 0.2 }}
             className="text-4xl font-bold mt-6 mb-2"
           >
-            Bienvenue dans NotePad Pro
+            Bienvenue dans FUSION
           </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="text-xl text-muted-foreground mb-8"
+            className="text-xl text-muted-foreground mb-4"
           >
             Votre espace de travail créatif vous attend
           </motion.p>
+
+          {/* Animated FOCUS explanation */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="mb-8"
+          >
+            <div className="text-center space-y-2">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.8, duration: 0.5 }}
+                className="text-lg font-semibold text-primary"
+              >
+                FUSION = FOCUS
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.0, duration: 0.5 }}
+                className="text-sm text-muted-foreground"
+              >
+                Fichiers • Organisation • Création • Utilisation Systémique
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.2, duration: 0.5 }}
+                className="text-xs text-muted-foreground max-w-md mx-auto"
+              >
+                Tous vos fichiers dans une interface cohérente et universelle
+              </motion.div>
+            </div>
+          </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -370,20 +408,19 @@ export function LandingPage({
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1">
-                  <div className="grid grid-cols-2 gap-4 h-[400px] overflow-y-auto">
+                  <div className="grid grid-cols-5 gap-2 h-[400px] overflow-y-auto">
                     {Object.entries(FILE_TYPES).map(([type, config]) => (
                       <motion.div
                         key={type}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        className="flex flex-col items-center justify-center p-4 rounded-lg bg-card hover:bg-accent transition-all cursor-pointer border border-border/50"
+                        className="flex items-center gap-3 p-2 rounded-lg bg-card hover:bg-accent transition-all cursor-pointer border border-border/50"
                         onClick={() => onCreateNew(type as FileType)}
                       >
-                        <div className={cn("w-12 h-12 rounded-full flex items-center justify-center mb-2", config.sidebarButton.background)}>
-                          <config.icon className={cn("w-6 h-6", config.sidebarButton.text)} />
+                        <div className={cn("w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0", config.sidebarButton.background)}>
+                          <config.icon className={cn("w-5 h-5", config.sidebarButton.text)} />
                         </div>
-                        <span className="text-sm font-medium text-center">{config.name}</span>
-                        <span className="text-xs text-muted-foreground text-center mt-1">{config.description}</span>
+                        <div className="font-medium text-sm truncate">{config.name}</div>
                       </motion.div>
                     ))}
                   </div>
@@ -392,38 +429,15 @@ export function LandingPage({
             </motion.div>
           </div>
 
-          {/* Quick Actions */}
+          {/* Copyright */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1.4 }}
             className="mt-8 text-center"
           >
-            <div className="flex justify-center gap-4 flex-wrap">
-              <Button
-                variant="outline"
-                onClick={onNavigateToFiles}
-                className="bg-background/80 backdrop-blur-sm"
-              >
-                <FolderPlus className="w-4 h-4 mr-2" />
-                Organiser mes dossiers
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => onCreateNew('note')}
-                className="bg-background/80 backdrop-blur-sm"
-              >
-                <FileText className="w-4 h-4 mr-2" />
-                Nouvelle note
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => onCreateNew('draw')}
-                className="bg-background/80 backdrop-blur-sm"
-              >
-                <Palette className="w-4 h-4 mr-2" />
-                Nouveau dessin
-              </Button>
+            <div className="text-sm text-muted-foreground">
+              © 2025 FUSION. Tous droits réservés.
             </div>
           </motion.div>
         </div>
