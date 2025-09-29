@@ -25,7 +25,7 @@ const FileIconPdf = ({ className }: { className?: string }) => (
 
 
 import { cn } from "@/lib/utils"
-import { AddDocumentDialog } from "./add-document_dialog"
+import { AddPdfDocumentDialog } from "./add-pdf-document_dialog"
 import { AddDrawDialog } from "./add-draw_dialog"
 
 import { RenameDialog } from "./rename-dialog"
@@ -468,7 +468,7 @@ export function FileManager({
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <AddNoteDialog onNoteCreated={() => { /* Gérer la création de note */ }} />
-              <AddDocumentDialog open={false} onOpenChange={() => {}} parentPath={selectedFolder || ''} onDocumentCreated={() => { /* Gérer la création de document */ }} />
+              <AddPdfDocumentDialog open={false} onOpenChange={() => {}} parentPath={selectedFolder || ''} onDocumentCreated={() => { /* Gérer la création de document */ }} />
               <AddDrawDialog open={false} onOpenChange={() => {}} parentPath={selectedFolder || ''} onDrawCreated={() => { /* Gérer la création de dessin */ }} />
               <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
                 <UploadCloud className="mr-2 h-4 w-4" /> Upload File

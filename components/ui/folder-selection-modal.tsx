@@ -41,6 +41,22 @@ export function FolderSelectionModal({
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDestination, setSelectedDestination] = useState<{id: string | null, path: string} | null>(null);
 
+  // Initialize selectedDestination when modal opens or selectedFolderId changes
+  React.useEffect(() => {
+    if (open && selectedFolderId !== undefined) {
+      console.log('=== Initializing selectedDestination ===');
+      console.log('open:', open);
+      console.log('selectedFolderId:', selectedFolderId);
+      setSelectedDestination({id: selectedFolderId, path: ""});
+    }
+  }, [open, selectedFolderId]);
+
+  // Debug: Track selectedDestination changes
+  React.useEffect(() => {
+    console.log('=== selectedDestination changed ===');
+    console.log('selectedDestination:', selectedDestination);
+  }, [selectedDestination]);
+
   const toggleExpanded = useCallback((folderId: string) => {
     setExpandedFolders(prev => {
       const newSet = new Set(prev);
@@ -54,10 +70,15 @@ export function FolderSelectionModal({
   }, []);
 
   const handleFolderSelect = useCallback((folder: FolderNode) => {
+    console.log('=== handleFolderSelect called ===');
+    console.log('folder:', folder);
+    console.log('Setting selectedDestination to:', {id: folder.id, path: folder.path});
     setSelectedDestination({id: folder.id, path: folder.path});
   }, []);
 
   const handleRootSelect = useCallback(() => {
+    console.log('=== handleRootSelect called ===');
+    console.log('Setting selectedDestination to:', {id: null, path: ""});
     setSelectedDestination({id: null, path: ""});
   }, []);
 
@@ -116,12 +137,28 @@ export function FolderSelectionModal({
         <div key={node.id}>
           <div
             className={cn(
-              "flex items-center gap-2 py-2 px-3 rounded-lg cursor-pointer transition-all duration-200",
-              "hover:bg-accent hover:shadow-sm",
-              selectedFolderId === node.id && "bg-primary/10 ring-2 ring-primary/20 shadow-sm",
+              "flex items-center gap-2 py-2 px-3 rounded-lg cursor-pointer transition-all duration-300 relative group",
+              "hover:bg-accent/50 hover:shadow-sm",
               "border border-transparent hover:border-border/50"
             )}
-            style={{ marginLeft: depth * 16 }}
+            style={{
+              marginLeft: depth * 16,
+              background: (selectedDestination?.id === node.id)
+                ? "linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(147, 197, 253, 0.1) 100%)"
+                : undefined,
+              border: (selectedDestination?.id === node.id)
+                ? "1px solid rgba(59, 130, 246, 0.3)"
+                : undefined,
+              borderLeft: (selectedDestination?.id === node.id)
+                ? "4px solid #3b82f6"
+                : undefined,
+              boxShadow: (selectedDestination?.id === node.id)
+                ? "0 4px 12px rgba(59, 130, 246, 0.15)"
+                : undefined,
+              transform: (selectedDestination?.id === node.id)
+                ? "scale(1.02)"
+                : undefined
+            }}
             onClick={() => handleFolderSelect(node)}
           >
             {/* Expand/Collapse button */}
@@ -176,7 +213,7 @@ export function FolderSelectionModal({
         </div>
       );
     });
-  }, [expandedFolders, selectedFolderId, handleFolderSelect, toggleExpanded]);
+  }, [expandedFolders, selectedDestination, handleFolderSelect, toggleExpanded]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -228,11 +265,27 @@ export function FolderSelectionModal({
             {/* Root option */}
             <div
               className={cn(
-                "flex items-center gap-2 py-2 px-3 rounded-lg cursor-pointer transition-all duration-200",
-                "hover:bg-accent hover:shadow-sm",
-                !selectedFolderId && "bg-primary/10 ring-2 ring-primary/20 shadow-sm",
+                "flex items-center gap-2 py-2 px-3 rounded-lg cursor-pointer transition-all duration-300 relative group",
+                "hover:bg-accent/50 hover:shadow-sm",
                 "border border-transparent hover:border-border/50"
               )}
+              style={{
+                background: (selectedDestination?.id === null)
+                  ? "linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(147, 197, 253, 0.1) 100%)"
+                  : undefined,
+                border: (selectedDestination?.id === null)
+                  ? "1px solid rgba(59, 130, 246, 0.3)"
+                  : undefined,
+                borderLeft: (selectedDestination?.id === null)
+                  ? "4px solid #3b82f6"
+                  : undefined,
+                boxShadow: (selectedDestination?.id === null)
+                  ? "0 4px 12px rgba(59, 130, 246, 0.15)"
+                  : undefined,
+                transform: (selectedDestination?.id === null)
+                  ? "scale(1.02)"
+                  : undefined
+              }}
               onClick={handleRootSelect}
             >
               <div className="flex items-center justify-center w-8 h-8 rounded-md bg-background border border-border/50">

@@ -1,7 +1,9 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import { GenericModal, ModalTab, ModalField, ModalButton } from "@/components/ui/generic-modal";
-import { Code as CodeIcon, FilePlus } from "lucide-react"; // Using Code for code icon
+import { Code as CodeIcon, FilePlus, Folder, Home } from "lucide-react"; // Using Code for code icon
+import { FolderSelectionModal, type FolderNode } from "@/components/ui/folder-selection-modal";
 
 export interface CodeMeta {
   id: string;
@@ -28,14 +30,134 @@ export function AddCodeDialog({ open, onOpenChange, parentPath, onCodeCreated }:
   const [creationSuccess, setCreationSuccess] = useState<string | null>(null);
   const [parentId, setParentId] = useState<string | undefined>(undefined);
   const [existingFolders, setExistingFolders] = useState<any[]>([]);
+  const [showFolderModal, setShowFolderModal] = useState(false);
 
   useEffect(() => {
-    if (open && window.electronAPI?.foldersLoad) {
-      window.electronAPI.foldersLoad().then((loadedFolders: any[]) => {
-        setExistingFolders(loadedFolders);
+    if (open && window.electronAPI?.foldersScan) {
+      window.electronAPI.foldersScan().then((scannedFolders: any[]) => {
+        setExistingFolders(scannedFolders);
       });
     }
   }, [open]);
+
+  // Convert folders to FolderNode format for the tree selector
+  const folderNodes: FolderNode[] = React.useMemo(() => {
+    // Handle the tree structure returned by foldersScan
+    const convertTreeToNodes = (treeNode: any, parentId?: string): FolderNode[] => {
+      if (!treeNode || typeof treeNode !== 'object') return [];
+
+      const nodes: FolderNode[] = [];
+
+      // Add the current node if it's a directory
+      if (treeNode.isDirectory) {
+        nodes.push({
+          id: treeNode.path || `${parentId}-${treeNode.name}`,
+          name: treeNode.name,
+          path: treeNode.path,
+          children: treeNode.children ? convertTreeToNodesFromArray(treeNode.children, treeNode.path) : [],
+          parent: parentId
+        });
+      }
+
+      return nodes;
+    };
+
+    const convertTreeToNodesFromArray = (children: any[], parentPath?: string): FolderNode[] => {
+      if (!Array.isArray(children)) return [];
+
+      return children
+        .filter(child => child && child.isDirectory)
+        .map(child => ({
+          id: child.path || `${parentPath}-${child.name}`,
+          name: child.name,
+          path: child.path,
+          children: child.children ? convertTreeToNodesFromArray(child.children, child.path) : [],
+          parent: parentPath
+        }));
+    };
+
+    // Handle both flat array of folders (from foldersLoad) and tree structure (from foldersScan)
+    if (existingFolders.length > 0 && (existingFolders[0] as any).children) {
+      // Tree structure from foldersScan
+      return convertTreeToNodesFromArray((existingFolders[0] as any).children || []);
+    } else {
+      // Flat array structure from foldersLoad
+      const buildTree = (folders: any[], parentId?: string): FolderNode[] => {
+        return folders
+          .filter(folder => folder.parentId === parentId)
+          .map(folder => ({
+            id: folder.id,
+            name: folder.name,
+            path: folder.path || folder.name,
+            children: buildTree(folders, folder.id),
+            parent: parentId
+          }));
+      };
+      return buildTree(existingFolders);
+    }
+  }, [existingFolders]);
+
+  // Handle folder selection
+  const handleFolderSelect = (folderId: string | null, folderPath: string) => {
+    setParentId(folderId || undefined);
+  };
+
+  // Get selected folder name for display
+  const getSelectedFolderName = React.useMemo(() => {
+    console.log('=== getSelectedFolderName called ===');
+    console.log('parentId:', parentId);
+    console.log('existingFolders:', existingFolders);
+
+    if (!parentId) {
+      console.log('No parentId, returning Racine');
+      return "Racine";
+    }
+
+    // First try to find in existingFolders (from foldersScan)
+    const folder = existingFolders.find(f => {
+      console.log('Checking folder:', f.id, f.name, 'against parentId:', parentId);
+      return f.id === parentId;
+    });
+
+    if (folder?.name) {
+      console.log('Found folder with name:', folder.name);
+      return folder.name;
+    }
+
+    // If not found in root level, try to search in the tree structure
+    if (existingFolders.length > 0 && (existingFolders[0] as any).children) {
+      const findInTree = (nodes: any[]): any => {
+        for (const node of nodes) {
+          if (node.path === parentId || node.id === parentId) {
+            console.log('Found in tree:', node.name);
+            return node;
+          }
+          if (node.children) {
+            const found = findInTree(node.children);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      const foundFolder = findInTree((existingFolders[0] as any).children || []);
+      if (foundFolder?.name) {
+        console.log('Found folder in tree with name:', foundFolder.name);
+        return foundFolder.name;
+      }
+    }
+
+    // If not found, try to extract from the path
+    if (typeof parentId === 'string' && parentId.includes('/')) {
+      const pathParts = parentId.split('/');
+      const folderName = pathParts[pathParts.length - 1] || "Racine";
+      console.log('Extracted from path:', folderName);
+      return folderName;
+    }
+
+    console.log('Using default: Racine');
+    return "Racine";
+  }, [parentId, existingFolders]);
 
   const handleCreateCode = async () => {
     setCreationError(null);
@@ -105,22 +227,31 @@ export function AddCodeDialog({ open, onOpenChange, parentPath, onCodeCreated }:
   // Define fields for the GenericModal
   const fields: ModalField[] = [
     {
-      id: 'parentFolder',
-      label: 'Dossier parent',
-      type: 'select',
-      placeholder: 'Dossier sélectionné par défaut',
-      required: false,
-      options: [
-        { label: 'Dossier sélectionné par défaut', value: '' },
-        ...existingFolders.map(f => ({ label: f.name, value: f.id }))
-      ]
-    },
-    {
       id: 'codeName',
       label: 'Nom du fichier de code',
       type: 'text',
       placeholder: 'Ex: script.js, main.py, index.ts...',
       required: true
+    },
+    {
+      id: 'parent',
+      label: 'Dossier parent',
+      type: 'custom',
+      required: false,
+      content: (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full justify-between text-left font-normal"
+          onClick={() => setShowFolderModal(true)}
+        >
+          <div className="flex items-center gap-2 truncate">
+            <Home className="w-4 h-4" />
+            <span className="truncate">{getSelectedFolderName}</span>
+          </div>
+          <Folder className="w-4 h-4 opacity-50" />
+        </Button>
+      )
     },
     {
       id: 'codeType',
@@ -153,24 +284,37 @@ export function AddCodeDialog({ open, onOpenChange, parentPath, onCodeCreated }:
   ];
 
   return (
-    <GenericModal
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Créer un nouveau fichier de code"
-      icon={<CodeIcon className="h-6 w-6" />}
-      description="Créez un nouveau fichier de code dans le type de votre choix"
-      colorTheme="orange"
-      fileType="code"
-      size="lg"
-      fields={fields}
-      buttons={buttons}
-      showCancelButton={true}
-      cancelLabel="Annuler"
-      error={creationError}
-      success={creationSuccess}
-      showCloseButton={true}
-      closeButtonPosition="top-right"
-      showFooter={true}
-    />
+    <>
+      <GenericModal
+        open={open}
+        onOpenChange={onOpenChange}
+        title="Créer un nouveau fichier de code"
+        icon={<CodeIcon className="h-6 w-6" />}
+        description="Créez un nouveau fichier de code dans le type de votre choix"
+        colorTheme="orange"
+        fileType="code"
+        size="lg"
+        fields={fields}
+        buttons={buttons}
+        showCancelButton={true}
+        cancelLabel="Annuler"
+        error={creationError}
+        success={creationSuccess}
+        showCloseButton={true}
+        closeButtonPosition="top-right"
+        showFooter={true}
+      />
+
+      {/* Folder Selection Modal */}
+      <FolderSelectionModal
+        open={showFolderModal}
+        onOpenChange={setShowFolderModal}
+        folders={folderNodes}
+        selectedFolderId={parentId}
+        onFolderSelect={handleFolderSelect}
+        title="Sélectionner le dossier parent"
+        description="Choisissez le dossier dans lequel créer le nouveau fichier de code"
+      />
+    </>
   );
 }

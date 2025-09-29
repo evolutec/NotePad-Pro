@@ -3,8 +3,9 @@ import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Video as VideoIcon, Camera, Square, Upload, Image, Mic, FolderOpen } from "lucide-react";
+import { Video as VideoIcon, Camera, Square, Upload, Image, Mic, FolderOpen, Folder, Home } from "lucide-react";
 import { GenericModal, ModalTab, ModalField, ModalButton } from "@/components/ui/generic-modal";
+import { FolderSelectionModal, type FolderNode } from "@/components/ui/folder-selection-modal";
 
 export interface VideoMeta {
   id: string;
@@ -48,6 +49,9 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
   const [creationError, setCreationError] = useState<string | null>(null);
   const [creationSuccess, setCreationSuccess] = useState<string | null>(null);
   const [currentVideoFile, setCurrentVideoFile] = useState<string | null>(null);
+  const [parentId, setParentId] = useState<string | undefined>(undefined);
+  const [existingFolders, setExistingFolders] = useState<any[]>([]);
+  const [showFolderModal, setShowFolderModal] = useState(false);
 
   // Refs
   const videoPreviewRef = useRef<HTMLCanvasElement>(null);
@@ -73,6 +77,133 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
       });
     }
   }, [open]);
+
+  useEffect(() => {
+    if (open && window.electronAPI?.foldersScan) {
+      window.electronAPI.foldersScan().then((scannedFolders: any[]) => {
+        setExistingFolders(scannedFolders);
+      });
+    }
+  }, [open]);
+
+  // Convert folders to FolderNode format for the tree selector
+  const folderNodes: FolderNode[] = React.useMemo(() => {
+    // Handle the tree structure returned by foldersScan
+    const convertTreeToNodes = (treeNode: any, parentId?: string): FolderNode[] => {
+      if (!treeNode || typeof treeNode !== 'object') return [];
+
+      const nodes: FolderNode[] = [];
+
+      // Add the current node if it's a directory
+      if (treeNode.isDirectory) {
+        nodes.push({
+          id: treeNode.path || `${parentId}-${treeNode.name}`,
+          name: treeNode.name,
+          path: treeNode.path,
+          children: treeNode.children ? convertTreeToNodesFromArray(treeNode.children, treeNode.path) : [],
+          parent: parentId
+        });
+      }
+
+      return nodes;
+    };
+
+    const convertTreeToNodesFromArray = (children: any[], parentPath?: string): FolderNode[] => {
+      if (!Array.isArray(children)) return [];
+
+      return children
+        .filter(child => child && child.isDirectory)
+        .map(child => ({
+          id: child.path || `${parentPath}-${child.name}`,
+          name: child.name,
+          path: child.path,
+          children: child.children ? convertTreeToNodesFromArray(child.children, child.path) : [],
+          parent: parentPath
+        }));
+    };
+
+    // Handle both flat array of folders (from foldersLoad) and tree structure (from foldersScan)
+    if (existingFolders.length > 0 && (existingFolders[0] as any).children) {
+      // Tree structure from foldersScan
+      return convertTreeToNodesFromArray((existingFolders[0] as any).children || []);
+    } else {
+      // Flat array structure from foldersLoad
+      const buildTree = (folders: any[], parentId?: string): FolderNode[] => {
+        return folders
+          .filter(folder => folder.parentId === parentId)
+          .map(folder => ({
+            id: folder.id,
+            name: folder.name,
+            path: folder.path || folder.name,
+            children: buildTree(folders, folder.id),
+            parent: parentId
+          }));
+      };
+      return buildTree(existingFolders);
+    }
+  }, [existingFolders]);
+
+  // Handle folder selection
+  const handleFolderSelect = (folderId: string | null, folderPath: string) => {
+    setParentId(folderId || undefined);
+  };
+
+  // Get selected folder name for display
+  const getSelectedFolderName = React.useMemo(() => {
+    console.log('=== getSelectedFolderName called ===');
+    console.log('parentId:', parentId);
+    console.log('existingFolders:', existingFolders);
+
+    if (!parentId) {
+      console.log('No parentId, returning Racine');
+      return "Racine";
+    }
+
+    // First try to find in existingFolders (from foldersScan)
+    const folder = existingFolders.find(f => {
+      console.log('Checking folder:', f.id, f.name, 'against parentId:', parentId);
+      return f.id === parentId;
+    });
+
+    if (folder?.name) {
+      console.log('Found folder with name:', folder.name);
+      return folder.name;
+    }
+
+    // If not found in root level, try to search in the tree structure
+    if (existingFolders.length > 0 && (existingFolders[0] as any).children) {
+      const findInTree = (nodes: any[]): any => {
+        for (const node of nodes) {
+          if (node.path === parentId || node.id === parentId) {
+            console.log('Found in tree:', node.name);
+            return node;
+          }
+          if (node.children) {
+            const found = findInTree(node.children);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      const foundFolder = findInTree((existingFolders[0] as any).children || []);
+      if (foundFolder?.name) {
+        console.log('Found folder in tree with name:', foundFolder.name);
+        return foundFolder.name;
+      }
+    }
+
+    // If not found, try to extract from the path
+    if (typeof parentId === 'string' && parentId.includes('/')) {
+      const pathParts = parentId.split('/');
+      const folderName = pathParts[pathParts.length - 1] || "Racine";
+      console.log('Extracted from path:', folderName);
+      return folderName;
+    }
+
+    console.log('Using default: Racine');
+    return "Racine";
+  }, [parentId, existingFolders]);
 
   // Camera preview effect
   useEffect(() => {
@@ -446,33 +577,6 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
       content: (
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="upload-path">Dossier de destination</Label>
-            <div className="flex gap-2">
-              <Input
-                id="upload-path"
-                value={selectedPath}
-                onChange={(e) => setSelectedPath(e.target.value)}
-                placeholder="Sélectionner le dossier..."
-                className="flex-1"
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  if (window.electronAPI?.selectFolder) {
-                    const result = await window.electronAPI.selectFolder();
-                    if (result && typeof result === 'object' && 'filePaths' in result && result.filePaths && result.filePaths.length > 0) {
-                      setSelectedPath(result.filePaths[0]);
-                    }
-                  }
-                }}
-              >
-                <FolderOpen className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="video-name">Nom de la vidéo</Label>
             <Input
               id="video-name"
@@ -491,6 +595,22 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
               onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
               ref={fileInputRef}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Dossier parent</Label>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-between text-left font-normal"
+              onClick={() => setShowFolderModal(true)}
+            >
+              <div className="flex items-center gap-2 truncate">
+                <Home className="w-4 h-4" />
+            <span className="truncate">{getSelectedFolderName}</span>
+              </div>
+              <Folder className="w-4 h-4 opacity-50" />
+            </Button>
           </div>
 
           <div className="space-y-2">
@@ -560,33 +680,6 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="record-path">Dossier de destination</Label>
-            <div className="flex gap-2">
-              <Input
-                id="record-path"
-                value={selectedPath}
-                onChange={(e) => setSelectedPath(e.target.value)}
-                placeholder="Sélectionner le dossier..."
-                className="flex-1"
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  if (window.electronAPI?.selectFolder) {
-                    const result = await window.electronAPI.selectFolder();
-                    if (result && typeof result === 'object' && 'filePaths' in result && result.filePaths && result.filePaths.length > 0) {
-                      setSelectedPath(result.filePaths[0]);
-                    }
-                  }
-                }}
-              >
-                <FolderOpen className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="record-name">Nom de la vidéo</Label>
             <Input
               id="record-name"
@@ -594,6 +687,22 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
               value={videoName}
               onChange={(e) => setVideoName(e.target.value)}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Dossier parent</Label>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-between text-left font-normal"
+              onClick={() => setShowFolderModal(true)}
+            >
+              <div className="flex items-center gap-2 truncate">
+                <Home className="w-4 h-4" />
+                <span className="truncate">{getSelectedFolderName}</span>
+              </div>
+              <Folder className="w-4 h-4 opacity-50" />
+            </Button>
           </div>
 
           {/* Live Preview - Centered Square */}
@@ -731,24 +840,37 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
   ];
 
   return (
-    <GenericModal
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Créer une nouvelle vidéo"
-      icon={<VideoIcon className="h-6 w-6" />}
-      description="Importez un fichier vidéo existant ou enregistrez une nouvelle vidéo avec votre caméra"
-      colorTheme="purple"
-      fileType="video"
-      size="xl"
-      tabs={tabs}
-      buttons={buttons}
-      showCancelButton={true}
-      cancelLabel="Annuler"
-      error={creationError}
-      success={creationSuccess}
-      showCloseButton={true}
-      closeButtonPosition="top-right"
-      showFooter={true}
-    />
+    <>
+      <GenericModal
+        open={open}
+        onOpenChange={onOpenChange}
+        title="Créer une nouvelle vidéo"
+        icon={<VideoIcon className="h-6 w-6" />}
+        description="Importez un fichier vidéo existant ou enregistrez une nouvelle vidéo avec votre caméra"
+        colorTheme="purple"
+        fileType="video"
+        size="xl"
+        tabs={tabs}
+        buttons={buttons}
+        showCancelButton={true}
+        cancelLabel="Annuler"
+        error={creationError}
+        success={creationSuccess}
+        showCloseButton={true}
+        closeButtonPosition="top-right"
+        showFooter={true}
+      />
+
+      {/* Folder Selection Modal */}
+      <FolderSelectionModal
+        open={showFolderModal}
+        onOpenChange={setShowFolderModal}
+        folders={folderNodes}
+        selectedFolderId={parentId}
+        onFolderSelect={handleFolderSelect}
+        title="Sélectionner le dossier parent"
+        description="Choisissez le dossier dans lequel créer la nouvelle vidéo"
+      />
+    </>
   );
 }

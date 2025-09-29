@@ -15,7 +15,7 @@ import type { EnhancedFolderNode } from "@/components/ui/FolderTree-modern"
 import { AddFolderDialog } from "@/components/add-folder_dialog"
 import { AddNoteDialog } from "@/components/add-note_dialog"
 import { AddDrawDialog } from "@/components/add-draw_dialog"
-import { AddDocumentDialog } from "@/components/add-document_dialog"
+import { AddPdfDocumentDialog } from "@/components/add-pdf-document_dialog"
 import { AddAudioDialog } from "@/components/add-audio_dialog"
 import { AddImageDialog } from "@/components/add-image_dialog"
 import { AddVideoDialog } from "@/components/add-video_dialog"
@@ -558,7 +558,7 @@ export default function NoteTakingApp() {
           onNewFile={async (parentPath, type) => {
             console.log('New file:', parentPath, type)
             if (type === 'document') {
-              setIsAddDocumentOpen(true)
+              setIsAddDocumentOpen(true) // This now opens the PDF dialog
             } else if (type === 'note') {
               setIsAddNoteOpen(true)
             } else if (type === 'audio') {
@@ -835,12 +835,12 @@ export default function NoteTakingApp() {
           }
         }}
       />
-      <AddDocumentDialog
+      <AddPdfDocumentDialog
         open={isAddDocumentOpen}
         onOpenChange={setIsAddDocumentOpen}
         parentPath={selectedFolder || ''}
         onDocumentCreated={async (newDocument) => {
-          console.log('Document created:', newDocument)
+          console.log('PDF Document created:', newDocument)
           // Reload the folder tree to reflect changes
           if (window.electronAPI?.foldersScan) {
             const result = await window.electronAPI.foldersScan()

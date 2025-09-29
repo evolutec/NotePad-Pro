@@ -39,6 +39,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import ModernFolderTree, { EnhancedFolderNode } from './FolderTree-modern';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+// CSS import - side-effect import for styles
+// @ts-ignore - Suppress TypeScript error for CSS import
 import './tree-styles.css';
 
 interface ModernSidebarProps {
@@ -84,13 +86,19 @@ export function ModernSidebar({
   const [filterType, setFilterType] = useState<'all' | 'folders' | 'notes' | 'draws' | 'documents' | 'images'>('all');
   const [isElectronMode, setIsElectronMode] = useState(false);
   const [isClient, setIsClient] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Use useEffect to detect Electron mode on client side only
   React.useEffect(() => {
     setIsClient(true);
     setIsElectronMode(!!(window.electronAPI || window.electron));
   }, []);
+
+  // Sync with parent collapse state
+  const handleToggleCollapse = useCallback(() => {
+    if (onToggleCollapse) {
+      onToggleCollapse();
+    }
+  }, [onToggleCollapse]);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchQuery(value);
@@ -219,35 +227,35 @@ export function ModernSidebar({
   return (
     <aside className={cn(
       "h-full flex flex-col bg-card border-r border-border transition-all duration-300",
-      sidebarCollapsed ? "w-12 min-w-[3rem]" : "w-80 min-w-[20rem] max-w-[30rem]",
+      isCollapsed ? "w-12 min-w-[3rem]" : "w-80 min-w-[20rem] max-w-[30rem]",
       className
     )}>
       {/* Header */}
       <div className="p-4 border-b border-border/50">
         <div className="flex items-center justify-end mb-4">
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             className="p-1 h-8 w-8"
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            onClick={handleToggleCollapse}
           >
-            <ChevronLeft className={`w-4 h-4 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`} />
+            <ChevronLeft className={`w-4 h-4 transition-transform ${isCollapsed ? 'rotate-180' : ''}`} />
           </Button>
         </div>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <div className={cn("flex flex-wrap items-center gap-2", sidebarCollapsed && "flex-col")}>
+            <div className={cn("flex flex-wrap items-center gap-2", isCollapsed && "flex-col")}>
               <div className="flex flex-wrap items-center gap-2">
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className={cn("h-12 w-12 p-0 bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900 dark:hover:bg-yellow-800 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300", sidebarCollapsed && "h-7 w-7 p-1")}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn("h-12 w-12 p-0 bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900 dark:hover:bg-yellow-800 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300", isCollapsed && "h-7 w-7 p-1")}
                         onClick={handleNewFolder}
                       >
-                        <FolderPlus className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
+                        <FolderPlus className={cn("w-4 h-4", isCollapsed && "w-3 h-3")} />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="right">
@@ -258,13 +266,13 @@ export function ModernSidebar({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className={cn("h-12 w-12 p-0 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300", sidebarCollapsed && "h-7 w-7 p-1")}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn("h-12 w-12 p-0 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300", isCollapsed && "h-7 w-7 p-1")}
                         onClick={() => onNewFile?.('root', 'note')}
                       >
-                        <FilePlus className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
+                        <FilePlus className={cn("w-4 h-4", isCollapsed && "w-3 h-3")} />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="right">
@@ -275,13 +283,13 @@ export function ModernSidebar({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className={cn("h-12 w-12 p-0 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300", sidebarCollapsed && "h-7 w-7 p-1")}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn("h-12 w-12 p-0 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300", isCollapsed && "h-7 w-7 p-1")}
                         onClick={handleNewDraw}
                       >
-                        <Palette className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
+                        <Palette className={cn("w-4 h-4", isCollapsed && "w-3 h-3")} />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="right">
@@ -292,13 +300,13 @@ export function ModernSidebar({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className={cn("h-12 w-12 p-0 bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300", sidebarCollapsed && "h-7 w-7 p-1")}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn("h-12 w-12 p-0 bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300", isCollapsed && "h-7 w-7 p-1")}
                         onClick={() => onNewFile?.('root', 'document')}
                       >
-                        <FileText className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
+                        <FileText className={cn("w-4 h-4", isCollapsed && "w-3 h-3")} />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="right">
@@ -309,13 +317,13 @@ export function ModernSidebar({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className={cn("h-12 w-12 p-0 bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300", sidebarCollapsed && "h-7 w-7 p-1")}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn("h-12 w-12 p-0 bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300", isCollapsed && "h-7 w-7 p-1")}
                         onClick={() => onNewFile?.('root', 'image')}
                       >
-                        <FileImage className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
+                        <FileImage className={cn("w-4 h-4", isCollapsed && "w-3 h-3")} />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="right">
@@ -328,13 +336,13 @@ export function ModernSidebar({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className={cn("h-12 w-12 p-0 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300", sidebarCollapsed && "h-7 w-7 p-1")}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn("h-12 w-12 p-0 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300", isCollapsed && "h-7 w-7 p-1")}
                         onClick={() => onNewFile?.('root', 'video')}
                       >
-                        <FileVideo className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
+                        <FileVideo className={cn("w-4 h-4", isCollapsed && "w-3 h-3")} />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="right">
@@ -345,13 +353,13 @@ export function ModernSidebar({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className={cn("h-12 w-12 p-0 bg-pink-100 hover:bg-pink-200 dark:bg-pink-900 dark:hover:bg-pink-800 text-pink-600 dark:text-pink-400 hover:text-pink-700 dark:hover:text-pink-300", sidebarCollapsed && "h-7 w-7 p-1")}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn("h-12 w-12 p-0 bg-pink-100 hover:bg-pink-200 dark:bg-pink-900 dark:hover:bg-pink-800 text-pink-600 dark:text-pink-400 hover:text-pink-700 dark:hover:text-pink-300", isCollapsed && "h-7 w-7 p-1")}
                         onClick={() => onNewFile?.('root', 'audio')}
                       >
-                        <FileAudio className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
+                        <FileAudio className={cn("w-4 h-4", isCollapsed && "w-3 h-3")} />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="right">
@@ -362,13 +370,13 @@ export function ModernSidebar({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className={cn("h-12 w-12 p-0 bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300", sidebarCollapsed && "h-7 w-7 p-1")}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn("h-12 w-12 p-0 bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300", isCollapsed && "h-7 w-7 p-1")}
                         onClick={() => onNewFile?.('root', 'code')}
                       >
-                        <FileCode className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
+                        <FileCode className={cn("w-4 h-4", isCollapsed && "w-3 h-3")} />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="right">
@@ -379,13 +387,13 @@ export function ModernSidebar({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className={cn("h-12 w-12 p-0 bg-gray-100 hover:bg-gray-200 dark:bg-gray-900 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300", sidebarCollapsed && "h-7 w-7 p-1")}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn("h-12 w-12 p-0 bg-gray-100 hover:bg-gray-200 dark:bg-gray-900 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300", isCollapsed && "h-7 w-7 p-1")}
                         onClick={() => onNewFile?.('root', 'archive')}
                       >
-                        <FileArchive className={cn("w-4 h-4", sidebarCollapsed && "w-3 h-3")} />
+                        <FileArchive className={cn("w-4 h-4", isCollapsed && "w-3 h-3")} />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="right">
@@ -394,7 +402,7 @@ export function ModernSidebar({
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              {isClient && !isElectronMode && !sidebarCollapsed && (
+              {isClient && !isElectronMode && !isCollapsed && (
                 <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
                   Mode navigateur
                 </Badge>
@@ -406,7 +414,7 @@ export function ModernSidebar({
         </div>
 
         {/* Search - Hidden when collapsed */}
-        {!sidebarCollapsed && (
+        {!isCollapsed && (
           <div className="relative mt-4">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -451,7 +459,7 @@ export function ModernSidebar({
       </div>
 
       {/* Content - Hidden when collapsed */}
-      {!sidebarCollapsed && (
+      {!isCollapsed && (
         <>
           {/* Tabs */}
           <div className="border-b border-border/50">
