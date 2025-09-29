@@ -321,6 +321,8 @@ export function LandingPage({
               <Home className="w-5 h-5 mr-2" />
               Explorer mes fichiers
             </Button>
+
+
           </motion.div>
         </motion.header>
 

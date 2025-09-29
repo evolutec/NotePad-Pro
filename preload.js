@@ -121,4 +121,35 @@ contextBridge.exposeInMainWorld('electronAPI', {
     console.log('Preload: Creating directory:', dirPath);
     return ipcRenderer.invoke('fs:mkdir', dirPath);
   },
+
+  // NTFS Alternate Data Streams for folder metadata
+  folderSetMetadata: (folderPath, metadata) => {
+    console.log('Preload: Setting folder metadata for:', folderPath);
+    return ipcRenderer.invoke('folder:setMetadata', folderPath, metadata);
+  },
+
+  folderGetMetadata: (folderPath) => {
+    console.log('Preload: Getting folder metadata for:', folderPath);
+    return ipcRenderer.invoke('folder:getMetadata', folderPath);
+  },
+
+  folderUpdateMetadata: (folderPath, updates) => {
+    console.log('Preload: Updating folder metadata for:', folderPath);
+    return ipcRenderer.invoke('folder:updateMetadata', folderPath, updates);
+  },
+
+  folderDeleteMetadata: (folderPath) => {
+    console.log('Preload: Deleting folder metadata for:', folderPath);
+    return ipcRenderer.invoke('folder:deleteMetadata', folderPath);
+  },
+
+  folderListWithMetadata: (rootPath) => {
+    console.log('Preload: Listing folders with metadata for:', rootPath);
+    return ipcRenderer.invoke('folder:listWithMetadata', rootPath);
+  },
+
+  foldersMigrateToADS: () => {
+    console.log('Preload: Starting migration to NTFS ADS');
+    return ipcRenderer.invoke('folders:migrateToADS');
+  },
 });

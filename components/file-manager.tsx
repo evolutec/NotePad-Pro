@@ -164,6 +164,10 @@ export function FileManager({
         const result = await window.electronAPI.fileDelete(folder.path || folder.id);
         if (result.success) {
           console.log(`Folder ${folder.name} deleted successfully`);
+
+          // Clean up folder from folders.json
+          await cleanupFolderFromJson(folder.id);
+
           // Refresh the folder tree or reload folders
           if (window.electronAPI?.foldersLoad) {
             const updatedFolders = await window.electronAPI.foldersLoad();
@@ -193,6 +197,17 @@ export function FileManager({
         const result = await window.electronAPI.fileDelete(file.id);
         if (result.success) {
           console.log(`File ${file.name} deleted successfully`);
+
+          // Clean up metadata from JSON files based on file type
+          const fileExtension = file.name.split('.').pop()?.toLowerCase();
+          if (fileExtension === 'pdf') {
+            await cleanupPdfFromJson(file.id);
+          } else if (fileExtension === 'md') {
+            await cleanupNoteFromJson(file.id);
+          } else if (fileExtension === 'draw') {
+            await cleanupDrawFromJson(file.id);
+          }
+
           // Refresh the file list or reload files
           // This would need to be connected to your file state management
         } else {
@@ -211,6 +226,89 @@ export function FileManager({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const linkInputRef = useRef<HTMLInputElement>(null);
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
+
+  // JSON file management functions
+  const readJsonFile = async (filename: string): Promise<any[]> => {
+    try {
+      if (window.electronAPI?.readFile) {
+        const result = await window.electronAPI.readFile(filename);
+        if (result.success) {
+          return JSON.parse(result.data);
+        }
+      }
+    } catch (error) {
+      console.error(`Error reading ${filename}:`, error);
+    }
+    return [];
+  };
+
+  const writeJsonFile = async (filename: string, data: any[]): Promise<boolean> => {
+    try {
+      if (window.electronAPI?.writeFile) {
+        const result = await window.electronAPI.writeFile(filename, JSON.stringify(data, null, 2));
+        return result.success;
+      }
+    } catch (error) {
+      console.error(`Error writing ${filename}:`, error);
+    }
+    return false;
+  };
+
+  const cleanupFolderFromJson = async (folderId: string): Promise<void> => {
+    try {
+      // Remove from folders.json
+      const folders = await readJsonFile('folders.json');
+      const filteredFolders = folders.filter((f: any) => f.id !== folderId);
+      const writeResult = await (window.electronAPI as any).writeFile('folders.json', JSON.stringify(filteredFolders, null, 2));
+      if (writeResult?.success) {
+        console.log(`Cleaned up folder ${folderId} from folders.json`);
+      }
+    } catch (error) {
+      console.error(`Error cleaning up folder ${folderId} from JSON:`, error);
+    }
+  };
+
+  const cleanupNoteFromJson = async (noteId: string): Promise<void> => {
+    try {
+      // Remove from notes.json
+      const notes = await readJsonFile('notes.json');
+      const filteredNotes = notes.filter((n: any) => n.id !== noteId);
+      const writeResult = await (window.electronAPI as any).writeFile('notes.json', JSON.stringify(filteredNotes, null, 2));
+      if (writeResult?.success) {
+        console.log(`Cleaned up note ${noteId} from notes.json`);
+      }
+    } catch (error) {
+      console.error(`Error cleaning up note ${noteId} from JSON:`, error);
+    }
+  };
+
+  const cleanupDrawFromJson = async (drawId: string): Promise<void> => {
+    try {
+      // Remove from draws.json
+      const draws = await readJsonFile('draws.json');
+      const filteredDraws = draws.filter((d: any) => d.id !== drawId);
+      const writeResult = await (window.electronAPI as any).writeFile('draws.json', JSON.stringify(filteredDraws, null, 2));
+      if (writeResult?.success) {
+        console.log(`Cleaned up draw ${drawId} from draws.json`);
+      }
+    } catch (error) {
+      console.error(`Error cleaning up draw ${drawId} from JSON:`, error);
+    }
+  };
+
+  const cleanupPdfFromJson = async (pdfId: string): Promise<void> => {
+    try {
+      // Remove from pdfs.json
+      const pdfs = await readJsonFile('pdfs.json');
+      const filteredPdfs = pdfs.filter((p: any) => p.id !== pdfId);
+      const writeResult = await (window.electronAPI as any).writeFile('pdfs.json', JSON.stringify(filteredPdfs, null, 2));
+      if (writeResult?.success) {
+        console.log(`Cleaned up PDF ${pdfId} from pdfs.json`);
+      }
+    } catch (error) {
+      console.error(`Error cleaning up PDF ${pdfId} from JSON:`, error);
+    }
+  };
 
   const getFileType = (filename: string): FileType => {
     const extension = filename.split(".").pop()?.toLowerCase();

@@ -86,6 +86,7 @@ export function ModernSidebar({
   const [filterType, setFilterType] = useState<'all' | 'folders' | 'notes' | 'draws' | 'documents' | 'images'>('all');
   const [isElectronMode, setIsElectronMode] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [enhancedTree, setEnhancedTree] = useState<EnhancedFolderNode | null>(null);
 
   // Use useEffect to detect Electron mode on client side only
   React.useEffect(() => {
@@ -138,18 +139,41 @@ export function ModernSidebar({
     }
   }, []);
 
-  const filteredTree = useCallback((node: EnhancedFolderNode | null): EnhancedFolderNode | null => {
+  const filteredTree = useCallback(async (node: EnhancedFolderNode | null): Promise<EnhancedFolderNode | null> => {
     if (!node) return null;
-    
+
     console.log('filteredTree: processing node:', node.name, 'isDirectory:', node.isDirectory, 'children:', node.children?.length);
-    
+
+    // Load NTFS metadata for folders
+    let enhancedNode = { ...node };
+
+    if (node.isDirectory && window.electronAPI?.folderGetMetadata) {
+      try {
+        const metadataResult = await window.electronAPI.folderGetMetadata(node.path);
+        if (metadataResult.success && metadataResult.data) {
+          enhancedNode = {
+            ...node,
+            color: metadataResult.data.color,
+            icon: metadataResult.data.icon,
+            description: metadataResult.data.description,
+            tags: metadataResult.data.tags,
+            metadata: metadataResult.data
+          };
+          console.log('✅ Loaded NTFS metadata for folder:', node.name, metadataResult.data);
+        }
+      } catch (error) {
+        console.error('❌ Error loading NTFS metadata for folder:', node.name, error);
+      }
+    }
+
     if (searchQuery) {
       const matchesSearch = node.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const filteredChildren = node.children?.map(child => filteredTree(child)).filter(Boolean) as EnhancedFolderNode[];
-      
-      if (matchesSearch || (filteredChildren && filteredChildren.length > 0)) {
+      const filteredChildren = node.children ? await Promise.all(node.children.map(child => filteredTree(child))) : [];
+      const validChildren = filteredChildren.filter(Boolean) as EnhancedFolderNode[];
+
+      if (matchesSearch || (validChildren && validChildren.length > 0)) {
         console.log('filteredTree: returning node with search filter:', node.name);
-        return { ...node, children: filteredChildren };
+        return { ...enhancedNode, children: validChildren };
       }
       console.log('filteredTree: returning null for search filter:', node.name);
       return null;
@@ -164,23 +188,28 @@ export function ModernSidebar({
         'documents': 'document',
         'images': 'image'
       };
-      
-      const matchesFilter = !node.isDirectory && 
+
+      const matchesFilter = !node.isDirectory &&
         ((node.name.endsWith('.md') || node.name.endsWith('.txt')) && filterType === 'notes') ||
         (node.name.endsWith('.draw') && filterType === 'draws');
-      
-      const filteredChildren = node.children?.map(child => filteredTree(child)).filter(Boolean) as EnhancedFolderNode[];
-      
-      if (matchesFilter || (filteredChildren && filteredChildren.length > 0)) {
+
+      const filteredChildren = node.children ? await Promise.all(node.children.map(child => filteredTree(child))) : [];
+      const validChildren = filteredChildren.filter(Boolean) as EnhancedFolderNode[];
+
+      if (matchesFilter || (validChildren && validChildren.length > 0)) {
         console.log('filteredTree: returning node with type filter:', node.name);
-        return { ...node, children: filteredChildren };
+        return { ...enhancedNode, children: validChildren };
       }
       console.log('filteredTree: returning node as-is (no type filter match):', node.name);
       return null;
     }
 
+    // Load metadata for children recursively
+    const enhancedChildren = node.children ? await Promise.all(node.children.map(child => filteredTree(child))) : [];
+    const validChildren = enhancedChildren.filter(Boolean) as EnhancedFolderNode[];
+
     console.log('filteredTree: returning node as-is (no filters):', node.name);
-    return node;
+    return { ...enhancedNode, children: validChildren };
   }, [searchQuery, filterType]);
 
   const recentFiles = useCallback((): EnhancedFolderNode[] => {
@@ -223,6 +252,22 @@ export function ModernSidebar({
       console.log('Sidebar: tree isDirectory:', tree.isDirectory);
     }
   }, [tree]);
+
+  // Handle async filteredTree with NTFS metadata loading
+  useEffect(() => {
+    const loadEnhancedTree = async () => {
+      if (tree) {
+        console.log('Loading enhanced tree with NTFS metadata...');
+        const enhanced = await filteredTree(tree);
+        setEnhancedTree(enhanced);
+        console.log('Enhanced tree loaded:', enhanced);
+      } else {
+        setEnhancedTree(null);
+      }
+    };
+
+    loadEnhancedTree();
+  }, [tree, searchQuery, filterType, filteredTree]);
 
   return (
     <aside className={cn(
@@ -508,10 +553,9 @@ export function ModernSidebar({
                     </div>
                   ) : (
                     <>
-                      {console.log('Rendering ModernFolderTree with original tree:', tree)}
-                      {console.log('Rendering ModernFolderTree with filtered tree:', filteredTree(tree))}
+                      {console.log('Rendering ModernFolderTree with enhanced tree:', enhancedTree)}
                       <ModernFolderTree
-                        tree={filteredTree(tree)}
+                        tree={enhancedTree}
                         onFolderSelect={onFolderSelect}
                         selectedFolder={selectedFolder}
                         onNoteSelect={onNoteSelect}

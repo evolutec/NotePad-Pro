@@ -45,6 +45,14 @@ declare global {
     fsUnlink?: (filePath: string) => Promise<{ success: boolean; error?: string }>;
     fsMkdir?: (dirPath: string) => Promise<{ success: boolean; path?: string; error?: string }>;
 
+    // NTFS Alternate Data Streams for folder metadata
+    folderSetMetadata?: (folderPath: string, metadata: any) => Promise<{ success: boolean; metadata?: any; error?: string }>;
+    folderGetMetadata?: (folderPath: string) => Promise<{ success: boolean; data?: any; error?: string }>;
+    folderUpdateMetadata?: (folderPath: string, updates: any) => Promise<{ success: boolean; error?: string }>;
+    folderDeleteMetadata?: (folderPath: string) => Promise<{ success: boolean; message?: string; error?: string }>;
+    folderListWithMetadata?: (rootPath: string) => Promise<{ success: boolean; folders?: any[]; error?: string }>;
+    foldersMigrateToADS?: () => Promise<{ success: boolean; migrated?: number; total?: number; errors?: any[]; error?: string }>;
+
     // Ajoutez ici d'autres méthodes exposées par preload.js si besoin
   }
   interface Window {

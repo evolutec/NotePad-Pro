@@ -292,10 +292,48 @@ export function AddFolderDialog({ folders, onFolderAdded, open, onOpenChange }: 
 
         console.log('New folder object:', newFolder);
 
-        // Update folders.json
-        if (window.electronAPI?.foldersLoad && window.electronAPI?.foldersSave) {
-          const folders = await window.electronAPI.foldersLoad();
-          await window.electronAPI.foldersSave([...folders, newFolder]);
+        // Store metadata using NTFS ADS instead of folders.json
+        if (window.electronAPI?.folderSetMetadata) {
+          try {
+            const metadataResult = await window.electronAPI.folderSetMetadata(result.path, {
+              id: newFolder.id,
+              name: newFolder.name,
+              description: newFolder.description,
+              color: newFolder.color,
+              tags: newFolder.tags,
+              createdAt: newFolder.createdAt.toISOString(),
+              notes: newFolder.notes,
+              icon: newFolder.icon,
+              path: newFolder.path
+            });
+
+            if (metadataResult.success) {
+              console.log('✅ Folder metadata stored in NTFS ADS successfully');
+            } else {
+              console.error('❌ Failed to store metadata in NTFS ADS:', metadataResult.error);
+              // Fallback to folders.json if NTFS ADS fails
+              if (window.electronAPI?.foldersLoad && window.electronAPI?.foldersSave) {
+                const folders = await window.electronAPI.foldersLoad();
+                await window.electronAPI.foldersSave([...folders, newFolder]);
+                console.log('✅ Metadata stored in folders.json as fallback');
+              }
+            }
+          } catch (metadataError) {
+            console.error('❌ Error storing NTFS ADS metadata:', metadataError);
+            // Fallback to folders.json
+            if (window.electronAPI?.foldersLoad && window.electronAPI?.foldersSave) {
+              const folders = await window.electronAPI.foldersLoad();
+              await window.electronAPI.foldersSave([...folders, newFolder]);
+              console.log('✅ Metadata stored in folders.json as fallback');
+            }
+          }
+        } else {
+          // Fallback to folders.json if NTFS ADS API not available
+          console.log('NTFS ADS API not available, using folders.json fallback');
+          if (window.electronAPI?.foldersLoad && window.electronAPI?.foldersSave) {
+            const folders = await window.electronAPI.foldersLoad();
+            await window.electronAPI.foldersSave([...folders, newFolder]);
+          }
         }
 
         setCreationSuccess("Dossier créé avec succès !");

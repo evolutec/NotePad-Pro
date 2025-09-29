@@ -124,7 +124,192 @@ ipcMain.handle('folder:create', async (_event, folderName) => {
   }
 });
 
-// Handler pour sauvegarder les métadonnées des dossiers dans folders.json
+// NTFS Alternate Data Streams Handlers for folder metadata
+ipcMain.handle('folder:setMetadata', async (_event, folderPath, metadata) => {
+  try {
+    console.log('[NTFS ADS] Setting metadata for:', folderPath);
+
+    // Structure complète des métadonnées supportées
+    const fullMetadata = {
+      id: metadata.id || `folder_${Date.now()}`,
+      name: metadata.name || '',
+      color: metadata.color || '',
+      tags: metadata.tags || [],
+      createdAt: metadata.createdAt || new Date().toISOString(),
+      notes: metadata.notes || [],
+      icon: metadata.icon || '',
+      description: metadata.description || '',
+      iconFile: metadata.iconFile || '',
+      tooltip: metadata.tooltip || '',
+      customFields: metadata.customFields || {},
+      version: '1.0'
+    };
+
+    const metadataStream = JSON.stringify(fullMetadata, null, 2);
+    const streamPath = folderPath + ':folder_metadata';
+
+    fs.writeFileSync(streamPath, metadataStream, 'utf-8');
+    console.log('[NTFS ADS] Metadata saved successfully');
+    return { success: true, metadata: fullMetadata };
+  } catch (err) {
+    console.error('[NTFS ADS] Error setting metadata:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('folder:getMetadata', async (_event, folderPath) => {
+  try {
+    console.log('[NTFS ADS] Getting metadata for:', folderPath);
+    const streamPath = folderPath + ':folder_metadata';
+
+    if (fs.existsSync(streamPath)) {
+      const metadataStream = fs.readFileSync(streamPath, 'utf-8');
+      const metadata = JSON.parse(metadataStream);
+      console.log('[NTFS ADS] Metadata loaded:', metadata);
+      return { success: true, data: metadata };
+    } else {
+      console.log('[NTFS ADS] No metadata found');
+      return { success: true, data: null };
+    }
+  } catch (err) {
+    console.error('[NTFS ADS] Error getting metadata:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('folder:updateMetadata', async (_event, folderPath, updates) => {
+  try {
+    console.log('[NTFS ADS] Updating metadata for:', folderPath);
+
+    // Get existing metadata
+    const existingResult = await folderGetMetadata(folderPath);
+    if (!existingResult.success) {
+      return existingResult;
+    }
+
+    const currentMetadata = existingResult.data || {};
+    const updatedMetadata = { ...currentMetadata, ...updates };
+
+    // Save updated metadata
+    return await folderSetMetadata(folderPath, updatedMetadata);
+  } catch (err) {
+    console.error('[NTFS ADS] Error updating metadata:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('folder:deleteMetadata', async (_event, folderPath) => {
+  try {
+    console.log('[NTFS ADS] Deleting metadata for:', folderPath);
+    const streamPath = folderPath + ':folder_metadata';
+
+    if (fs.existsSync(streamPath)) {
+      fs.unlinkSync(streamPath);
+      console.log('[NTFS ADS] Metadata deleted');
+      return { success: true };
+    } else {
+      return { success: true, message: 'No metadata found to delete' };
+    }
+  } catch (err) {
+    console.error('[NTFS ADS] Error deleting metadata:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('folder:listWithMetadata', async (_event, rootPath) => {
+  try {
+    console.log('[NTFS ADS] Listing folders with metadata:', rootPath);
+
+    if (!fs.existsSync(rootPath)) {
+      return { success: false, error: 'Root path does not exist' };
+    }
+
+    const foldersWithMetadata = [];
+
+    function scanDirectory(dirPath) {
+      const items = fs.readdirSync(dirPath);
+
+      for (const item of items) {
+        const itemPath = path.join(dirPath, item);
+        const stats = fs.statSync(itemPath);
+
+        if (stats.isDirectory()) {
+          // Check for metadata
+          const metadataResult = folderGetMetadata(itemPath);
+          if (metadataResult.success && metadataResult.data) {
+            foldersWithMetadata.push({
+              path: itemPath,
+              name: item,
+              metadata: metadataResult.data
+            });
+          }
+
+          // Recursively scan subdirectories
+          try {
+            scanDirectory(itemPath);
+          } catch (err) {
+            // Skip directories we can't read
+            console.log('[NTFS ADS] Skipping directory:', itemPath);
+          }
+        }
+      }
+    }
+
+    scanDirectory(rootPath);
+    console.log('[NTFS ADS] Found folders with metadata:', foldersWithMetadata.length);
+    return { success: true, folders: foldersWithMetadata };
+  } catch (err) {
+    console.error('[NTFS ADS] Error listing folders:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Migration handler to move from folders.json to NTFS ADS
+ipcMain.handle('folders:migrateToADS', async () => {
+  try {
+    console.log('[NTFS ADS] Starting migration from folders.json');
+    const foldersPath = path.join(__dirname, 'folders.json');
+
+    if (!fs.existsSync(foldersPath)) {
+      return { success: false, error: 'No folders.json found to migrate' };
+    }
+
+    const folders = JSON.parse(fs.readFileSync(foldersPath, 'utf-8'));
+    let migrated = 0;
+    let errors = [];
+
+    for (const folder of folders) {
+      try {
+        if (folder.path && fs.existsSync(folder.path)) {
+          const result = await folderSetMetadata(folder.path, folder);
+          if (result.success) {
+            migrated++;
+            console.log('[NTFS ADS] Migrated folder:', folder.name);
+          } else {
+            errors.push({ folder: folder.name, error: result.error });
+          }
+        } else {
+          errors.push({ folder: folder.name, error: 'Folder path does not exist' });
+        }
+      } catch (err) {
+        errors.push({ folder: folder.name, error: err.message });
+      }
+    }
+
+    console.log('[NTFS ADS] Migration completed:', { migrated, errors: errors.length });
+    return {
+      success: true,
+      migrated,
+      total: folders.length,
+      errors
+    };
+  } catch (err) {
+    console.error('[NTFS ADS] Migration error:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Legacy handlers for folders.json (keeping for compatibility)
 ipcMain.handle('folders:save', async (_event, folders) => {
   try {
     const foldersPath = path.join(__dirname, 'folders.json');
@@ -135,7 +320,6 @@ ipcMain.handle('folders:save', async (_event, folders) => {
   }
 });
 
-// Handler pour charger les métadonnées des dossiers depuis folders.json
 ipcMain.handle('folders:load', async () => {
   try {
     const foldersPath = path.join(__dirname, 'folders.json');

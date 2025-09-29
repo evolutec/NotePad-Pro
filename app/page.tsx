@@ -60,6 +60,183 @@ export default function NoteTakingApp() {
   const [videoViewerType, setVideoViewerType] = useState("")
   const isMobile = useIsMobile()
 
+  // JSON file management functions
+  const readJsonFile = async (filename: string): Promise<any[]> => {
+    console.log(`=== READ JSON DEBUG: ${filename} ===`);
+    try {
+      if (window.electronAPI?.readFile) {
+        console.log(`Calling electronAPI.readFile for ${filename}...`);
+        const result = await window.electronAPI.readFile(filename);
+        console.log(`Read result for ${filename}:`, result);
+
+        if (result.success) {
+          console.log(`Parsing JSON data for ${filename}...`);
+          console.log(`Raw data type:`, typeof result.data);
+          console.log(`Raw data length:`, result.data?.length || 'undefined');
+
+          // Convert Uint8Array to string if needed
+          let jsonString: string;
+          if (result.data && result.data.constructor && result.data.constructor.name === 'Uint8Array') {
+            console.log('Converting Uint8Array to string...');
+            jsonString = new TextDecoder('utf-8').decode(result.data as unknown as Uint8Array);
+          } else if (typeof result.data === 'string') {
+            jsonString = result.data;
+          } else {
+            console.error('Unexpected data type:', typeof result.data);
+            return [];
+          }
+
+          console.log(`JSON string preview:`, jsonString.substring(0, 100));
+
+          const parsed = JSON.parse(jsonString);
+          console.log(`✅ Successfully parsed ${filename}:`, parsed.length, 'items');
+          return parsed;
+        } else {
+          console.error(`❌ Read failed for ${filename}:`, result.error);
+        }
+      } else {
+        console.error(`❌ Electron API readFile not available for ${filename}`);
+      }
+    } catch (error) {
+      console.error(`❌ Error reading ${filename}:`, error);
+      console.error(`Error details:`, error instanceof Error ? error.message : error);
+    }
+    console.log(`=== READ JSON DEBUG END: ${filename} ===`);
+    return [];
+  };
+
+  const cleanupFolderFromJson = async (folderId: string): Promise<void> => {
+    console.log('=== CLEANUP FOLDER DEBUG START ===');
+    console.log('cleanupFolderFromJson called with folderId:', folderId);
+
+    try {
+      // Read current folders.json
+      console.log('Reading folders.json...');
+      const folders = await readJsonFile('folders.json');
+      console.log('Current folders in JSON:', folders.length, 'folders');
+      folders.forEach((f: any, index: number) => {
+        console.log(`  ${index}: ID=${f.id}, Name=${f.name}, Path=${f.path}`);
+      });
+
+      // Find the folder to delete
+      const folderToDelete = folders.find((f: any) => f.id === folderId);
+      console.log('Folder to delete:', folderToDelete);
+
+      if (!folderToDelete) {
+        console.warn(`Folder with ID ${folderId} not found in folders.json`);
+        console.log('=== CLEANUP FOLDER DEBUG END (NOT FOUND) ===');
+        return;
+      }
+
+      // Filter out the folder
+      console.log('Filtering out folder...');
+      const filteredFolders = folders.filter((f: any) => f.id !== folderId);
+      console.log('Folders after filtering:', filteredFolders.length, 'folders');
+
+      // Write back to file
+      console.log('Writing updated folders.json...');
+      const writeResult = await (window.electronAPI as any).writeFile('folders.json', JSON.stringify(filteredFolders, null, 2));
+      console.log('Write result:', writeResult);
+
+      if (writeResult?.success) {
+        console.log(`✅ Successfully cleaned up folder ${folderId} from folders.json`);
+        console.log(`📊 Folders before: ${folders.length}, after: ${filteredFolders.length}`);
+      } else {
+        console.error(`❌ Failed to write folders.json:`, writeResult?.error);
+      }
+    } catch (error) {
+      console.error(`❌ Error cleaning up folder ${folderId} from JSON:`, error);
+    }
+    console.log('=== CLEANUP FOLDER DEBUG END ===');
+  };
+
+  const cleanupFolderFromJsonByPath = async (folderPath: string): Promise<void> => {
+    console.log('=== CLEANUP FOLDER BY PATH DEBUG START ===');
+    console.log('cleanupFolderFromJsonByPath called with folderPath:', folderPath);
+
+    try {
+      // Read current folders.json
+      console.log('Reading folders.json...');
+      const folders = await readJsonFile('folders.json');
+      console.log('Current folders in JSON:', folders.length, 'folders');
+      folders.forEach((f: any, index: number) => {
+        console.log(`  ${index}: ID=${f.id}, Name=${f.name}, Path=${f.path}`);
+      });
+
+      // Find the folder to delete by path
+      const folderToDelete = folders.find((f: any) => f.path === folderPath);
+      console.log('Folder to delete by path:', folderToDelete);
+
+      if (!folderToDelete) {
+        console.warn(`Folder with path ${folderPath} not found in folders.json`);
+        console.log('=== CLEANUP FOLDER BY PATH DEBUG END (NOT FOUND) ===');
+        return;
+      }
+
+      // Filter out the folder
+      console.log('Filtering out folder by path...');
+      const filteredFolders = folders.filter((f: any) => f.path !== folderPath);
+      console.log('Folders after filtering:', filteredFolders.length, 'folders');
+
+      // Write back to file
+      console.log('Writing updated folders.json...');
+      const writeResult = await (window.electronAPI as any).writeFile('folders.json', JSON.stringify(filteredFolders, null, 2));
+      console.log('Write result:', writeResult);
+
+      if (writeResult?.success) {
+        console.log(`✅ Successfully cleaned up folder ${folderPath} from folders.json`);
+        console.log(`📊 Folders before: ${folders.length}, after: ${filteredFolders.length}`);
+      } else {
+        console.error(`❌ Failed to write folders.json:`, writeResult?.error);
+      }
+    } catch (error) {
+      console.error(`❌ Error cleaning up folder ${folderPath} from JSON:`, error);
+    }
+    console.log('=== CLEANUP FOLDER BY PATH DEBUG END ===');
+  };
+
+  const cleanupNoteFromJson = async (noteId: string): Promise<void> => {
+    try {
+      // Remove from notes.json
+      const notes = await readJsonFile('notes.json');
+      const filteredNotes = notes.filter((n: any) => n.id !== noteId);
+      const writeResult = await (window.electronAPI as any).writeFile('notes.json', JSON.stringify(filteredNotes, null, 2));
+      if (writeResult?.success) {
+        console.log(`Cleaned up note ${noteId} from notes.json`);
+      }
+    } catch (error) {
+      console.error(`Error cleaning up note ${noteId} from JSON:`, error);
+    }
+  };
+
+  const cleanupDrawFromJson = async (drawId: string): Promise<void> => {
+    try {
+      // Remove from draws.json
+      const draws = await readJsonFile('draws.json');
+      const filteredDraws = draws.filter((d: any) => d.id !== drawId);
+      const writeResult = await (window.electronAPI as any).writeFile('draws.json', JSON.stringify(filteredDraws, null, 2));
+      if (writeResult?.success) {
+        console.log(`Cleaned up draw ${drawId} from draws.json`);
+      }
+    } catch (error) {
+      console.error(`Error cleaning up draw ${drawId} from JSON:`, error);
+    }
+  };
+
+  const cleanupPdfFromJson = async (pdfId: string): Promise<void> => {
+    try {
+      // Remove from pdfs.json
+      const pdfs = await readJsonFile('pdfs.json');
+      const filteredPdfs = pdfs.filter((p: any) => p.id !== pdfId);
+      const writeResult = await (window.electronAPI as any).writeFile('pdfs.json', JSON.stringify(filteredPdfs, null, 2));
+      if (writeResult?.success) {
+        console.log(`Cleaned up PDF ${pdfId} from pdfs.json`);
+      }
+    } catch (error) {
+      console.error(`Error cleaning up PDF ${pdfId} from JSON:`, error);
+    }
+  };
+
   // Initialize folder tree from config.json on component mount
   useEffect(() => {
     // Only run on client side
@@ -299,7 +476,9 @@ export default function NoteTakingApp() {
           isCollapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
           onDelete={async (node) => {
-            console.log('Delete:', node.path, 'type:', node.type);
+            console.log('=== DELETE DEBUG START ===');
+            console.log('Delete node object:', node);
+            console.log('Delete:', node.path, 'type:', node.type, 'id:', node.id, 'name:', node.name);
 
             try {
               // Check if Electron API is available
@@ -322,6 +501,36 @@ export default function NoteTakingApp() {
 
               if (result.success) {
                 console.log(`Successfully deleted: ${deletePath}`);
+
+                // Clean up metadata from JSON files based on item type
+                console.log('=== CLEANUP CONDITIONS DEBUG ===');
+                console.log('node.type:', node.type);
+                console.log('node.id:', node.id);
+                console.log('node.name:', node.name);
+                console.log('Condition node.type === folder:', node.type === 'folder');
+                console.log('Condition node.id exists:', !!node.id);
+                console.log('Combined condition:', node.type === 'folder' && node.id);
+
+                if (node.type === 'folder') {
+                  console.log('✅ Folder cleanup condition met, calling cleanupFolderFromJson');
+                  // Clean up folder from folders.json - use path to find the folder since node.id might be undefined
+                  await cleanupFolderFromJsonByPath(node.path);
+                } else if (node.id) {
+                  console.log('✅ File cleanup condition met, determining file type');
+                  // Clean up file from appropriate JSON file based on extension
+                  const fileExtension = node.name.split('.').pop()?.toLowerCase();
+                  console.log('File extension:', fileExtension);
+                  if (fileExtension === 'pdf') {
+                    await cleanupPdfFromJson(node.id);
+                  } else if (fileExtension === 'md') {
+                    await cleanupNoteFromJson(node.id);
+                  } else if (fileExtension === 'draw') {
+                    await cleanupDrawFromJson(node.id);
+                  }
+                } else {
+                  console.log('❌ No cleanup conditions met');
+                  console.log('node.type:', node.type, 'node.id:', node.id);
+                }
 
                 // Force complete refresh from root path after delete (same as working delete method)
                 try {

@@ -6,6 +6,11 @@ import {
   ChevronDown,
   Folder,
   FolderOpen,
+  FolderPlus,
+  BookOpen,
+  Calendar,
+  Tag,
+  Archive,
   FileText,
   File,
   FileCode,
@@ -15,10 +20,14 @@ import {
   FileArchive,
   MoreVertical,
   Plus,
-  Tag,
   Clock,
   Star,
-  Palette
+  Palette,
+  Home,
+  Settings,
+  Users,
+  Bookmark,
+  Trash2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -65,6 +74,36 @@ export type EnhancedFolderNode = {
   isStarred?: boolean;
   isShared?: boolean;
   metadata?: Record<string, any>;
+};
+
+// Icon name to component mapping
+const iconNameToComponent = (iconName: string) => {
+  const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+    'FolderPlus': FolderPlus,
+    'BookOpen': BookOpen,
+    'Calendar': Calendar,
+    'Tag': Tag,
+    'Archive': Archive,
+    'FileText': FileText,
+    'Folder': Folder,
+    'Home': Home,
+    'Star': Star,
+    'Clock': Clock,
+    'Palette': Palette,
+    'Settings': Settings,
+    'Users': Users,
+    'Bookmark': Bookmark,
+    'Trash2': Trash2,
+    'FolderOpen': FolderOpen,
+    'File': File,
+    'FileCode': FileCode,
+    'FileImage': FileImage,
+    'FileAudio': FileAudio,
+    'FileVideo': FileVideo,
+    'FileArchive': FileArchive,
+  };
+
+  return iconMap[iconName] || FolderPlus; // Default to FolderPlus if icon not found
 };
 
 // File type detection and icon mapping
@@ -286,7 +325,7 @@ const TreeItem = React.memo(({
             fileType === 'draw' && "bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800"
           )}>
             {node.icon ? (
-              <span className="text-lg">{node.icon}</span>
+              React.createElement(iconNameToComponent(node.icon), { className: "w-4 h-4" })
             ) : (
               <div className={cn(getFileColor(fileType))}>
                 {getFileIcon(fileType, isExpanded, node.name)}
@@ -299,7 +338,7 @@ const TreeItem = React.memo(({
             <div className="flex items-center gap-2">
               <span className={cn(
                 "font-medium text-sm truncate",
-                isSelected ? "text-primary" : 
+                isSelected ? "text-primary" :
                 isNoteSelected ? "text-blue-600 dark:text-blue-400" :
                 fileType === 'note' ? "text-blue-600 dark:text-blue-400" :
                 fileType === 'draw' ? "text-purple-600 dark:text-purple-400" :
@@ -307,11 +346,11 @@ const TreeItem = React.memo(({
               )}>
                 {node.name}
               </span>
-              
+
               {node.isStarred && (
                 <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
               )}
-              
+
               {node.tags && node.tags.length > 0 && (
                 <div className="flex gap-1">
                   {node.tags.slice(0, 2).map((tag, index) => (
@@ -340,6 +379,19 @@ const TreeItem = React.memo(({
               </div>
             )}
           </div>
+
+          {/* Color Pastille for Folders */}
+          {fileType === 'folder' && node.color && (
+            <div className="flex items-center">
+              <div
+                className={cn(
+                  "w-3 h-3 rounded-full border border-white/20 shadow-sm",
+                  node.color.startsWith('bg-') ? node.color : 'bg-gray-400'
+                )}
+                title={`Couleur: ${node.color}`}
+              />
+            </div>
+          )}
 
           {/* Actions */}
           <div className="opacity-0 group-hover:opacity-100 transition-opacity">
