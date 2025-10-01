@@ -352,7 +352,11 @@ export const GenericModal = forwardRef<GenericModalRef, GenericModalProps>(({
     const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files
       updateFormData(field.id, files ? (field.multiple ? Array.from(files) : files[0]) : null)
-    }, [field.id, field.multiple, updateFormData])
+      // Also call the field's onChange if provided
+      if (field.onChange) {
+        field.onChange(e)
+      }
+    }, [field.id, field.multiple, updateFormData, field.onChange])
 
     switch (field.type) {
       case 'text':

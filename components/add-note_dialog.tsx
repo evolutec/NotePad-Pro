@@ -3,7 +3,8 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { FilePlus, FileText, Folder, Home } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { FilePlus, FileText, Folder, Home, Type, Hash } from "lucide-react";
 import { GenericModal, ModalField, ModalButton, type GenericModalRef } from "@/components/ui/generic-modal";
 import { FolderSelectionModal, type FolderNode } from "@/components/ui/folder-selection-modal";
 
@@ -264,13 +265,58 @@ export function AddNoteDialog({ open, onOpenChange, parentPath, onNoteCreated }:
     {
       id: 'type',
       label: 'Type de fichier',
-      type: 'select',
-      placeholder: 'Sélectionner le type de fichier...',
-      required: true,
-      options: [
-        { label: 'Texte', value: 'text' },
-        { label: 'Markdown', value: 'markdown' }
-      ]
+      type: 'custom',
+      content: (
+        <div className="grid grid-cols-2 gap-2">
+          {/* Text Card */}
+          <Card
+            className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
+              noteType === 'text'
+                ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-200'
+                : 'hover:bg-gray-50 border-gray-200'
+            }`}
+            onClick={() => setNoteType('text')}
+          >
+            <CardContent className="p-3 text-center">
+              <div className="flex flex-col items-center gap-1">
+                <Type className={`w-4 h-4 ${noteType === 'text' ? 'text-blue-600' : 'text-gray-600'}`} />
+                <div>
+                  <div className={`font-medium text-sm ${noteType === 'text' ? 'text-blue-900' : 'text-gray-900'}`}>
+                    Texte
+                  </div>
+                  <div className={`text-xs ${noteType === 'text' ? 'text-blue-700' : 'text-gray-600'}`}>
+                    Format simple
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Markdown Card */}
+          <Card
+            className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
+              noteType === 'markdown'
+                ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-200'
+                : 'hover:bg-gray-50 border-gray-200'
+            }`}
+            onClick={() => setNoteType('markdown')}
+          >
+            <CardContent className="p-3 text-center">
+              <div className="flex flex-col items-center gap-1">
+                <Hash className={`w-4 h-4 ${noteType === 'markdown' ? 'text-blue-600' : 'text-gray-600'}`} />
+                <div>
+                  <div className={`font-medium text-sm ${noteType === 'markdown' ? 'text-blue-900' : 'text-gray-900'}`}>
+                    Markdown
+                  </div>
+                  <div className={`text-xs ${noteType === 'markdown' ? 'text-blue-700' : 'text-gray-600'}`}>
+                    Format riche
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )
     },
     {
       id: 'tags',
