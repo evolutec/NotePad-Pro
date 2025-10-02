@@ -6,8 +6,9 @@
   position: relative;
   display: inline-block;
   cursor: crosshair;
-  overflow: hidden;
-  max-width: 100%;
+  overflow: visible !important;
+  max-width: none !important;
+  max-height: none !important;
 }
 
 .ReactCrop *,
@@ -18,7 +19,8 @@
 
 .ReactCrop__image {
   display: block;
-  max-width: 100%;
+  max-width: none !important;
+  max-height: none !important;
   touch-action: manipulation;
 }
 
