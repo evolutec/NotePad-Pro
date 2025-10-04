@@ -533,6 +533,31 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
               });
 
               if (result.success) {
+                // Store metadata using NTFS ADS for video files
+                if (window.electronAPI?.fileSetMetadata) {
+                  try {
+                    const metadataResult = await window.electronAPI.fileSetMetadata(result.path, {
+                      id: Date.now().toString(),
+                      name: videoFileName,
+                      type: 'webm',
+                      parentPath: selectedPath,
+                      createdAt: new Date().toISOString(),
+                      tags: tags,
+                      path: result.path
+                    });
+
+                    if (metadataResult.success) {
+                      console.log('✅ Video metadata stored in NTFS ADS successfully');
+                    } else {
+                      console.error('❌ Failed to store metadata in NTFS ADS:', metadataResult.error);
+                    }
+                  } catch (metadataError) {
+                    console.error('❌ Error storing NTFS ADS metadata for video:', metadataError);
+                  }
+                } else {
+                  console.log('NTFS ADS API not available for video metadata');
+                }
+
                 setCreationSuccess("Vidéo enregistrée avec succès !");
                 setTimeout(() => {
                   setCreationSuccess(null);

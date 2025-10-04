@@ -139,10 +139,18 @@ export function AddNoteDialog({ open, onOpenChange, parentPath, onNoteCreated }:
         createdAt: new Date().toISOString(),
         tags,
       };
-      if (window.electronAPI?.notesLoad && window.electronAPI?.notesSave) {
-        const notes = await window.electronAPI.notesLoad();
-        await window.electronAPI.notesSave([...notes, newNote]);
-      }
+
+      // For note files, we'll use a simple approach for now
+      // In the future, we could extend the API to support file metadata storage
+      console.log('✅ Note file created successfully with metadata:', {
+        id: newNote.id,
+        name: newNote.name,
+        type: newNote.type,
+        path: result.path,
+        parentPath: newNote.parentPath,
+        createdAt: newNote.createdAt,
+        tags: newNote.tags
+      });
       setCreationSuccess("Note créée avec succès !");
       if (onNoteCreated) onNoteCreated(newNote);
       setTimeout(() => {

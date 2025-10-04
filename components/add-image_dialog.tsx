@@ -702,6 +702,18 @@ export function AddImageDialog({ open, onOpenChange, parentPath, onImageCreated,
           tags,
         };
 
+        // For images, we'll use a simple approach for now
+        // In the future, we could extend the API to support file metadata storage
+        console.log('✅ Image file created successfully with metadata:', {
+          id: newImage.id,
+          name: newImage.name,
+          type: newImage.type,
+          path: result.path,
+          parentPath: newImage.parentPath,
+          createdAt: newImage.createdAt,
+          tags: newImage.tags
+        });
+
         setCreationSuccess("Image créée avec succès !");
         if (onImageCreated) onImageCreated(newImage);
         // Trigger tree refresh

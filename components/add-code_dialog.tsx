@@ -192,6 +192,18 @@ export function AddCodeDialog({ open, onOpenChange, parentPath, onCodeCreated }:
         tags,
       };
 
+      // For code files, we'll use a simple approach for now
+      // In the future, we could extend the API to support file metadata storage
+      console.log('✅ Code file created successfully with metadata:', {
+        id: newCode.id,
+        name: newCode.name,
+        type: newCode.type,
+        path: result.path,
+        parentPath: newCode.parentPath,
+        createdAt: newCode.createdAt,
+        tags: newCode.tags
+      });
+
       setCreationSuccess("Fichier de code créé avec succès !");
       if (onCodeCreated) onCodeCreated(newCode);
       setTimeout(() => {

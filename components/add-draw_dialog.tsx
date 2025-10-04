@@ -310,16 +310,17 @@ export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }:
         tags,
       };
 
-      // Update draws.json using Electron API
-      if (window.electronAPI?.drawsLoad && window.electronAPI?.drawsSave) {
-        try {
-          const draws = await window.electronAPI.drawsLoad();
-          await window.electronAPI.drawsSave([...draws, newDraw]);
-        } catch (error) {
-          console.error('Error updating draws.json:', error);
-          // Continue anyway since the file was created successfully
-        }
-      }
+      // For draw files, we'll use a simple approach for now
+      // In the future, we could extend the API to support file metadata storage
+      console.log('✅ Draw file created successfully with metadata:', {
+        id: newDraw.id,
+        name: newDraw.name,
+        type: newDraw.type,
+        path: filePath,
+        parentPath: newDraw.parentPath,
+        createdAt: newDraw.createdAt,
+        tags: newDraw.tags
+      });
 
       setCreationSuccess("Dessin créé avec succès !");
       if (onDrawCreated) onDrawCreated(newDraw);

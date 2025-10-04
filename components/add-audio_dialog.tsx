@@ -1,10 +1,10 @@
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Music as MusicIcon, FilePlus, Folder, Home } from "lucide-react";
-import { GenericModal, ModalField, ModalButton } from "@/components/ui/generic-modal";
+import { Music as MusicIcon, Mic, Square, Upload, Folder, Home } from "lucide-react";
+import { GenericModal, ModalTab, ModalField, ModalButton } from "@/components/ui/generic-modal";
 import { FolderSelectionModal, type FolderNode } from "@/components/ui/folder-selection-modal";
 
 export interface AudioMeta {
@@ -25,15 +25,67 @@ export interface AddAudioDialogProps {
 }
 
 export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated, onRefreshTree }: AddAudioDialogProps) {
+  // State management
+  const [activeTab, setActiveTab] = useState<'upload' | 'record'>('upload');
+
+  // Upload tab state
   const [audioName, setAudioName] = useState("");
   const [audioType, setAudioType] = useState<string>("mp3"); // Default to mp3 audio
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  // Record tab state
+  const [microphones, setMicrophones] = useState<MediaDeviceInfo[]>([]);
+  const [selectedMicrophoneId, setSelectedMicrophoneId] = useState<string | undefined>(undefined);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
+
+  // Common state
   const [creationError, setCreationError] = useState<string | null>(null);
   const [creationSuccess, setCreationSuccess] = useState<string | null>(null);
   const [parentId, setParentId] = useState<string | undefined>(undefined);
   const [existingFolders, setExistingFolders] = useState<any[]>([]);
   const [showFolderModal, setShowFolderModal] = useState(false);
+
+  // Refs
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Device enumeration
+  // Reset form when modal opens
+  useEffect(() => {
+    if (open) {
+      // Reset all form fields
+      setAudioName("");
+      setAudioType("mp3");
+      setTags([]);
+      setCurrentTag("");
+      setSelectedFile(null);
+      setMicrophones([]);
+      setSelectedMicrophoneId(undefined);
+      setStream(null);
+      setIsRecording(false);
+      setRecordingTime(0);
+      setMediaRecorder(null);
+      setRecordedChunks([]);
+      setCreationError(null);
+      setCreationSuccess(null);
+      setParentId(undefined);
+
+      // Initialize microphone devices
+      navigator.mediaDevices?.enumerateDevices().then(devices => {
+        const audioInputs = devices.filter(d => d.kind === 'audioinput');
+        setMicrophones(audioInputs);
+
+        if (audioInputs.length > 0 && !selectedMicrophoneId) {
+          setSelectedMicrophoneId(audioInputs[0].deviceId);
+        }
+      });
+    }
+  }, [open]);
 
   useEffect(() => {
     if (window.electronAPI?.foldersScan) {
@@ -229,65 +281,545 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated,
     }
   };
 
-  // Define fields for the GenericModal
-  const fields: ModalField[] = [
+  // Import audio functionality
+  const importAudio = async () => {
+    if (!selectedFile || !audioName.trim()) {
+      setCreationError("Veuillez sélectionner un fichier audio et entrer un nom.");
+      return;
+    }
+
+    try {
+      // Read the selected file as binary data
+      const fileData = await selectedFile.arrayBuffer();
+
+      let finalParentPath = parentPath;
+      if (parentId) {
+        const parentFolder = existingFolders.find(f => f.id === parentId);
+        finalParentPath = parentFolder?.path || parentPath;
+      }
+
+      // Create file name with timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const fileName = `${audioName.trim()}_${timestamp}.${audioType}`;
+      const filePath = finalParentPath ? `${finalParentPath}/${fileName}` : fileName;
+
+      // Create audio file using Electron API
+      if (window.electronAPI?.audioCreate) {
+        const result = await window.electronAPI.audioCreate({
+          name: fileName,
+          type: audioType,
+          parentPath: finalParentPath,
+          tags: tags,
+          content: fileData,
+          isBinary: true,
+        });
+
+        if (result.success) {
+          setCreationSuccess("Audio importé avec succès !");
+          // Trigger tree refresh
+          if (onRefreshTree) {
+            onRefreshTree();
+          }
+          setTimeout(() => {
+            setCreationSuccess(null);
+            onOpenChange(false);
+          }, 2000);
+        } else {
+          setCreationError(result.error || "Erreur lors de l'importation de l'audio.");
+        }
+      }
+    } catch (error) {
+      console.error('Error importing audio:', error);
+      setCreationError("Erreur lors de l'importation de l'audio.");
+    }
+  };
+
+  // Audio context for waveform visualization
+  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
+  const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
+  const [dataArray, setDataArray] = useState<Uint8Array | null>(null);
+  const [animationId, setAnimationId] = useState<number | null>(null);
+
+  // Refs for canvas and animation
+  const waveformCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Initialize audio context for visualization
+  useEffect(() => {
+    if (stream && isRecording) {
+      try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const analyserNode = ctx.createAnalyser();
+        const source = ctx.createMediaStreamSource(stream);
+
+        analyserNode.fftSize = 256;
+        source.connect(analyserNode);
+
+        const bufferLength = analyserNode.frequencyBinCount;
+        const data = new Uint8Array(bufferLength);
+
+        setAudioContext(ctx);
+        setAnalyser(analyserNode);
+        setDataArray(data);
+
+        // Start visualization
+        const draw = () => {
+          if (analyserNode && data && waveformCanvasRef.current) {
+            analyserNode.getByteFrequencyData(data);
+
+            const canvas = waveformCanvasRef.current;
+            const canvasCtx = canvas.getContext('2d');
+            if (canvasCtx) {
+              const width = canvas.width;
+              const height = canvas.height;
+
+              canvasCtx.clearRect(0, 0, width, height);
+
+              const barWidth = (width / bufferLength) * 2.5;
+              let barHeight;
+              let x = 0;
+
+              // Create gradient for the waveform
+              const gradient = canvasCtx.createLinearGradient(0, 0, width, 0);
+              gradient.addColorStop(0, '#ff006e');
+              gradient.addColorStop(0.2, '#8338ec');
+              gradient.addColorStop(0.4, '#3a86ff');
+              gradient.addColorStop(0.6, '#06ffa5');
+              gradient.addColorStop(0.8, '#ffbe0b');
+              gradient.addColorStop(1, '#ff006e');
+
+              for (let i = 0; i < bufferLength; i++) {
+                barHeight = (data[i] / 255) * height * 0.8;
+
+                canvasCtx.fillStyle = gradient;
+                canvasCtx.fillRect(x, height - barHeight, barWidth, barHeight);
+
+                x += barWidth + 1;
+              }
+            }
+          }
+
+          if (isRecording) {
+            requestAnimationFrame(draw);
+          }
+        };
+
+        const id = requestAnimationFrame(draw);
+        setAnimationId(id);
+      } catch (error) {
+        console.error('Error setting up audio visualization:', error);
+      }
+    }
+
+    return () => {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        setAnimationId(null);
+      }
+      if (audioContext) {
+        audioContext.close();
+        setAudioContext(null);
+      }
+      setAnalyser(null);
+      setDataArray(null);
+    };
+  }, [stream, isRecording]);
+
+  // Cleanup effect
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+      if (audioContext) {
+        audioContext.close();
+      }
+    };
+  }, []);
+
+  // Start/Stop recording functionality
+  const toggleRecording = async () => {
+    if (!audioName.trim()) {
+      setCreationError("Veuillez entrer un nom pour l'enregistrement.");
+      return;
+    }
+
+    if (isRecording) {
+      // Stop recording
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        // Don't set isRecording to false here - let onstop callback handle it
+        // This ensures proper sequencing of stop -> save -> state reset
+      }
+    } else {
+      // Start recording
+      try {
+        // Get microphone access
+        const audioConstraints: MediaStreamConstraints = selectedMicrophoneId
+          ? { audio: { deviceId: { exact: selectedMicrophoneId } } }
+          : { audio: true };
+
+        const mediaStream = await navigator.mediaDevices.getUserMedia(audioConstraints);
+        setStream(mediaStream);
+
+        // Start MediaRecorder
+        const recorder = new MediaRecorder(mediaStream, {
+          mimeType: 'audio/webm;codecs=opus'
+        });
+
+        recorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            setRecordedChunks(prev => [...prev, event.data]);
+          }
+        };
+
+        recorder.onstop = async () => {
+          try {
+            // Combine all chunks and save
+            const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+
+            let finalParentPath = parentPath;
+            if (parentId) {
+              const parentFolder = existingFolders.find(f => f.id === parentId);
+              finalParentPath = parentFolder?.path || parentPath;
+            }
+
+            // Create file name for recording
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const audioFileName = `${audioName.trim()}_${timestamp}.webm`;
+            const audioPath = finalParentPath ? `${finalParentPath}/${audioFileName}` : audioFileName;
+
+            if (window.electronAPI?.audioCreate) {
+              const result = await window.electronAPI.audioCreate({
+                name: audioFileName,
+                type: 'webm',
+                parentPath: finalParentPath,
+                tags: tags,
+                content: blob,
+                isBinary: true,
+              });
+
+              if (result.success) {
+                setCreationSuccess("Enregistrement audio sauvegardé avec succès !");
+                // Trigger tree refresh
+                if (onRefreshTree) {
+                  onRefreshTree();
+                }
+                // Don't close modal immediately - let user see success message
+                setTimeout(() => {
+                  setCreationSuccess(null);
+                  // Only close if user wants to, or keep modal open for another recording
+                }, 3000);
+              } else {
+                setCreationError(result.error || "Erreur lors de la sauvegarde de l'enregistrement.");
+              }
+            }
+          } catch (error) {
+            console.error('Error saving recording:', error);
+            setCreationError("Erreur lors de la sauvegarde de l'enregistrement.");
+          }
+
+          // Reset state but keep modal open
+          setRecordedChunks([]);
+          setRecordingTime(0);
+          setIsRecording(false);
+
+          // Stop all tracks after saving
+          if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            setStream(null);
+          }
+        };
+
+        setMediaRecorder(recorder);
+        recorder.start(100); // Collect data more frequently for better visualization
+        setIsRecording(true);
+        setRecordingTime(0);
+
+        // Start recording timer
+        const timer = setInterval(() => {
+          setRecordingTime(prev => prev + 1);
+        }, 1000);
+
+        // Store timer for cleanup
+        (recorder as any)._timer = timer;
+
+      } catch (error) {
+        console.error('Error starting recording:', error);
+        setCreationError("Erreur lors du démarrage de l'enregistrement. Vérifiez les permissions du microphone.");
+      }
+    }
+  };
+
+  // Define tabs for the GenericModal
+  const tabs: ModalTab[] = [
     {
-      id: 'name',
-      label: 'Nom de l\'audio',
-      type: 'text',
-      placeholder: 'Ex: Chanson, Podcast, Enregistrement...',
-      required: true
-    },
-    {
-      id: 'parent',
-      label: 'Dossier parent',
-      type: 'custom',
-      required: false,
+      id: 'upload',
+      label: 'Importer',
+      icon: <Upload className="h-5 w-5" />,
       content: (
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full justify-between text-left font-normal"
-          onClick={() => setShowFolderModal(true)}
-        >
-          <div className="flex items-center gap-2 truncate">
-            <Home className="w-4 h-4" />
-            <span className="truncate">{getSelectedFolderName}</span>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="audio-name">Nom de l'audio</Label>
+            <Input
+              id="audio-name"
+              placeholder="Ex: Chanson, Podcast, Enregistrement..."
+              value={audioName}
+              onChange={(e) => setAudioName(e.target.value)}
+            />
           </div>
-          <Folder className="w-4 h-4 opacity-50" />
-        </Button>
+
+          <div className="space-y-2">
+            <Label htmlFor="file-upload">Fichier audio</Label>
+            <Input
+              id="file-upload"
+              type="file"
+              accept="audio/*"
+              onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+              ref={fileInputRef}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="audio-type">Type d'audio</Label>
+            <select
+              id="audio-type"
+              className="w-full border rounded p-2 bg-zinc-900 text-white shadow-sm"
+              value={audioType}
+              onChange={(e) => setAudioType(e.target.value)}
+            >
+              <option value="mp3">MP3</option>
+              <option value="wav">WAV</option>
+              <option value="ogg">OGG</option>
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Dossier parent</Label>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-between text-left font-normal"
+              onClick={() => setShowFolderModal(true)}
+            >
+              <div className="flex items-center gap-2 truncate">
+                <Home className="w-4 h-4" />
+                <span className="truncate">{getSelectedFolderName}</span>
+              </div>
+              <Folder className="w-4 h-4 opacity-50" />
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Étiquettes</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Ajouter une étiquette..."
+                value={currentTag}
+                onChange={(e) => setCurrentTag(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="flex-1"
+              />
+              <Button type="button" onClick={addTag} size="sm" variant="outline">
+                Ajouter
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {tags.map((tag) => (
+                <span key={tag} className="bg-muted px-2 py-1 rounded text-xs cursor-pointer" onClick={() => removeTag(tag)}>
+                  {tag} ×
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
       )
     },
     {
-      id: 'type',
-      label: 'Type d\'audio',
-      type: 'select',
-      placeholder: 'Sélectionner le type d\'audio...',
-      required: true,
-      options: [
-        { label: 'MP3', value: 'mp3' },
-        { label: 'WAV', value: 'wav' },
-        { label: 'OGG', value: 'ogg' }
-      ]
-    },
-    {
-      id: 'tags',
-      label: 'Étiquettes',
-      type: 'tags',
-      placeholder: 'Ajouter une étiquette...',
-      required: false
+      id: 'record',
+      label: 'Enregistrer',
+      icon: <Mic className="h-5 w-5" />,
+      content: (
+        <div className="space-y-4">
+          {/* Device Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="microphone-select">Microphone</Label>
+            <select
+              id="microphone-select"
+              className="w-full border rounded p-2 bg-zinc-900 text-white shadow-sm"
+              value={selectedMicrophoneId}
+              onChange={e => setSelectedMicrophoneId(e.target.value)}
+            >
+              {microphones.map(mic => (
+                <option key={mic.deviceId} value={mic.deviceId}>
+                  {mic.label || `Microphone ${mic.deviceId.slice(0, 8)}`}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="record-name">Nom de l'enregistrement</Label>
+            <Input
+              id="record-name"
+              placeholder="Ex: Enregistrement vocal..."
+              value={audioName}
+              onChange={(e) => setAudioName(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Dossier parent</Label>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full justify-between text-left font-normal"
+              onClick={() => setShowFolderModal(true)}
+            >
+              <div className="flex items-center gap-2 truncate">
+                <Home className="w-4 h-4" />
+                <span className="truncate">{getSelectedFolderName}</span>
+              </div>
+              <Folder className="w-4 h-4 opacity-50" />
+            </Button>
+          </div>
+
+          {/* Recording Interface - Centered */}
+          <div className="space-y-3">
+            <Label className="text-base font-semibold flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-500"></div>
+              Interface d'enregistrement
+            </Label>
+            <div className="flex justify-center">
+              <div className="relative bg-gradient-to-br from-gray-900 to-black rounded-xl p-8 border-2 border-gray-300 shadow-2xl" style={{ width: '400px', height: '280px' }}>
+                <div className="flex flex-col items-center justify-center h-full text-white">
+                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+                    <Mic className="h-10 w-10" />
+                  </div>
+
+                  {isRecording ? (
+                    <>
+                      {/* Animated Waveform Visualization */}
+                      <div className="w-full mb-4">
+                        <canvas
+                          ref={waveformCanvasRef}
+                          width={320}
+                          height={80}
+                          className="w-full h-20 rounded-lg bg-black/30"
+                          style={{ background: 'linear-gradient(90deg, #1a1a1a 0%, #2d2d2d 100%)' }}
+                        />
+                      </div>
+
+                      <div className="text-center mb-4">
+                        <p className="text-lg font-medium mb-2">Enregistrement en cours</p>
+                        <p className="text-sm opacity-75">
+                          {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+                        </p>
+                      </div>
+                      <div className="flex space-x-2">
+                        <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                        <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-lg font-medium mb-2">Prêt à enregistrer</p>
+                      <p className="text-sm opacity-75 text-center">
+                        Cliquez sur le bouton ci-dessous pour démarrer l'enregistrement
+                      </p>
+                    </>
+                  )}
+                </div>
+
+                {!stream && !isRecording && (
+                  <div className="absolute inset-0 flex items-center justify-center text-white bg-black/50 rounded-xl">
+                    <div className="text-center p-4">
+                      <Mic className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Sélectionnez un microphone</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Recording Controls */}
+          <div className="flex justify-center">
+            <Button
+              className={`h-14 px-8 text-lg font-semibold transition-all duration-200 ${
+                isRecording
+                  ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'
+                  : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700'
+              }`}
+              onClick={toggleRecording}
+            >
+              {isRecording ? (
+                <>
+                  <Square className="h-5 w-5 mr-3" />
+                  Arrêter l'enregistrement
+                </>
+              ) : (
+                <>
+                  <Mic className="h-5 w-5 mr-3" />
+                  Démarrer l'enregistrement
+                </>
+              )}
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Étiquettes</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Ajouter une étiquette..."
+                value={currentTag}
+                onChange={(e) => setCurrentTag(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="flex-1"
+              />
+              <Button type="button" onClick={addTag} size="sm" variant="outline">
+                Ajouter
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {tags.map((tag) => (
+                <span key={tag} className="bg-muted px-2 py-1 rounded text-xs cursor-pointer" onClick={() => removeTag(tag)}>
+                  {tag} ×
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )
     }
   ];
 
-  // Define buttons for the GenericModal
-  const buttons: ModalButton[] = [
-    {
-      label: 'Créer l\'audio',
-      variant: 'default',
-      onClick: handleCreateAudio,
-      disabled: !audioName.trim()
+  // Define buttons for the GenericModal - context-aware based on active tab
+  const buttons: ModalButton[] = React.useMemo(() => {
+    if (activeTab === 'upload') {
+      return [
+        {
+          label: 'Importer l\'audio',
+          variant: 'default',
+          onClick: importAudio,
+          disabled: !audioName.trim() || !selectedFile
+        }
+      ];
+    } else if (activeTab === 'record') {
+      return [
+        {
+          label: 'Enregistrer l\'audio',
+          variant: 'default',
+          onClick: toggleRecording,
+          disabled: !audioName.trim() || isRecording
+        }
+      ];
     }
-  ];
+    return [];
+  }, [activeTab, audioName, selectedFile, isRecording]);
 
   return (
     <>
@@ -296,11 +828,11 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated,
         onOpenChange={onOpenChange}
         title="Créer un nouvel audio"
         icon={<MusicIcon className="h-6 w-6" />}
-        description="Créez un fichier audio MP3, WAV ou OGG"
+        description="Importez un fichier audio existant ou enregistrez un nouvel audio avec votre microphone"
         colorTheme="pink"
         fileType="audio"
-        size="md"
-        fields={fields}
+        size="lg"
+        tabs={tabs}
         buttons={buttons}
         showCancelButton={true}
         cancelLabel="Annuler"

@@ -246,7 +246,7 @@ export function FileManager({
     try {
       if (window.electronAPI?.writeFile) {
         const result = await window.electronAPI.writeFile(filename, JSON.stringify(data, null, 2));
-        return result.success;
+        return result?.success || false;
       }
     } catch (error) {
       console.error(`Error writing ${filename}:`, error);
@@ -259,8 +259,8 @@ export function FileManager({
       // Remove from folders.json
       const folders = await readJsonFile('folders.json');
       const filteredFolders = folders.filter((f: any) => f.id !== folderId);
-      const writeResult = await (window.electronAPI as any).writeFile('folders.json', JSON.stringify(filteredFolders, null, 2));
-      if (writeResult?.success) {
+      const success = await writeJsonFile('folders.json', filteredFolders);
+      if (success) {
         console.log(`Cleaned up folder ${folderId} from folders.json`);
       }
     } catch (error) {
@@ -273,9 +273,11 @@ export function FileManager({
       // Remove from notes.json
       const notes = await readJsonFile('notes.json');
       const filteredNotes = notes.filter((n: any) => n.id !== noteId);
-      const writeResult = await (window.electronAPI as any).writeFile('notes.json', JSON.stringify(filteredNotes, null, 2));
-      if (writeResult?.success) {
-        console.log(`Cleaned up note ${noteId} from notes.json`);
+      if (window.electronAPI?.writeFile) {
+        const writeResult = await window.electronAPI.writeFile('notes.json', JSON.stringify(filteredNotes, null, 2));
+        if (writeResult?.success) {
+          console.log(`Cleaned up note ${noteId} from notes.json`);
+        }
       }
     } catch (error) {
       console.error(`Error cleaning up note ${noteId} from JSON:`, error);
@@ -287,9 +289,11 @@ export function FileManager({
       // Remove from draws.json
       const draws = await readJsonFile('draws.json');
       const filteredDraws = draws.filter((d: any) => d.id !== drawId);
-      const writeResult = await (window.electronAPI as any).writeFile('draws.json', JSON.stringify(filteredDraws, null, 2));
-      if (writeResult?.success) {
-        console.log(`Cleaned up draw ${drawId} from draws.json`);
+      if (window.electronAPI?.writeFile) {
+        const writeResult = await window.electronAPI.writeFile('draws.json', JSON.stringify(filteredDraws, null, 2));
+        if (writeResult?.success) {
+          console.log(`Cleaned up draw ${drawId} from draws.json`);
+        }
       }
     } catch (error) {
       console.error(`Error cleaning up draw ${drawId} from JSON:`, error);
@@ -301,9 +305,11 @@ export function FileManager({
       // Remove from pdfs.json
       const pdfs = await readJsonFile('pdfs.json');
       const filteredPdfs = pdfs.filter((p: any) => p.id !== pdfId);
-      const writeResult = await (window.electronAPI as any).writeFile('pdfs.json', JSON.stringify(filteredPdfs, null, 2));
-      if (writeResult?.success) {
-        console.log(`Cleaned up PDF ${pdfId} from pdfs.json`);
+      if (window.electronAPI?.writeFile) {
+        const writeResult = await window.electronAPI.writeFile('pdfs.json', JSON.stringify(filteredPdfs, null, 2));
+        if (writeResult?.success) {
+          console.log(`Cleaned up PDF ${pdfId} from pdfs.json`);
+        }
       }
     } catch (error) {
       console.error(`Error cleaning up PDF ${pdfId} from JSON:`, error);
@@ -536,16 +542,74 @@ export function FileManager({
     // Special case for PDF files - use custom PDF icon
     if (fileType === "pdf" || (file.name && file.name.toLowerCase().endsWith('.pdf'))) {
       console.log('PDF file detected in file-manager renderFileIcon:', file.name);
-      return <FileIconPdf className="h-5 w-5 text-red-600" />;
+      return <FileIconPdf className="h-10 w-10 text-red-600" />;
     }
 
     const Icon = FILE_TYPES[fileType]?.icon || File;
     const colorClass = FILE_TYPES[fileType]?.color || "text-gray-600";
-    return <Icon className={cn("h-5 w-5", colorClass)} />;
+    return <Icon className={cn("h-10 w-10", colorClass)} />;
   };
 
   return (
     <Card className="flex flex-col h-full">
+      <style jsx>{`
+        .folder {
+          width: 120px;
+          height: 90px;
+          margin: 0 auto;
+          position: relative;
+          background-color: #f97316;
+          border-radius: 0 8px 8px 8px;
+          box-shadow: 4px 4px 7px rgba(0, 0, 0, 0.2);
+        }
+
+        .folder:before {
+          content: '';
+          width: 60%;
+          height: 12px;
+          border-radius: 0 20px 0 0;
+          background-color: #f97316;
+          position: absolute;
+          top: -12px;
+          left: 0px;
+        }
+
+        .folder:hover {
+          background-color: #ea580c;
+          transform: scale(1.05);
+        }
+
+        .folder:hover:before {
+          background-color: #ea580c;
+        }
+
+        .folder-content {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 8px;
+          pointer-events: none;
+        }
+
+        .folder-name {
+          color: white;
+          font-size: 11px;
+          font-weight: 600;
+          text-align: center;
+          word-break: break-all;
+          line-height: 1.2;
+          max-height: 32px;
+          overflow: hidden;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+        }
+      `}</style>
       <div className="flex items-center justify-between p-4">
         <h2 className="text-xl font-semibold">File Manager</h2>
         <div className="flex items-center space-x-2">
@@ -613,11 +677,13 @@ export function FileManager({
             )}
           >
             {filteredFiles.map((file) => (
-              <Card
+              <div
                 key={file.id}
                 className={cn(
-                  "relative group flex flex-col items-center p-4 cursor-pointer",
-                  file.isDirectory ? "bg-yellow-50 dark:bg-yellow-950" : "bg-white dark:bg-gray-800"
+                  "relative group cursor-pointer transition-all duration-200 hover:shadow-md",
+                  file.isDirectory
+                    ? "hover:scale-105"
+                    : ""
                 )}
                 style={{
                   pointerEvents: 'auto',
@@ -635,46 +701,83 @@ export function FileManager({
                   e.stopPropagation();
                 }}
               >
-                {file.isDirectory && (
-                  <FolderOpen className="h-12 w-12 text-yellow-500 mb-2" />
+                {file.isDirectory ? (
+                  /* Folder with CSS-based design */
+                  <div className="relative flex flex-col items-center p-4">
+                    {/* CSS Folder shape */}
+                    <div className="folder">
+                      <div className="folder-tab"></div>
+                      {/* Folder name inside the folder */}
+                      <div className="folder-content">
+                        <div className="folder-name">
+                          {file.name}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Regular files - Same design as sidebar */
+                  <div className="flex flex-col items-center justify-center p-4">
+                    {(() => {
+                      const getFileIcon = () => {
+                        if (file.name.endsWith('.draw')) {
+                          return <Palette className="w-20 h-20 text-purple-600 dark:text-purple-400" />;
+                        } else if (file.name.endsWith('.md') || file.name.endsWith('.txt')) {
+                          return <FileText className="w-20 h-20 text-blue-600 dark:text-blue-400" />;
+                        } else if (file.name.endsWith('.pdf')) {
+                          return <FileText className="w-20 h-20 text-red-600 dark:text-red-400" />;
+                        }
+                        return <FileText className="w-20 h-20 text-blue-600 dark:text-blue-400" />;
+                      };
+
+                      return (
+                        <div className="relative flex flex-col items-center justify-center gap-2">
+                          {getFileIcon()}
+                          <span className="text-xs font-medium text-center truncate max-w-full px-1">
+                            {file.name}
+                          </span>
+                        </div>
+                      );
+                    })()}
+                  </div>
                 )}
-                {!file.isDirectory && renderFileIcon(file)}
-                <p className="text-sm font-medium text-center mt-2 break-all">{file.name}</p>
-                {!file.isDirectory && file.type !== "link" && (
-                  <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
-                )}
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="w-8 h-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setRenameFileState({ file, isOpen: true }); }}>
-                        <Edit className="mr-2 h-4 w-4" /> Rename
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); /* handleCopy(file) */ }}>
-                        <Copy className="mr-2 h-4 w-4" /> Copy
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); /* handleMove(file) */ }}>
-                        <Move className="mr-2 h-4 w-4" /> Move
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteFile(file); }}>
-                        <Trash className="mr-2 h-4 w-4" /> Delete
-                      </DropdownMenuItem>
-                      {file.url && (
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); window.open(file.url, '_blank'); }}>
-                          <Eye className="mr-2 h-4 w-4" /> Open Link
+
+                {/* Dropdown menu for non-folder items */}
+                {!file.isDirectory && (
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="w-8 h-8">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setRenameFileState({ file, isOpen: true }); }}>
+                          <Edit className="mr-2 h-4 w-4" /> Rename
                         </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); /* handleCopy(file) */ }}>
+                          <Copy className="mr-2 h-4 w-4" /> Copy
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); /* handleMove(file) */ }}>
+                          <Move className="mr-2 h-4 w-4" /> Move
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteFile(file); }}>
+                          <Trash className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
+                        {file.url && (
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); window.open(file.url, '_blank'); }}>
+                            <Eye className="mr-2 h-4 w-4" /> Open Link
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
+
                 {uploadProgress[file.id] !== undefined && (
                   <Progress value={uploadProgress[file.id]} className="w-full mt-2" />
                 )}
-              </Card>
+              </div>
             ))}
           </div>
         )}

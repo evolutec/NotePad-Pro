@@ -376,6 +376,17 @@ export function AddPdfDocumentDialog({ open, onOpenChange, parentPath, onDocumen
         tags,
       };
 
+      // For PDF files, we'll use a simple approach for now
+      // In the future, we could extend the API to support file metadata storage
+      console.log('✅ PDF file uploaded successfully with metadata:', {
+        id: newDocument.id,
+        name: newDocument.name,
+        path: result.path,
+        parentPath: newDocument.parentPath,
+        createdAt: newDocument.createdAt,
+        tags: newDocument.tags
+      });
+
       setCreationSuccess(`PDF "${finalName}" uploadé avec succès !`);
       if (onDocumentCreated) onDocumentCreated(newDocument);
       if (onRefreshTree) onRefreshTree();
