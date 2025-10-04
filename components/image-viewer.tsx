@@ -1,9 +1,7 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { ZoomIn, ZoomOut, RotateCw, Download, X, Maximize2, Minimize2 } from "lucide-react";
+import { ZoomIn, ZoomOut, RotateCw, Download, X } from "lucide-react";
 
 export interface ImageViewerProps {
   open: boolean;
@@ -17,7 +15,6 @@ export function ImageViewer({ open, onOpenChange, imagePath, imageName, imageTyp
   const [imageSrc, setImageSrc] = useState<string>("");
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -67,8 +64,8 @@ export function ImageViewer({ open, onOpenChange, imagePath, imageName, imageTyp
 
               // Ensure result.data is treated as binary data
               let binaryData: ArrayBuffer;
-              if (result.data instanceof ArrayBuffer) {
-                binaryData = result.data;
+              if (result.data && typeof result.data === 'object' && (result.data as any) instanceof ArrayBuffer) {
+                binaryData = result.data as ArrayBuffer;
               } else if (result.data && typeof result.data === 'object' && 'buffer' in result.data) {
                 // Handle Uint8Array-like objects
                 const uint8Array = result.data as Uint8Array;
@@ -144,10 +141,6 @@ export function ImageViewer({ open, onOpenChange, imagePath, imageName, imageTyp
     }
   };
 
-  const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
-  };
-
   const resetView = () => {
     setZoom(1);
     setRotation(0);
@@ -156,92 +149,91 @@ export function ImageViewer({ open, onOpenChange, imagePath, imageName, imageTyp
   if (!open) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`max-w-[98vw] max-h-[98vh] w-auto h-auto p-0 ${isFullscreen ? 'w-screen h-screen' : ''}`}>
-        <DialogHeader className="p-4 pb-2">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-2">
-              <span className="text-lg">📷</span>
-              {imageName}
-            </DialogTitle>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleZoomOut} title="Zoom arrière">
-                <ZoomOut className="h-4 w-4" />
-              </Button>
-              <span className="text-sm font-mono min-w-[60px] text-center">
-                {Math.round(zoom * 100)}%
-              </span>
-              <Button variant="outline" size="sm" onClick={handleZoomIn} title="Zoom avant">
-                <ZoomIn className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleRotate} title="Rotation 90°">
-                <RotateCw className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleDownload} title="Télécharger">
-                <Download className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={toggleFullscreen} title="Plein écran">
-                {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-              </Button>
-              <Button variant="outline" size="sm" onClick={resetView} title="Réinitialiser">
-                <span className="text-xs">↻</span>
-              </Button>
+    <div className="w-full h-full flex flex-col bg-background">
+      {/* Header with controls */}
+      <div className="flex items-center justify-between p-4 border-b bg-card">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">📷</span>
+          <h2 className="text-lg font-semibold">{imageName}</h2>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleZoomOut} title="Zoom arrière">
+            <ZoomOut className="h-4 w-4" />
+          </Button>
+          <span className="text-sm font-mono min-w-[60px] text-center">
+            {Math.round(zoom * 100)}%
+          </span>
+          <Button variant="outline" size="sm" onClick={handleZoomIn} title="Zoom avant">
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleRotate} title="Rotation 90°">
+            <RotateCw className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleDownload} title="Télécharger">
+            <Download className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={resetView} title="Réinitialiser">
+            <span className="text-xs">↻</span>
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} title="Fermer">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Image container - takes all available space */}
+      <div className="flex-1 p-4 overflow-hidden">
+        <div className="flex items-center justify-center h-full bg-muted/30 rounded-lg overflow-hidden">
+          {error ? (
+            <div className="flex items-center justify-center h-full text-red-500">
+              <div className="text-center">
+                <div className="text-4xl mb-4">⚠️</div>
+                <p className="text-lg font-semibold">Erreur de chargement</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {error || "Impossible de charger l'image"}
+                </p>
+              </div>
             </div>
-          </div>
-        </DialogHeader>
-
-        <div className="flex-1 p-4 pt-0 overflow-hidden">
-          <div className="flex items-center justify-center h-full bg-black/5 rounded-lg overflow-hidden">
-            {error ? (
-              <div className="flex items-center justify-center h-full text-red-500">
-                <div className="text-center">
-                  <div className="text-4xl mb-4">⚠️</div>
-                  <p className="text-lg font-semibold">Erreur de chargement</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {error || "Impossible de charger l'image"}
-                  </p>
-                </div>
+          ) : imageSrc ? (
+            <img
+              src={imageSrc}
+              alt={imageName}
+              onError={() => {
+                console.error('Image failed to load:', imageSrc);
+                setError("Impossible de charger l'image");
+              }}
+              onLoad={() => {
+                console.log('Image loaded successfully:', imageSrc);
+              }}
+              style={{
+                transform: `scale(${zoom}) rotate(${rotation}deg)`,
+                transformOrigin: 'center',
+                maxWidth: '100%',
+                maxHeight: '100%',
+                objectFit: 'contain',
+                transition: 'transform 0.2s ease-in-out'
+              }}
+              className="rounded"
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <div className="text-4xl mb-4 animate-spin">⏳</div>
+                <p className="text-lg">Chargement de l'image...</p>
               </div>
-            ) : imageSrc ? (
-              <img
-                src={imageSrc}
-                alt={imageName}
-                onError={() => {
-                  console.error('Image failed to load:', imageSrc);
-                  setError("Impossible de charger l'image");
-                }}
-                onLoad={() => {
-                  console.log('Image loaded successfully:', imageSrc);
-                }}
-                style={{
-                  transform: `scale(${zoom}) rotate(${rotation}deg)`,
-                  transformOrigin: 'center',
-                  maxWidth: '100%',
-                  maxHeight: '100%',
-                  objectFit: 'contain',
-                  transition: 'transform 0.2s ease-in-out'
-                }}
-                className="rounded"
-              />
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <div className="text-4xl mb-4 animate-spin">⏳</div>
-                  <p className="text-lg">Chargement de l'image...</p>
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
+      </div>
 
-        <div className="p-4 pt-2 border-t">
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>Type: {imageType.toUpperCase()}</span>
-            <span>Rotation: {rotation}°</span>
-            <span>Zoom: {Math.round(zoom * 100)}%</span>
-          </div>
+      {/* Footer with image info */}
+      <div className="p-4 border-t bg-card">
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>Type: {imageType.toUpperCase()}</span>
+          <span>Rotation: {rotation}°</span>
+          <span>Zoom: {Math.round(zoom * 100)}%</span>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }

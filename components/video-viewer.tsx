@@ -2,11 +2,8 @@
 
 import * as React from "react"
 import { useState, useEffect, useRef } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
-import { Progress } from "@/components/ui/progress"
 import {
   Play,
   Pause,
@@ -15,11 +12,9 @@ import {
   VolumeX,
   Maximize2,
   Minimize2,
-  RotateCw,
-  Download,
-  Settings,
   SkipBack,
-  SkipForward
+  SkipForward,
+  X
 } from "lucide-react"
 import videojs from 'video.js'
 import 'video.js/dist/video-js.css'
@@ -466,18 +461,18 @@ export function VideoViewer({ open, onOpenChange, videoPath, videoName, videoTyp
     return null
   }
 
-  console.log('🎥 VideoViewer: Rendering video viewer dialog')
+  console.log('🎥 VideoViewer: Rendering video viewer')
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] max-h-[95vh] w-auto h-auto p-0 bg-black">
-        <DialogHeader className="p-4 pb-2 bg-black/80 text-white">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-2 text-white">
-              <span className="text-lg">🎥</span>
-              {videoName}
-            </DialogTitle>
-            <div className="flex items-center gap-2">
+    <div className="w-full h-full flex flex-col bg-black">
+      {/* Header with controls */}
+      <div className="p-4 pb-2 bg-black/80 text-white border-b border-gray-700">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🎥</span>
+            <h2 className="text-lg font-semibold text-white">{videoName}</h2>
+          </div>
+          <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
                 size="sm"
@@ -532,9 +527,18 @@ export function VideoViewer({ open, onOpenChange, videoPath, videoName, videoTyp
               >
                 {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
               </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onOpenChange(false)}
+                className="text-white hover:bg-white/20"
+                title="Fermer"
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
           </div>
-        </DialogHeader>
+        </div>
 
         <div className="flex-1 p-4 pt-0 bg-black">
           <div className="flex items-center justify-center h-full bg-black rounded-lg overflow-hidden">
@@ -664,8 +668,7 @@ export function VideoViewer({ open, onOpenChange, videoPath, videoName, videoTyp
             <span>Résolution: {isFullscreen ? 'Plein écran' : 'Fenêtré'}</span>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+    </div>
   )
 }
 
