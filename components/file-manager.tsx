@@ -37,6 +37,7 @@ interface FileManagerProps {
   onNoteSelect?: (notePath: string) => void
   onImageSelect?: (imagePath: string, imageName: string, imageType: string) => void
   onVideoSelect?: (videoPath: string, videoName: string, videoType: string) => void
+  onDocumentSelect?: (documentPath: string, documentName: string, documentType: string) => void
   selectedNote?: string | null; // Add selectedNote prop
 }
 
@@ -83,6 +84,7 @@ export function FileManager({
   onNoteSelect,
   onImageSelect,
   onVideoSelect,
+  onDocumentSelect,
   selectedNote, // Add selectedNote here
 }: FileManagerProps) {
   console.log("FileManager: Component re-rendered with selectedNote", selectedNote);
@@ -823,7 +825,7 @@ const AddNoteDialog: React.FC<AddNoteDialogProps> = ({ onNoteCreated }) => {
     setCreationError(null);
     setCreationSuccess(null);
     if (!noteName.trim()) return;
-    let finalParentPath = parentId ? existingFolders.find(f => f.id === parentId)?.path : undefined;
+    let finalParentPath = parentId ? existingFolders.find(f => f.id === parentId)?.path || undefined : undefined;
 
     if (window.electronAPI?.noteCreate) {
       const result = await window.electronAPI.noteCreate({

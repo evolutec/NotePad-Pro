@@ -13,6 +13,7 @@ declare global {
     fileRename?: (oldPath: string, newName: string) => Promise<{ success: boolean; newPath?: string; error?: string }>;
     fileRead?: (filePath: string) => Promise<{ success: boolean; data?: string; error?: string }>;
     readFile?: (filePath: string) => Promise<{ success: boolean; data?: string; error?: string }>;
+    writeFile?: (filePath: string, data: string) => Promise<{ success: boolean; error?: string }>;
     readPdfFile?: (filePath: string) => Promise<{ success: boolean; data?: any; error?: string }>;
     documentCreate?: (data: any) => Promise<{ success: boolean; path?: string; error?: string }>;
     archiveCreate?: (data: any) => Promise<{ success: boolean; path?: string; error?: string }>;
@@ -52,6 +53,10 @@ declare global {
     folderDeleteMetadata?: (folderPath: string) => Promise<{ success: boolean; message?: string; error?: string }>;
     folderListWithMetadata?: (rootPath: string) => Promise<{ success: boolean; folders?: any[]; error?: string }>;
     foldersMigrateToADS?: () => Promise<{ success: boolean; migrated?: number; total?: number; errors?: any[]; error?: string }>;
+
+    // Document viewer APIs
+    downloadFile?: (filePath: string, fileName: string) => Promise<{ success: boolean; error?: string }>;
+    openFileExternal?: (filePath: string) => Promise<{ success: boolean; error?: string }>;
 
     // Ajoutez ici d'autres méthodes exposées par preload.js si besoin
   }

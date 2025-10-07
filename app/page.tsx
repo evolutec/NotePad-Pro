@@ -10,7 +10,7 @@ import { SettingsDialog } from "@/components/settings-dialog"
 import { toast } from "@/components/ui/use-toast"
 import dynamic from 'next/dynamic';
 import { Button } from "@/components/ui/button"
-import { PenTool, FileText, Upload, Menu, Settings } from "lucide-react"
+import { Settings } from "lucide-react"
 import type { EnhancedFolderNode } from "@/components/ui/FolderTree-modern"
 import { AddFolderDialog } from "@/components/add-folder_dialog"
 import { AddNoteDialog } from "@/components/add-note_dialog"
@@ -20,6 +20,8 @@ import { AddAudioDialog } from "@/components/add-audio_dialog"
 import { AddImageDialog } from "@/components/add-image_dialog"
 import { AddVideoDialog } from "@/components/add-video_dialog"
 import { AddCodeDialog } from "@/components/add-code_dialog"
+import { AddDocumentDialog } from "@/components/add-document_dialog"
+import { DocumentViewer } from "@/components/document-viewer"
 import { RenameDialog } from "@/components/rename-dialog"
 import { ImageViewer } from "@/components/image-viewer"
 import { VideoViewer } from "@/components/video-viewer"
@@ -30,7 +32,7 @@ const PdfViewer = dynamic(() => import('@/components/pdf-viewer').then(mod => mo
 });
 
 export default function NoteTakingApp() {
-  const [activeView, setActiveView] = useState<"canvas" | "editor" | "files" | "pdf_viewer" | "image_viewer" | "video_viewer" | "landing">("landing")
+  const [activeView, setActiveView] = useState<"canvas" | "editor" | "files" | "pdf_viewer" | "image_viewer" | "video_viewer" | "document_viewer" | "landing">("landing")
   const [sidebarOpen, setSidebarOpen] = useState(false) // Start with collapsed sidebar for landing page
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true) // Track sidebar collapse state - collapsed by default
   const [sidebarWidth, setSidebarWidth] = useState(256)
@@ -43,6 +45,7 @@ export default function NoteTakingApp() {
   const [isAddNoteOpen, setIsAddNoteOpen] = useState(false)
   const [isAddDrawOpen, setIsAddDrawOpen] = useState(false)
   const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false);
+  const [isAddGenericDocumentOpen, setIsAddGenericDocumentOpen] = useState(false);
   const [isAddAudioOpen, setIsAddAudioOpen] = useState(false);
   const [isAddImageOpen, setIsAddImageOpen] = useState(false);
   const [isAddVideoOpen, setIsAddVideoOpen] = useState(false);
@@ -58,6 +61,9 @@ export default function NoteTakingApp() {
   const [videoViewerPath, setVideoViewerPath] = useState("")
   const [videoViewerName, setVideoViewerName] = useState("")
   const [videoViewerType, setVideoViewerType] = useState("")
+  const [documentViewerPath, setDocumentViewerPath] = useState("")
+  const [documentViewerName, setDocumentViewerName] = useState("")
+  const [documentViewerType, setDocumentViewerType] = useState("")
   const isMobile = useIsMobile()
 
   // JSON file management functions
@@ -359,89 +365,49 @@ export default function NoteTakingApp() {
       });
       console.log('Video viewer set successfully');
     } else if (fileExtension === 'pdf') {
-      console.log('PDF file detected, loading PDF viewer...');
-
-      // Set PDF viewer FIRST to prevent any other logic from overriding
-      setActiveView('pdf_viewer');
+      console.log('PDF file detected, loading document viewer...');
+      
+      // Set selected note for sidebar highlighting
       setSelectedNote(notePath);
-
-      // Check if we're in Electron mode with proper API detection
-      const isElectronMode = !!(window.electronAPI || window.require);
-      console.log('Electron mode check:', isElectronMode, 'electronAPI:', !!window.electronAPI, 'require:', !!window.require);
-
-      if (isElectronMode && window.electronAPI?.readPdfFile) {
-        try {
-          console.log('Attempting to read PDF with Electron API:', notePath);
-          const result = await window.electronAPI.readPdfFile(notePath);
-          console.log('PDF read result:', result);
-
-          if (result.success && result.data) {
-            console.log('PDF data received, type:', typeof result.data, 'length:', result.data.length);
-
-            // Ensure we have proper binary data
-            let pdfData;
-            if (result.data instanceof Buffer) {
-              pdfData = result.data;
-            } else if (typeof result.data === 'string') {
-              // If it's a base64 string, convert it
-              pdfData = Buffer.from(result.data, 'base64');
-            } else {
-              // Assume it's already a buffer or buffer-like
-              pdfData = result.data;
-            }
-
-            const blob = new Blob([pdfData], { type: 'application/pdf' });
-            const pdfUrl = URL.createObjectURL(blob);
-            console.log('PDF blob created, URL:', pdfUrl);
-            setPdfContent(pdfUrl);
-            toast({
-              title: "PDF loaded successfully!",
-              variant: "default",
-            });
-            console.log('PDF viewer set successfully');
-          } else {
-            console.error('Failed to read PDF file:', result.error);
-            setPdfContent(null);
-            setActiveView("editor");
-            toast({
-              title: "Failed to read PDF file",
-              description: result.error || 'Unknown error',
-              variant: "destructive",
-            });
-          }
-        } catch (error: any) {
-          console.error('Error reading PDF file:', error);
-          setPdfContent(null);
-          setActiveView("editor");
-          toast({
-            title: "Error reading PDF file",
-            description: error?.message || 'Unknown error',
-            variant: "destructive",
-          });
-        }
-      } else {
-        console.warn('Electron API not available or readPdfFile method missing. Current mode:', isElectronMode ? 'Electron (API issue)' : 'Browser');
-
-        // In browser mode, we can't load local files directly due to CORS
-        // Show a helpful message to the user
-        setPdfContent(null);
-        setActiveView("pdf_viewer"); // Keep PDF viewer active but show message
-
-        toast({
-          title: "PDF Viewer - Mode Info",
-          description: isElectronMode
-            ? "PDF loading issue detected. Please check Electron API configuration."
-            : "PDF files require Electron mode to view. Please run the app with 'npm run electron' to view PDFs.",
-          variant: "default",
-        });
-        console.log('PDF viewer activated - showing mode-specific message');
-      }
+      
+      // Use document viewer for PDFs (displays in iframe via HTTP server)
+      setActiveView('document_viewer');
+      setDocumentViewerPath(notePath);
+      setDocumentViewerName(notePath.split('\\').pop() || notePath.split('/').pop() || 'document.pdf');
+      setDocumentViewerType('pdf');
+      
+      toast({
+        title: "PDF loaded successfully!",
+        variant: "default",
+      });
+      console.log('Document viewer set for PDF successfully');
     } else if (fileExtension === 'draw') {
       setSelectedNote(notePath);
       setActiveView("canvas");
     } else {
-      setSelectedNote(notePath);
-      setActiveView("editor");
+      // Check for document files that should use the document viewer
+      const documentExtensions = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'rtf', 'odt', 'ods', 'odp', 'txt', 'csv', 'tsv'];
+      if (documentExtensions.includes(fileExtension || '')) {
+        console.log('Document file detected, loading document viewer...');
+
+        // Set selected note for sidebar highlighting
+        setSelectedNote(notePath);
+        
+        // Set document viewer
+        setActiveView('document_viewer');
+        setDocumentViewerPath(notePath);
+        setDocumentViewerName(notePath.split('\\').pop() || 'Document');
+        setDocumentViewerType(fileExtension || '');
+
+        toast({
+          title: "Document loaded successfully!",
+          variant: "default",
+        });
+        console.log('Document viewer set successfully');
+      } else {
+        setSelectedNote(notePath);
+        setActiveView("editor");
+      }
     }
   }, []);
   return (
@@ -767,7 +733,9 @@ export default function NoteTakingApp() {
           onNewFile={async (parentPath, type) => {
             console.log('New file:', parentPath, type)
             if (type === 'document') {
-              setIsAddDocumentOpen(true) // This now opens the PDF dialog
+              setIsAddDocumentOpen(true) // This opens the PDF dialog
+            } else if (type === 'generic') {
+              setIsAddGenericDocumentOpen(true) // This opens the generic document dialog
             } else if (type === 'note') {
               setIsAddNoteOpen(true)
             } else if (type === 'audio') {
@@ -793,54 +761,6 @@ export default function NoteTakingApp() {
             <h1 className="text-xl font-semibold text-card-foreground">FUSION</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant={activeView === "canvas" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setActiveView("canvas")}
-            >
-              <PenTool className="h-4 w-4 mr-2" />
-              Dessin
-            </Button>
-            <Button
-              variant={activeView === "editor" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setActiveView("editor")}
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Éditeur
-            </Button>
-            <Button
-              variant={activeView === "files" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setActiveView("files")}
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Fichiers
-            </Button>
-            <Button
-              variant={activeView === "pdf_viewer" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setActiveView("pdf_viewer")}
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              PDF Viewer
-            </Button>
-            <Button
-              variant={activeView === "image_viewer" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setActiveView("image_viewer")}
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Image Viewer
-            </Button>
-            <Button
-              variant={activeView === "video_viewer" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setActiveView("video_viewer")}
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Video Viewer
-            </Button>
             <SettingsDialog>
               <Button variant="ghost" size="sm">
                 <Settings className="h-4 w-4" />
@@ -892,6 +812,14 @@ export default function NoteTakingApp() {
               videoType={videoViewerType}
             />
           )}
+          {activeView === "document_viewer" && (
+            <DocumentViewer
+              filePath={documentViewerPath}
+              fileName={documentViewerName}
+              fileType={documentViewerType}
+              onClose={() => setActiveView("files")}
+            />
+          )}
           {activeView === "files" && (
             <FileManager
               key={`filemanager-${treeVersion}`} // Force re-render when tree version changes
@@ -912,6 +840,13 @@ export default function NoteTakingApp() {
                 setVideoViewerPath(path);
                 setVideoViewerName(name);
                 setVideoViewerType(type);
+              }}
+              onDocumentSelect={(path, name, type) => {
+                console.log('Document selected from file manager:', path, name, type);
+                setActiveView('document_viewer');
+                setDocumentViewerPath(path);
+                setDocumentViewerName(name);
+                setDocumentViewerType(type);
               }}
               selectedNote={selectedNote}
             />
@@ -1128,6 +1063,21 @@ export default function NoteTakingApp() {
         parentPath={selectedFolder || ''}
         onCodeCreated={async (newCode) => {
           console.log('Code created:', newCode)
+          // Reload the folder tree to reflect changes
+          if (window.electronAPI?.foldersScan) {
+            const result = await window.electronAPI.foldersScan()
+            if (result && result.length > 0) {
+              setFolderTree(result[0])
+            }
+          }
+        }}
+      />
+      <AddDocumentDialog
+        open={isAddGenericDocumentOpen}
+        onOpenChange={setIsAddGenericDocumentOpen}
+        parentPath={selectedFolder || ''}
+        onDocumentCreated={async (newDocument) => {
+          console.log('Generic document created:', newDocument)
           // Reload the folder tree to reflect changes
           if (window.electronAPI?.foldersScan) {
             const result = await window.electronAPI.foldersScan()

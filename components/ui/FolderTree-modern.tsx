@@ -556,9 +556,21 @@ export function ModernFolderTree({
     console.log('Node details:', node);
     console.log('Available handlers:', { onFolderSelect, onNoteSelect, onImageSelect, onVideoSelect });
 
+    // Check file extension from the actual path since node.name might be truncated
+    const fileExtension = node.path.split('.').pop()?.toLowerCase() || '';
+    console.log('File extension from path:', fileExtension, 'for file:', node.name, 'path:', node.path);
+
     // Check if it's a PDF file specifically - this should take priority
-    if (node.name.toLowerCase().endsWith('.pdf')) {
+    if (fileExtension === 'pdf') {
       console.log('PDF file detected, calling onNoteSelect with path:', node.path);
+      onNoteSelect?.(node.path);
+      return;
+    }
+
+    // Check for document files that should use document viewer
+    const documentExtensions = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'rtf', 'odt', 'ods', 'odp', 'txt', 'csv', 'tsv'];
+    if (documentExtensions.includes(fileExtension)) {
+      console.log('Document file detected, calling onNoteSelect with path:', node.path);
       onNoteSelect?.(node.path);
       return;
     }
@@ -573,11 +585,11 @@ export function ModernFolderTree({
     } else if (fileType === 'image' && onImageSelect) {
       console.log('Image file detected, calling onImageSelect with path:', node.path, 'name:', node.name, 'type:', fileType);
       onImageSelect(node.path, node.name, fileType);
-    } else if ((fileType === 'note' || fileType === 'draw' || fileType === 'document') && onNoteSelect) {
-      console.log('Calling onNoteSelect with path:', node.path);
+    } else if ((fileType === 'note' || fileType === 'draw') && onNoteSelect) {
+      console.log('Note/Draw file detected, calling onNoteSelect with path:', node.path);
       onNoteSelect(node.path);
     } else if (onFolderSelect) {
-      console.log('Calling onFolderSelect with path:', node.path);
+      console.log('Folder detected, calling onFolderSelect with path:', node.path);
       onFolderSelect(node.path);
     } else {
       console.log('No handler available for this node type');

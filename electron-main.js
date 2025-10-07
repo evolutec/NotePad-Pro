@@ -1,9 +1,85 @@
 
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
+const url = require('url');
 
 let mainWindow;
+let fileServer;
+
+// Create a simple HTTP server to serve local files
+function createFileServer() {
+  fileServer = http.createServer((req, res) => {
+    const parsedUrl = url.parse(req.url, true);
+    
+    // Get file path from query parameter
+    const filePath = parsedUrl.query.file;
+    
+    console.log('[File Server] Request for:', filePath);
+    
+    if (!filePath) {
+      res.writeHead(400, { 'Content-Type': 'text/plain' });
+      res.end('Missing file parameter');
+      return;
+    }
+    
+    if (!fs.existsSync(filePath)) {
+      console.error('[File Server] File not found:', filePath);
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.end('File not found');
+      return;
+    }
+    
+    // Determine content type based on extension
+    const ext = path.extname(filePath).toLowerCase();
+    const contentTypes = {
+      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.doc': 'application/msword',
+      '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      '.xls': 'application/vnd.ms-excel',
+      '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      '.ppt': 'application/vnd.ms-powerpoint',
+      '.pdf': 'application/pdf',
+      '.txt': 'text/plain',
+      '.csv': 'text/csv',
+    };
+    
+    const contentType = contentTypes[ext] || 'application/octet-stream';
+    
+    // Enable CORS
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
+    if (req.method === 'OPTIONS') {
+      res.writeHead(200);
+      res.end();
+      return;
+    }
+    
+    try {
+      const stat = fs.statSync(filePath);
+      res.writeHead(200, {
+        'Content-Type': contentType,
+        'Content-Length': stat.size,
+      });
+      
+      console.log('[File Server] Serving file:', filePath, 'Size:', stat.size, 'Type:', contentType);
+      
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+    } catch (err) {
+      console.error('[File Server] Error serving file:', err);
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end('Error serving file');
+    }
+  });
+  
+  fileServer.listen(38274, 'localhost', () => {
+    console.log('[File Server] Listening on http://localhost:38274');
+  });
+}
 
 function createWindow() {
   console.log('[Electron] Creating window...');
@@ -1320,4 +1396,6 @@ app.whenReady().then(() => {
 
 app.on('ready', () => {
   console.log('[Electron] App ready event fired');
+  // Start the file server
+  createFileServer();
 });

@@ -357,7 +357,24 @@ export function ModernSidebar({
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="right">
-                        Nouveau document
+                        Nouveau PDF
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-1 bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300"
+                          onClick={() => onNewFile?.('root', 'generic')}
+                        >
+                          <FileArchive className="w-3 h-3" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        Importer document
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -482,7 +499,24 @@ export function ModernSidebar({
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="right">
-                          Nouveau document
+                          Nouveau PDF
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-12 w-12 p-0 bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300"
+                            onClick={() => onNewFile?.('root', 'generic')}
+                          >
+                            <FileArchive className="w-4 h-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          Importer document
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
