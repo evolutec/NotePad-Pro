@@ -3,6 +3,7 @@ import dynamic from 'next/dynamic';
 import { NoteEditor } from './note-editor';
 import { DocxViewer } from './docx-viewer';
 import { ExcelViewer } from './excel-viewer';
+import { PowerPointViewer } from './powerpoint-viewer';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -197,7 +198,13 @@ export function DocumentViewer({ filePath, fileName, fileType, onClose }: Docume
                   console.log('[DocumentViewer] Rendering ExcelViewer for:', fileName);
                   return <ExcelViewer filePath={filePath} fileName={fileName} />;
                 }
-                
+
+                // PowerPoint presentations (.ppt, .pptx)
+                else if (fileExtension === '.pptx' || fileExtension === '.ppt') {
+                  console.log('[DocumentViewer] Rendering PowerPointViewer for:', fileName);
+                  return <PowerPointViewer filePath={filePath} fileName={fileName} />;
+                }
+
                 // PDF files
                 else if (fileExtension === '.pdf') {
                   console.log('[DocumentViewer] Rendering PDF iframe');
