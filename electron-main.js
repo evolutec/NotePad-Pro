@@ -1381,6 +1381,55 @@ ipcMain.handle('readPdfFile', async (_event, filePath) => {
   }
 });
 
+// Handler pour ouvrir un fichier avec l'application externe par défaut
+ipcMain.handle('file:openExternal', async (_event, filePath) => {
+  try {
+    console.log('[Electron] Opening file externally:', filePath);
+    if (!fs.existsSync(filePath)) {
+      console.log('[Electron] File not found:', filePath);
+      return { success: false, error: 'File not found' };
+    }
+
+    const { shell } = require('electron');
+    await shell.openPath(filePath);
+    console.log('[Electron] File opened successfully with default application');
+    return { success: true };
+  } catch (err) {
+    console.error('[Electron] Error opening file externally:', err.message);
+    return { success: false, error: err.message };
+  }
+});
+
+// Handler pour télécharger/copier un fichier
+ipcMain.handle('file:download', async (_event, filePath, fileName) => {
+  try {
+    console.log('[Electron] Downloading file:', filePath);
+    if (!fs.existsSync(filePath)) {
+      return { success: false, error: 'File not found' };
+    }
+
+    const { dialog } = require('electron');
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: 'Enregistrer sous',
+      defaultPath: fileName,
+      filters: [
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
+
+    if (!result.canceled && result.filePath) {
+      fs.copyFileSync(filePath, result.filePath);
+      console.log('[Electron] File downloaded to:', result.filePath);
+      return { success: true, path: result.filePath };
+    }
+
+    return { success: false, error: 'Download canceled' };
+  } catch (err) {
+    console.error('[Electron] Error downloading file:', err.message);
+    return { success: false, error: err.message };
+  }
+});
+
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit();
 });

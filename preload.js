@@ -152,4 +152,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     console.log('Preload: Starting migration to NTFS ADS');
     return ipcRenderer.invoke('folders:migrateToADS');
   },
+
+  // Document viewer APIs
+  openFileExternal: (filePath) => {
+    console.log('Preload: Opening file externally:', filePath);
+    return ipcRenderer.invoke('file:openExternal', filePath);
+  },
+
+  downloadFile: (filePath, fileName) => {
+    console.log('Preload: Downloading file:', filePath);
+    return ipcRenderer.invoke('file:download', filePath, fileName);
+  },
 });

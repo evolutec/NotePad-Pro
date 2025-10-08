@@ -4,17 +4,30 @@ import { NoteEditor } from './note-editor';
 import { DocxViewer } from './docx-viewer';
 import { ExcelViewer } from './excel-viewer';
 import { PowerPointViewer } from './powerpoint-viewer';
+import { OfficeWordEditor } from './office-word-editor';
+import { OfficeExcelEditor } from './office-excel-editor';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
-import { FileText, Download, ExternalLink, AlertCircle } from 'lucide-react';
+import { FileText, Download, ExternalLink, AlertCircle, Edit } from 'lucide-react';
 
-// Dynamically import DocViewer to avoid SSR issues
+// Dynamically import components that use Node.js modules to avoid SSR issues
 const DocViewer = dynamic(() => import('react-doc-viewer'), {
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center h-64">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>
+  ),
+});
+
+// Dynamically import OfficePowerPointEditor (uses pptxgenjs which requires Node.js 'fs')
+const OfficePowerPointEditor = dynamic(() => import('./office-powerpoint-editor').then(mod => ({ default: mod.OfficePowerPointEditor })), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <p className="ml-3 text-muted-foreground">Chargement de l'éditeur PowerPoint...</p>
     </div>
   ),
 });
@@ -31,6 +44,7 @@ export function DocumentViewer({ filePath, fileName, fileType, onClose }: Docume
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isTextFile, setIsTextFile] = useState(false);
+  const [editMode, setEditMode] = useState(false); // Toggle between view and edit modes
 
   // Check if file is a text-based format that should use the note editor
   const textExtensions = ['.txt', '.csv', '.tsv', '.md'];
@@ -153,6 +167,20 @@ export function DocumentViewer({ filePath, fileName, fileType, onClose }: Docume
           </div>
         </div>
         <div className="flex gap-2">
+          {/* Edit button - for Word, Excel and PowerPoint documents */}
+          {(fileExtension === '.docx' || fileExtension === '.doc' || 
+            fileExtension === '.xlsx' || fileExtension === '.xls' ||
+            fileExtension === '.pptx' || fileExtension === '.ppt') && (
+            <Button
+              onClick={() => setEditMode(!editMode)}
+              variant={editMode ? "secondary" : "default"}
+              size="sm"
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              {editMode ? 'Mode Lecture' : 'Éditer'}
+            </Button>
+          )}
+          
           <Button onClick={handleDownload} variant="outline" size="sm">
             <Download className="h-4 w-4 mr-2" />
             Télécharger
@@ -189,20 +217,32 @@ export function DocumentViewer({ filePath, fileName, fileType, onClose }: Docume
                 
                 // Word documents (.doc, .docx)
                 if (fileExtension === '.docx' || fileExtension === '.doc') {
-                  console.log('[DocumentViewer] Rendering DocxViewer for:', fileName);
-                  return <DocxViewer filePath={filePath} fileName={fileName} />;
+                  console.log('[DocumentViewer] Rendering Word for:', fileName, 'editMode:', editMode);
+                  return editMode ? (
+                    <OfficeWordEditor filePath={filePath} fileName={fileName} onSave={() => setEditMode(false)} />
+                  ) : (
+                    <DocxViewer filePath={filePath} fileName={fileName} />
+                  );
                 }
                 
                 // Excel spreadsheets (.xls, .xlsx)
                 else if (fileExtension === '.xlsx' || fileExtension === '.xls') {
-                  console.log('[DocumentViewer] Rendering ExcelViewer for:', fileName);
-                  return <ExcelViewer filePath={filePath} fileName={fileName} />;
+                  console.log('[DocumentViewer] Rendering Excel for:', fileName, 'editMode:', editMode);
+                  return editMode ? (
+                    <OfficeExcelEditor filePath={filePath} fileName={fileName} onSave={() => setEditMode(false)} />
+                  ) : (
+                    <ExcelViewer filePath={filePath} fileName={fileName} />
+                  );
                 }
 
                 // PowerPoint presentations (.ppt, .pptx)
                 else if (fileExtension === '.pptx' || fileExtension === '.ppt') {
-                  console.log('[DocumentViewer] Rendering PowerPointViewer for:', fileName);
-                  return <PowerPointViewer filePath={filePath} fileName={fileName} />;
+                  console.log('[DocumentViewer] Rendering PowerPoint for:', fileName, 'editMode:', editMode);
+                  return editMode ? (
+                    <OfficePowerPointEditor filePath={filePath} fileName={fileName} onSave={() => setEditMode(false)} />
+                  ) : (
+                    <PowerPointViewer filePath={filePath} fileName={fileName} />
+                  );
                 }
 
                 // PDF files
