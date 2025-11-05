@@ -43,7 +43,7 @@ export function OnlyOfficeEditor({
   const getDocumentType = () => {
     const ext = (fileType || fileName.split('.').pop() || '').toLowerCase();
     
-    if (['doc', 'docx', 'rtf', 'txt', 'odt'].includes(ext)) {
+      if (['doc', 'docx', 'rtf', 'txt', 'md', 'odt', 'pdf'].includes(ext)) {
       return 'word';
     } else if (['xls', 'xlsx', 'csv', 'ods'].includes(ext)) {
       return 'cell';

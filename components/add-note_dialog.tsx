@@ -280,20 +280,20 @@ export function AddNoteDialog({ open, onOpenChange, parentPath, onNoteCreated }:
           <Card
             className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
               noteType === 'text'
-                ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-200'
+                ? 'ring-2 ring-green-500 bg-green-50 border-green-200'
                 : 'hover:bg-gray-50 border-gray-200'
             }`}
             onClick={() => setNoteType('text')}
           >
             <CardContent className="p-3 text-center">
               <div className="flex flex-col items-center gap-1">
-                <Type className={`w-4 h-4 ${noteType === 'text' ? 'text-blue-600' : 'text-gray-600'}`} />
+                <Type className={`w-4 h-4 ${noteType === 'text' ? 'text-green-600' : 'text-gray-600'}`} />
                 <div>
-                  <div className={`font-medium text-sm ${noteType === 'text' ? 'text-blue-900' : 'text-gray-900'}`}>
-                    Texte
+                  <div className={`font-medium text-sm ${noteType === 'text' ? 'text-green-900' : 'text-gray-900'}`}>
+                    Texte (.txt)
                   </div>
-                  <div className={`text-xs ${noteType === 'text' ? 'text-blue-700' : 'text-gray-600'}`}>
-                    Format simple
+                  <div className={`text-xs ${noteType === 'text' ? 'text-green-700' : 'text-gray-600'}`}>
+                    OnlyOffice
                   </div>
                 </div>
               </div>
@@ -304,20 +304,20 @@ export function AddNoteDialog({ open, onOpenChange, parentPath, onNoteCreated }:
           <Card
             className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
               noteType === 'markdown'
-                ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-200'
+                ? 'ring-2 ring-green-500 bg-green-50 border-green-200'
                 : 'hover:bg-gray-50 border-gray-200'
             }`}
             onClick={() => setNoteType('markdown')}
           >
             <CardContent className="p-3 text-center">
               <div className="flex flex-col items-center gap-1">
-                <Hash className={`w-4 h-4 ${noteType === 'markdown' ? 'text-blue-600' : 'text-gray-600'}`} />
+                <Hash className={`w-4 h-4 ${noteType === 'markdown' ? 'text-green-600' : 'text-gray-600'}`} />
                 <div>
-                  <div className={`font-medium text-sm ${noteType === 'markdown' ? 'text-blue-900' : 'text-gray-900'}`}>
-                    Markdown
+                  <div className={`font-medium text-sm ${noteType === 'markdown' ? 'text-green-900' : 'text-gray-900'}`}>
+                    Markdown (.md)
                   </div>
-                  <div className={`text-xs ${noteType === 'markdown' ? 'text-blue-700' : 'text-gray-600'}`}>
-                    Format riche
+                  <div className={`text-xs ${noteType === 'markdown' ? 'text-green-700' : 'text-gray-600'}`}>
+                    OnlyOffice
                   </div>
                 </div>
               </div>
@@ -328,19 +328,19 @@ export function AddNoteDialog({ open, onOpenChange, parentPath, onNoteCreated }:
           <Card
             className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
               noteType === 'doc'
-                ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-200'
+                ? 'ring-2 ring-green-500 bg-green-50 border-green-200'
                 : 'hover:bg-gray-50 border-gray-200'
             }`}
             onClick={() => setNoteType('doc')}
           >
             <CardContent className="p-3 text-center">
               <div className="flex flex-col items-center gap-1">
-                <FileText className={`w-4 h-4 ${noteType === 'doc' ? 'text-blue-600' : 'text-gray-600'}`} />
+                <FileText className={`w-4 h-4 ${noteType === 'doc' ? 'text-green-600' : 'text-gray-600'}`} />
                 <div>
-                  <div className={`font-medium text-sm ${noteType === 'doc' ? 'text-blue-900' : 'text-gray-900'}`}>
+                  <div className={`font-medium text-sm ${noteType === 'doc' ? 'text-green-900' : 'text-gray-900'}`}>
                     Word (.doc)
                   </div>
-                  <div className={`text-xs ${noteType === 'doc' ? 'text-blue-700' : 'text-gray-600'}`}>
+                  <div className={`text-xs ${noteType === 'doc' ? 'text-green-700' : 'text-gray-600'}`}>
                     OnlyOffice
                   </div>
                 </div>
@@ -352,19 +352,19 @@ export function AddNoteDialog({ open, onOpenChange, parentPath, onNoteCreated }:
           <Card
             className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
               noteType === 'docx'
-                ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-200'
+                ? 'ring-2 ring-green-500 bg-green-50 border-green-200'
                 : 'hover:bg-gray-50 border-gray-200'
             }`}
             onClick={() => setNoteType('docx')}
           >
             <CardContent className="p-3 text-center">
               <div className="flex flex-col items-center gap-1">
-                <FileText className={`w-4 h-4 ${noteType === 'docx' ? 'text-blue-600' : 'text-gray-600'}`} />
+                <FileText className={`w-4 h-4 ${noteType === 'docx' ? 'text-green-600' : 'text-gray-600'}`} />
                 <div>
-                  <div className={`font-medium text-sm ${noteType === 'docx' ? 'text-blue-900' : 'text-gray-900'}`}>
+                  <div className={`font-medium text-sm ${noteType === 'docx' ? 'text-green-900' : 'text-gray-900'}`}>
                     Word (.docx)
                   </div>
-                  <div className={`text-xs ${noteType === 'docx' ? 'text-blue-700' : 'text-gray-600'}`}>
+                  <div className={`text-xs ${noteType === 'docx' ? 'text-green-700' : 'text-gray-600'}`}>
                     OnlyOffice
                   </div>
                 </div>

@@ -5,6 +5,7 @@ import type React from "react"
 import { useRef, useEffect, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
+import { OnlyOfficeLikeToolbar } from "@/components/ui/onlyoffice-like-toolbar"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -703,6 +704,18 @@ export function DrawingCanvas({ selectedNote, selectedFolder }: DrawingCanvasPro
 
   return (
     <div className="h-full flex flex-col bg-background">
+      {/* Barre OnlyOfficeLikeToolbar en haut */}
+      <OnlyOfficeLikeToolbar
+        tabs={[
+          { label: "Fichier" },
+          { label: "Accueil", active: true },
+          { label: "Dessiner" },
+          { label: "Affichage" },
+        ]}
+        activeTab={"Accueil"}
+        onTabChange={() => {}}
+      />
+      {/* Toolbar custom existante */}
       <div className="border-b border-border bg-card p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">

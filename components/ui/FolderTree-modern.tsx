@@ -568,7 +568,7 @@ export function ModernFolderTree({
     }
 
     // Check for document files that should use document viewer
-    const documentExtensions = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'rtf', 'odt', 'ods', 'odp', 'txt', 'csv', 'tsv'];
+  const documentExtensions = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'rtf', 'odt', 'ods', 'odp', 'txt', 'csv', 'tsv', 'md'];
     if (documentExtensions.includes(fileExtension)) {
       console.log('Document file detected, calling onNoteSelect with path:', node.path);
       onNoteSelect?.(node.path);

@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ZoomIn, ZoomOut, RotateCw, Download } from "lucide-react";
+import { OnlyOfficeLikeToolbar } from "./ui/onlyoffice-like-toolbar";
 
 export interface ImageViewerProps {
   imagePath: string;
@@ -147,40 +148,38 @@ export function ImageViewer({ imagePath, imageName, imageType }: ImageViewerProp
 
   return (
     <div className="w-full h-full flex flex-col bg-background">
-      {/* Toolbar - same style as DrawingCanvas */}
-      <div className="border-b border-border bg-card p-4">
-        <div className="flex items-center justify-between">
+      <OnlyOfficeLikeToolbar
+        tabs={[
+          { label: "Fichier" },
+          { label: "Accueil", active: true },
+          { label: "Affichage" },
+        ]}
+        activeTab={"Accueil"}
+        onTabChange={() => {}}
+        rightContent={
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleZoomOut} title="Zoom arrière">
+            <Button variant="ghost" size="icon" onClick={handleZoomOut} title="Zoom arrière">
               <ZoomOut className="h-4 w-4" />
             </Button>
             <span className="text-sm text-foreground min-w-[60px] text-center">
               {Math.round(zoom * 100)}%
             </span>
-            <Button variant="outline" size="sm" onClick={handleZoomIn} title="Zoom avant">
+            <Button variant="ghost" size="icon" onClick={handleZoomIn} title="Zoom avant">
               <ZoomIn className="h-4 w-4" />
             </Button>
-
-            <Separator orientation="vertical" className="h-6" />
-
-            <Button variant="outline" size="sm" onClick={handleRotate} title="Rotation 90°">
+            <Button variant="ghost" size="icon" onClick={handleRotate} title="Rotation 90°">
               <RotateCw className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={handleDownload} title="Télécharger">
+            <Button variant="ghost" size="icon" onClick={handleDownload} title="Télécharger">
               <Download className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={resetView} title="Réinitialiser">
+            <Button variant="ghost" size="icon" onClick={resetView} title="Réinitialiser">
               <span className="text-xs">↻</span>
             </Button>
+            <span className="text-xs text-muted-foreground ml-2">Rotation: {rotation}°</span>
           </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">
-              Rotation: {rotation}°
-            </span>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Image container - takes all available space */}
       <div className="flex-1 overflow-hidden">

@@ -1,10 +1,12 @@
+
 "use client"
+import { OnlyOfficeEditor } from "@/components/onlyoffice-editor"
 
 import React, { useState, useEffect, useCallback } from "react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { ModernSidebar } from "@/components/ui/sidebar-modern"
 import { DrawingCanvas } from "@/components/drawing-canvas"
-import { NoteEditor } from "@/components/note-editor"
+// import { NoteEditor } from "@/components/note-editor"
 import { FileManager } from "@/components/file-manager"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { toast } from "@/components/ui/use-toast"
@@ -21,15 +23,12 @@ import { AddImageDialog } from "@/components/add-image_dialog"
 import { AddVideoDialog } from "@/components/add-video_dialog"
 import { AddCodeDialog } from "@/components/add-code_dialog"
 import { AddDocumentDialog } from "@/components/add-document_dialog"
-import { DocumentViewer } from "@/components/document-viewer"
+// import { DocumentViewer } from "@/components/document-viewer" // supprimé
 import { RenameDialog } from "@/components/rename-dialog"
 import { ImageViewer } from "@/components/image-viewer"
 import { VideoViewer } from "@/components/video-viewer"
 import { LandingPage } from "@/components/landing-page"
 
-const PdfViewer = dynamic(() => import('@/components/pdf-viewer').then(mod => mod.PdfViewer), {
-  ssr: false,
-});
 
 export default function NoteTakingApp() {
   const [activeView, setActiveView] = useState<"canvas" | "editor" | "files" | "pdf_viewer" | "image_viewer" | "video_viewer" | "document_viewer" | "landing">("landing")
@@ -401,7 +400,7 @@ export default function NoteTakingApp() {
       setCurrentDocumentPath(notePath);
     } else {
       // Check for document files that should use the document viewer
-      const documentExtensions = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'rtf', 'odt', 'ods', 'odp', 'txt', 'csv', 'tsv'];
+  const documentExtensions = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'rtf', 'odt', 'ods', 'odp', 'txt', 'csv', 'tsv', 'md'];
       if (documentExtensions.includes(fileExtension || '')) {
         console.log('Document file detected, loading document viewer...');
 
@@ -866,8 +865,7 @@ export default function NoteTakingApp() {
             />
           )}
           {activeView === "canvas" && <DrawingCanvas selectedNote={selectedNote} selectedFolder={selectedFolder} />}
-          {activeView === "editor" && <NoteEditor selectedNote={selectedNote} selectedFolder={selectedFolder} />}
-          {activeView === "pdf_viewer" && pdfContent && <PdfViewer file={pdfContent} />}
+          {/* Suppression de NoteEditor : tout passe par DocumentViewer (OnlyOffice) */}
           {activeView === "image_viewer" && (
             <ImageViewer
               imagePath={imageViewerPath}
@@ -882,12 +880,17 @@ export default function NoteTakingApp() {
               videoType={videoViewerType}
             />
           )}
-          {activeView === "document_viewer" && (
-            <DocumentViewer
+          {activeView === "document_viewer" && documentViewerPath && (
+            <OnlyOfficeEditor
               filePath={documentViewerPath}
               fileName={documentViewerName}
-              fileType={documentViewerType}
-              onClose={() => setActiveView("files")}
+              fileType={(() => {
+                const ext = documentViewerName.split('.').pop()?.toLowerCase();
+                // Pour .md, forcer docx pour OnlyOffice
+                if (ext === 'md') return 'docx';
+                return ext;
+              })()}
+              mode="edit"
             />
           )}
           {activeView === "files" && (

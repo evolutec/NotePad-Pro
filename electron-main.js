@@ -42,6 +42,7 @@ function createFileServer() {
       '.ppt': 'application/vnd.ms-powerpoint',
       '.pdf': 'application/pdf',
       '.txt': 'text/plain',
+      '.md': 'text/markdown',
       '.csv': 'text/csv',
     };
     
@@ -540,7 +541,30 @@ ipcMain.handle('note:create', async (_event, noteData) => {
     }
 
     const { name, type, parentPath, tags } = noteData;
-    const fileName = type === 'markdown' ? `${name}.md` : `${name}.txt`;
+    
+    // Déterminer l'extension en fonction du type
+    let fileName;
+    let isOfficeDocument = false;
+    
+    switch (type) {
+      case 'markdown':
+        fileName = `${name}.md`;
+        break;
+      case 'text':
+        fileName = `${name}.txt`;
+        break;
+      case 'doc':
+        fileName = `${name}.doc`;
+        isOfficeDocument = true;
+        break;
+      case 'docx':
+        fileName = `${name}.docx`;
+        isOfficeDocument = true;
+        break;
+      default:
+        fileName = `${name}.txt`;
+    }
+    
     const fullPath = path.join(parentPath || rootPath, fileName);
 
     if (fs.existsSync(fullPath)) {
@@ -548,8 +572,18 @@ ipcMain.handle('note:create', async (_event, noteData) => {
       return { success: false, error: 'Note already exists' };
     }
 
-    fs.writeFileSync(fullPath, '', 'utf-8');
-    console.log('note:create handler returning success');
+    // Pour les documents Office, on crée un fichier vide minimal
+    // OnlyOffice pourra ensuite l'éditer et créer le contenu approprié
+    if (isOfficeDocument) {
+      // Créer un fichier vide - OnlyOffice se chargera de créer la structure
+      fs.writeFileSync(fullPath, '', 'binary');
+      console.log(`note:create handler created empty Office document: ${fullPath}`);
+    } else {
+      // Pour .txt et .md, créer un fichier texte vide
+      fs.writeFileSync(fullPath, '', 'utf-8');
+      console.log(`note:create handler created text note: ${fullPath}`);
+    }
+    
     return { success: true, path: fullPath };
   } catch (err) {
     console.log('note:create handler error:', err.message);

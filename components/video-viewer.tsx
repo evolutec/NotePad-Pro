@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
+import { OnlyOfficeLikeToolbar } from "./ui/onlyoffice-like-toolbar"
 import { Slider } from "@/components/ui/slider"
 import {
   Play,
@@ -27,6 +28,7 @@ export interface VideoViewerProps {
 }
 
 export function VideoViewer({ videoPath, videoName, videoType }: VideoViewerProps) {
+  const [activeTab, setActiveTab] = useState("Accueil");
   console.log('🎥 VideoViewer: === COMPONENT RENDERED ===')
   console.log('🎥 VideoViewer: Props received:', { videoPath, videoName, videoType })
 
@@ -455,7 +457,31 @@ export function VideoViewer({ videoPath, videoName, videoType }: VideoViewerProp
 
   return (
     <div className="w-full h-full flex flex-col bg-black">
-      {/* Video.js has built-in controls, no custom header needed */}
+      <OnlyOfficeLikeToolbar
+        tabs={[
+          { label: "Fichier" },
+          { label: "Accueil", active: true },
+          { label: "Affichage" },
+        ]}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        rightContent={
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={() => playerRef.current?.play?.()} title="Lecture">
+              <Play className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => playerRef.current?.pause?.()} title="Pause">
+              <Pause className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setIsMuted(!isMuted)} title={isMuted ? "Activer le son" : "Couper le son"}>
+              {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => setIsFullscreen(!isFullscreen)} title={isFullscreen ? "Quitter le plein écran" : "Plein écran"}>
+              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </Button>
+          </div>
+        }
+      />
       <div className="flex-1 bg-black">
         <div className="flex items-center justify-center h-full w-full bg-black">
           {error ? (
