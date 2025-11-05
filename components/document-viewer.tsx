@@ -1,16 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { NoteEditor } from './note-editor';
-import { DocxViewer } from './docx-viewer';
-import { ExcelViewer } from './excel-viewer';
-import { PowerPointViewer } from './powerpoint-viewer';
-import { OfficeWordEditor } from './office-word-editor';
-import { OfficeExcelEditor } from './office-excel-editor';
-import { OnlyOfficeViewer } from './onlyoffice-viewer';
+import { OnlyOfficeEditor } from './onlyoffice-editor';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
-import { FileText, Download, ExternalLink, AlertCircle, Edit } from 'lucide-react';
+import { FileText, Download, ExternalLink, AlertCircle, Edit, X } from 'lucide-react';
 
 // Dynamically import components that use Node.js modules to avoid SSR issues
 const DocViewer = dynamic(() => import('react-doc-viewer'), {
@@ -46,10 +41,6 @@ export function DocumentViewer({ filePath, fileName, fileType, onClose }: Docume
   const [error, setError] = useState<string | null>(null);
   const [isTextFile, setIsTextFile] = useState(false);
   const [editMode, setEditMode] = useState(false); // Toggle between view and edit modes
-
-  // OnlyOffice integration state
-  const [onlyOfficeOpen, setOnlyOfficeOpen] = useState(false);
-  const [onlyOfficeType, setOnlyOfficeType] = useState<'word' | 'cell' | 'slide'>('word');
 
   // Check if file is a text-based format that should use the note editor
   const textExtensions = ['.txt', '.csv', '.tsv', '.md'];
@@ -149,82 +140,12 @@ export function DocumentViewer({ filePath, fileName, fileType, onClose }: Docume
   console.log('File extension:', fileExtension);
   console.log('File type being used:', fileType || fileExtension.substring(1));
 
+  // Extract file name without extension for display
+  const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+
   return (
     <div className="w-full h-full flex flex-col bg-background">
-      {/* Header with file info and actions */}
-      <div className="flex items-center justify-between p-4 border-b bg-card">
-        <div className="flex items-center gap-3">
-          <FileText className="h-6 w-6 text-primary" />
-          <div>
-            <h2 className="text-lg font-semibold">{fileName}</h2>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant="secondary">
-                {fileExtension.toUpperCase()}
-              </Badge>
-              <Badge variant="outline">
-                {getDocumentType(fileName) === 'text' ? 'Fichier texte' :
-                 getDocumentType(fileName) === 'office' ? 'Document Office' : 'Document'}
-              </Badge>
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          {/* Bouton OnlyOffice pour tous les documents Office */}
-          {getDocumentType(fileName) === 'office' && (
-            <Button 
-              onClick={() => {
-                // Déterminer le type de document
-                const ext = fileName.split('.').pop()?.toLowerCase();
-                if (ext === 'docx' || ext === 'doc') {
-                  setOnlyOfficeType('word');
-                } else if (ext === 'xlsx' || ext === 'xls') {
-                  setOnlyOfficeType('cell');
-                } else if (ext === 'pptx' || ext === 'ppt') {
-                  setOnlyOfficeType('slide');
-                }
-                setOnlyOfficeOpen(true);
-              }} 
-              variant="default" 
-              size="sm"
-            >
-              <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
-                <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
-              </svg>
-              Ouvrir avec OnlyOffice
-            </Button>
-          )}
-          {/* Edit button - for Word, Excel and PowerPoint documents */}
-          {(fileExtension === '.docx' || fileExtension === '.doc' || 
-            fileExtension === '.xlsx' || fileExtension === '.xls' ||
-            fileExtension === '.pptx' || fileExtension === '.ppt') && (
-            <Button
-              onClick={() => setEditMode(!editMode)}
-              variant={editMode ? "secondary" : "default"}
-              size="sm"
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              {editMode ? 'Mode Lecture' : 'Éditer'}
-            </Button>
-          )}
-          
-          <Button onClick={handleDownload} variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Télécharger
-          </Button>
-          <Button onClick={handleOpenExternal} variant="outline" size="sm">
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Ouvrir externe
-          </Button>
-          {onClose && (
-            <Button onClick={onClose} variant="outline" size="sm">
-              Fermer
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Document content - takes all available space */}
+      {/* Document content - takes all available space, no local header */}
       <div className="flex-1 overflow-hidden">
         {(() => {
           console.log('[DocumentViewer] Rendering content for:', fileName, 'isTextFile:', isTextFile, 'fileExtension:', fileExtension);
@@ -242,33 +163,45 @@ export function DocumentViewer({ filePath, fileName, fileType, onClose }: Docume
               {(() => {
                 console.log('[DocumentViewer] Checking file type:', fileExtension);
                 
-                // Word documents (.doc, .docx)
+                // Word documents (.doc, .docx) - OnlyOffice
                 if (fileExtension === '.docx' || fileExtension === '.doc') {
-                  console.log('[DocumentViewer] Rendering Word for:', fileName, 'editMode:', editMode);
-                  return editMode ? (
-                    <OfficeWordEditor filePath={filePath} fileName={fileName} onSave={() => setEditMode(false)} />
-                  ) : (
-                    <DocxViewer filePath={filePath} fileName={fileName} />
+                  console.log('[DocumentViewer] Rendering OnlyOffice for Word:', fileName, 'editMode:', editMode);
+                  return (
+                    <OnlyOfficeEditor 
+                      key={`${filePath}-${editMode}`}
+                      filePath={filePath} 
+                      fileName={fileName} 
+                      fileType={fileExtension.substring(1)}
+                      mode={editMode ? 'edit' : 'view'}
+                    />
                   );
                 }
                 
-                // Excel spreadsheets (.xls, .xlsx)
+                // Excel spreadsheets (.xls, .xlsx) - OnlyOffice
                 else if (fileExtension === '.xlsx' || fileExtension === '.xls') {
-                  console.log('[DocumentViewer] Rendering Excel for:', fileName, 'editMode:', editMode);
-                  return editMode ? (
-                    <OfficeExcelEditor filePath={filePath} fileName={fileName} onSave={() => setEditMode(false)} />
-                  ) : (
-                    <ExcelViewer filePath={filePath} fileName={fileName} />
+                  console.log('[DocumentViewer] Rendering OnlyOffice for Excel:', fileName, 'editMode:', editMode);
+                  return (
+                    <OnlyOfficeEditor 
+                      key={`${filePath}-${editMode}`}
+                      filePath={filePath} 
+                      fileName={fileName} 
+                      fileType={fileExtension.substring(1)}
+                      mode={editMode ? 'edit' : 'view'}
+                    />
                   );
                 }
 
-                // PowerPoint presentations (.ppt, .pptx)
+                // PowerPoint presentations (.ppt, .pptx) - OnlyOffice
                 else if (fileExtension === '.pptx' || fileExtension === '.ppt') {
-                  console.log('[DocumentViewer] Rendering PowerPoint for:', fileName, 'editMode:', editMode);
-                  return editMode ? (
-                    <OfficePowerPointEditor filePath={filePath} fileName={fileName} onSave={() => setEditMode(false)} />
-                  ) : (
-                    <PowerPointViewer filePath={filePath} fileName={fileName} />
+                  console.log('[DocumentViewer] Rendering OnlyOffice for PowerPoint:', fileName, 'editMode:', editMode);
+                  return (
+                    <OnlyOfficeEditor 
+                      key={`${filePath}-${editMode}`}
+                      filePath={filePath} 
+                      fileName={fileName} 
+                      fileType={fileExtension.substring(1)}
+                      mode={editMode ? 'edit' : 'view'}
+                    />
                   );
                 }
 
@@ -284,7 +217,7 @@ export function DocumentViewer({ filePath, fileName, fileType, onClose }: Docume
                   );
                 }
                 
-                // PowerPoint and other Office documents (.ppt, .pptx)
+                // Other documents - Fallback
                 else {
                   console.log('[DocumentViewer] Rendering download card for:', fileExtension);
                   return (
@@ -379,15 +312,6 @@ export function DocumentViewer({ filePath, fileName, fileType, onClose }: Docume
           );
         })()}
       </div>
-
-      {/* OnlyOffice Viewer Modal */}
-      <OnlyOfficeViewer
-        open={onlyOfficeOpen}
-        onOpenChange={setOnlyOfficeOpen}
-        filePath={filePath}
-        fileName={fileName}
-        fileType={onlyOfficeType}
-      />
     </div>
   );
 }

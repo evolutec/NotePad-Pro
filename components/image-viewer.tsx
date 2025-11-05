@@ -1,27 +1,26 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, RotateCw, Download, X } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { ZoomIn, ZoomOut, RotateCw, Download } from "lucide-react";
 
 export interface ImageViewerProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   imagePath: string;
   imageName: string;
   imageType: string;
 }
 
-export function ImageViewer({ open, onOpenChange, imagePath, imageName, imageType }: ImageViewerProps) {
+export function ImageViewer({ imagePath, imageName, imageType }: ImageViewerProps) {
   const [imageSrc, setImageSrc] = useState<string>("");
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open && imagePath) {
+    if (imagePath) {
       loadImage();
     }
-  }, [open, imagePath]);
+  }, [imagePath]);
 
   const loadImage = async () => {
     try {
@@ -146,44 +145,46 @@ export function ImageViewer({ open, onOpenChange, imagePath, imageName, imageTyp
     setRotation(0);
   };
 
-  if (!open) return null;
-
   return (
     <div className="w-full h-full flex flex-col bg-background">
-      {/* Header with controls */}
-      <div className="flex items-center justify-between p-4 border-b bg-card">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">📷</span>
-          <h2 className="text-lg font-semibold">{imageName}</h2>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleZoomOut} title="Zoom arrière">
-            <ZoomOut className="h-4 w-4" />
-          </Button>
-          <span className="text-sm font-mono min-w-[60px] text-center">
-            {Math.round(zoom * 100)}%
-          </span>
-          <Button variant="outline" size="sm" onClick={handleZoomIn} title="Zoom avant">
-            <ZoomIn className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleRotate} title="Rotation 90°">
-            <RotateCw className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleDownload} title="Télécharger">
-            <Download className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={resetView} title="Réinitialiser">
-            <span className="text-xs">↻</span>
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} title="Fermer">
-            <X className="h-4 w-4" />
-          </Button>
+      {/* Toolbar - same style as DrawingCanvas */}
+      <div className="border-b border-border bg-card p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleZoomOut} title="Zoom arrière">
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+            <span className="text-sm text-foreground min-w-[60px] text-center">
+              {Math.round(zoom * 100)}%
+            </span>
+            <Button variant="outline" size="sm" onClick={handleZoomIn} title="Zoom avant">
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+
+            <Separator orientation="vertical" className="h-6" />
+
+            <Button variant="outline" size="sm" onClick={handleRotate} title="Rotation 90°">
+              <RotateCw className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleDownload} title="Télécharger">
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={resetView} title="Réinitialiser">
+              <span className="text-xs">↻</span>
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              Rotation: {rotation}°
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Image container - takes all available space */}
-      <div className="flex-1 p-4 overflow-hidden">
-        <div className="flex items-center justify-center h-full bg-muted/30 rounded-lg overflow-hidden">
+      <div className="flex-1 overflow-hidden">
+        <div className="flex items-center justify-center h-full w-full bg-muted/30">
           {error ? (
             <div className="flex items-center justify-center h-full text-red-500">
               <div className="text-center">
@@ -223,15 +224,6 @@ export function ImageViewer({ open, onOpenChange, imagePath, imageName, imageTyp
               </div>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Footer with image info */}
-      <div className="p-4 border-t bg-card">
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>Type: {imageType.toUpperCase()}</span>
-          <span>Rotation: {rotation}°</span>
-          <span>Zoom: {Math.round(zoom * 100)}%</span>
         </div>
       </div>
     </div>

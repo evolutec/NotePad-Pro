@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Document, Page, pdfjs } from 'react-pdf';
+import { Button } from "./ui/button";
+import { Separator } from "./ui/separator";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
@@ -71,35 +74,51 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({ file }) => {
   }
 
   return (
-    <div className="flex flex-col items-center p-4">
-      <div className="mb-4 flex items-center gap-3">
-        <button
-          onClick={goToPrevPage}
-          disabled={pageNumber <= 1 || loading}
-          className="px-6 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-w-[100px] text-center"
-        >
-          Précédent
-        </button>
-        <span className="text-gray-900 dark:text-gray-100 font-medium px-4">
-          Page {pageNumber} sur {numPages || "--"}
-        </span>
-        <button
-          onClick={goToNextPage}
-          disabled={pageNumber >= (numPages || 1) || loading}
-          className="px-6 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium min-w-[100px] text-center"
-        >
-          Suivant
-        </button>
+    <div className="w-full h-full flex flex-col bg-background">
+      {/* Toolbar - same style as DrawingCanvas */}
+      <div className="border-b border-border bg-card p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={goToPrevPage}
+              disabled={pageNumber <= 1 || loading}
+              title="Page précédente"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm text-foreground min-w-[80px] text-center">
+              Page {pageNumber} / {numPages || "--"}
+            </span>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={goToNextPage}
+              disabled={pageNumber >= (numPages || 1) || loading}
+              title="Page suivante"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              {numPages ? `${numPages} page${numPages > 1 ? 's' : ''}` : 'Chargement...'}
+            </span>
+          </div>
+        </div>
       </div>
 
-      {loading && (
-        <div className="flex flex-col items-center justify-center p-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-          <p className="text-gray-600">Loading PDF...</p>
-        </div>
-      )}
+      {/* PDF content - takes all available space */}
+      <div className="flex-1 overflow-auto flex items-center justify-center">
+        {loading && (
+          <div className="flex flex-col items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+            <p className="text-muted-foreground">Chargement du PDF...</p>
+          </div>
+        )}
 
-      <div className="w-full max-w-3xl border border-gray-300 shadow-lg overflow-auto">
         <Document
           file={file}
           onLoadSuccess={onDocumentLoadSuccess}

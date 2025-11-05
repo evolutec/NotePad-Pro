@@ -11,7 +11,7 @@ import { FolderSelectionModal, type FolderNode } from "@/components/ui/folder-se
 export interface NoteMeta {
   id: string;
   name: string;
-  type: "text" | "markdown";
+  type: "text" | "markdown" | "doc" | "docx";
   parentPath: string;
   createdAt: string;
   tags?: string[];
@@ -26,7 +26,7 @@ export interface AddNoteDialogProps {
 
 export function AddNoteDialog({ open, onOpenChange, parentPath, onNoteCreated }: AddNoteDialogProps) {
   const [noteName, setNoteName] = useState("");
-  const [noteType, setNoteType] = useState<"text" | "markdown">("text");
+  const [noteType, setNoteType] = useState<"text" | "markdown" | "doc" | "docx">("text");
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState("");
   const [creationError, setCreationError] = useState<string | null>(null);
@@ -318,6 +318,54 @@ export function AddNoteDialog({ open, onOpenChange, parentPath, onNoteCreated }:
                   </div>
                   <div className={`text-xs ${noteType === 'markdown' ? 'text-blue-700' : 'text-gray-600'}`}>
                     Format riche
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* DOC Card */}
+          <Card
+            className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
+              noteType === 'doc'
+                ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-200'
+                : 'hover:bg-gray-50 border-gray-200'
+            }`}
+            onClick={() => setNoteType('doc')}
+          >
+            <CardContent className="p-3 text-center">
+              <div className="flex flex-col items-center gap-1">
+                <FileText className={`w-4 h-4 ${noteType === 'doc' ? 'text-blue-600' : 'text-gray-600'}`} />
+                <div>
+                  <div className={`font-medium text-sm ${noteType === 'doc' ? 'text-blue-900' : 'text-gray-900'}`}>
+                    Word (.doc)
+                  </div>
+                  <div className={`text-xs ${noteType === 'doc' ? 'text-blue-700' : 'text-gray-600'}`}>
+                    OnlyOffice
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* DOCX Card */}
+          <Card
+            className={`cursor-pointer transition-all duration-200 hover:shadow-md ${
+              noteType === 'docx'
+                ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-200'
+                : 'hover:bg-gray-50 border-gray-200'
+            }`}
+            onClick={() => setNoteType('docx')}
+          >
+            <CardContent className="p-3 text-center">
+              <div className="flex flex-col items-center gap-1">
+                <FileText className={`w-4 h-4 ${noteType === 'docx' ? 'text-blue-600' : 'text-gray-600'}`} />
+                <div>
+                  <div className={`font-medium text-sm ${noteType === 'docx' ? 'text-blue-900' : 'text-gray-900'}`}>
+                    Word (.docx)
+                  </div>
+                  <div className={`text-xs ${noteType === 'docx' ? 'text-blue-700' : 'text-gray-600'}`}>
+                    OnlyOffice
                   </div>
                 </div>
               </div>

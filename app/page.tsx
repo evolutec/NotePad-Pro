@@ -10,7 +10,7 @@ import { SettingsDialog } from "@/components/settings-dialog"
 import { toast } from "@/components/ui/use-toast"
 import dynamic from 'next/dynamic';
 import { Button } from "@/components/ui/button"
-import { Settings } from "lucide-react"
+import { Settings, X, ExternalLink } from "lucide-react"
 import type { EnhancedFolderNode } from "@/components/ui/FolderTree-modern"
 import { AddFolderDialog } from "@/components/add-folder_dialog"
 import { AddNoteDialog } from "@/components/add-note_dialog"
@@ -53,17 +53,17 @@ export default function NoteTakingApp() {
   const [pdfContent, setPdfContent] = useState<string | null>(null);
   const [isRenameOpen, setIsRenameOpen] = useState(false)
   const [renameNode, setRenameNode] = useState<any>(null)
-  const [imageViewerOpen, setImageViewerOpen] = useState(false)
   const [imageViewerPath, setImageViewerPath] = useState("")
   const [imageViewerName, setImageViewerName] = useState("")
   const [imageViewerType, setImageViewerType] = useState("")
-  const [videoViewerOpen, setVideoViewerOpen] = useState(false)
   const [videoViewerPath, setVideoViewerPath] = useState("")
   const [videoViewerName, setVideoViewerName] = useState("")
   const [videoViewerType, setVideoViewerType] = useState("")
   const [documentViewerPath, setDocumentViewerPath] = useState("")
   const [documentViewerName, setDocumentViewerName] = useState("")
   const [documentViewerType, setDocumentViewerType] = useState("")
+  const [currentDocumentTitle, setCurrentDocumentTitle] = useState<string>("")
+  const [currentDocumentPath, setCurrentDocumentPath] = useState<string>("")
   const isMobile = useIsMobile()
 
   // JSON file management functions
@@ -353,11 +353,16 @@ export default function NoteTakingApp() {
     if (videoExtensions.includes(fileExtension || '')) {
       console.log('Video file detected, loading video viewer...');
 
+      const fileName = notePath.split('\\').pop() || notePath.split('/').pop() || 'Video';
+      const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+      
       // Set video viewer FIRST to prevent any other logic from overriding
       setActiveView('video_viewer');
       setVideoViewerPath(notePath);
-      setVideoViewerName(notePath.split('\\').pop() || 'Video');
+      setVideoViewerName(fileName);
       setVideoViewerType(fileExtension || 'mp4');
+      setCurrentDocumentTitle(fileNameWithoutExt);
+      setCurrentDocumentPath(notePath);
 
       toast({
         title: "Video loaded successfully!",
@@ -367,14 +372,19 @@ export default function NoteTakingApp() {
     } else if (fileExtension === 'pdf') {
       console.log('PDF file detected, loading document viewer...');
       
+      const fileName = notePath.split('\\').pop() || notePath.split('/').pop() || 'document.pdf';
+      const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+      
       // Set selected note for sidebar highlighting
       setSelectedNote(notePath);
       
       // Use document viewer for PDFs (displays in iframe via HTTP server)
       setActiveView('document_viewer');
       setDocumentViewerPath(notePath);
-      setDocumentViewerName(notePath.split('\\').pop() || notePath.split('/').pop() || 'document.pdf');
+      setDocumentViewerName(fileName);
       setDocumentViewerType('pdf');
+      setCurrentDocumentTitle(fileNameWithoutExt);
+      setCurrentDocumentPath(notePath);
       
       toast({
         title: "PDF loaded successfully!",
@@ -382,22 +392,32 @@ export default function NoteTakingApp() {
       });
       console.log('Document viewer set for PDF successfully');
     } else if (fileExtension === 'draw') {
+      const fileName = notePath.split('\\').pop() || notePath.split('/').pop() || 'Dessin';
+      const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+      
       setSelectedNote(notePath);
       setActiveView("canvas");
+      setCurrentDocumentTitle(fileNameWithoutExt);
+      setCurrentDocumentPath(notePath);
     } else {
       // Check for document files that should use the document viewer
       const documentExtensions = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'rtf', 'odt', 'ods', 'odp', 'txt', 'csv', 'tsv'];
       if (documentExtensions.includes(fileExtension || '')) {
         console.log('Document file detected, loading document viewer...');
 
+        const fileName = notePath.split('\\').pop() || notePath.split('/').pop() || 'Document';
+        const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+        
         // Set selected note for sidebar highlighting
         setSelectedNote(notePath);
         
         // Set document viewer
         setActiveView('document_viewer');
         setDocumentViewerPath(notePath);
-        setDocumentViewerName(notePath.split('\\').pop() || 'Document');
+        setDocumentViewerName(fileName);
         setDocumentViewerType(fileExtension || '');
+        setCurrentDocumentTitle(fileNameWithoutExt);
+        setCurrentDocumentPath(notePath);
 
         toast({
           title: "Document loaded successfully!",
@@ -405,8 +425,13 @@ export default function NoteTakingApp() {
         });
         console.log('Document viewer set successfully');
       } else {
+        const fileName = notePath.split('\\').pop() || notePath.split('/').pop() || 'Note';
+        const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+        
         setSelectedNote(notePath);
         setActiveView("editor");
+        setCurrentDocumentTitle(fileNameWithoutExt);
+        setCurrentDocumentPath(notePath);
       }
     }
   }, []);
@@ -422,19 +447,25 @@ export default function NoteTakingApp() {
             // Only run on client side
             if (typeof window === 'undefined') return;
             console.log('Image selected from sidebar:', path, name, type);
+            const fileNameWithoutExt = name.replace(/\.[^/.]+$/, '');
             setActiveView('image_viewer');
             setImageViewerPath(path);
             setImageViewerName(name);
             setImageViewerType(type);
+            setCurrentDocumentTitle(fileNameWithoutExt);
+            setCurrentDocumentPath(path);
           }}
           onVideoSelect={(path, name, type) => {
             // Only run on client side
             if (typeof window === 'undefined') return;
             console.log('Video selected from sidebar:', path, name, type);
+            const fileNameWithoutExt = name.replace(/\.[^/.]+$/, '');
             setActiveView('video_viewer');
             setVideoViewerPath(path);
             setVideoViewerName(name);
             setVideoViewerType(type);
+            setCurrentDocumentTitle(fileNameWithoutExt);
+            setCurrentDocumentPath(path);
           }}
           selectedFolder={selectedFolder}
           selectedNote={selectedNote}
@@ -756,13 +787,56 @@ export default function NoteTakingApp() {
       )}
       {/* Main Content flexible */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold text-card-foreground">FUSION</h1>
+        {/* Unified toolbar for ALL viewers */}
+        <header className="h-14 border-b border-border bg-card flex items-center px-4">
+          {/* Left: Application name */}
+          <div className="flex items-center min-w-[120px]">
+            <h1 className="text-lg font-semibold text-card-foreground">FUSION</h1>
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* Center: Document title */}
+          <div className="flex-1 flex items-center justify-center px-4">
+            {currentDocumentTitle && (
+              <h2 className="text-base font-medium text-foreground truncate max-w-[600px]">
+                {currentDocumentTitle}
+              </h2>
+            )}
+          </div>
+
+          {/* Right: Action buttons (icons only) */}
+          <div className="flex items-center gap-1 min-w-[120px] justify-end">
+            {currentDocumentPath && activeView !== "landing" && activeView !== "files" && (
+              <>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="h-8 w-8"
+                  title="Ouvrir avec l'application externe"
+                  onClick={async () => {
+                    if (window.electronAPI?.openFileExternal) {
+                      await window.electronAPI.openFileExternal(currentDocumentPath);
+                    }
+                  }}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="h-8 w-8"
+                  title="Fermer le document"
+                  onClick={() => {
+                    setActiveView("files");
+                    setCurrentDocumentTitle("");
+                    setCurrentDocumentPath("");
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </>
+            )}
             <SettingsDialog>
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="icon" className="h-8 w-8" title="Paramètres">
                 <Settings className="h-4 w-4" />
               </Button>
             </SettingsDialog>
@@ -796,8 +870,6 @@ export default function NoteTakingApp() {
           {activeView === "pdf_viewer" && pdfContent && <PdfViewer file={pdfContent} />}
           {activeView === "image_viewer" && (
             <ImageViewer
-              open={activeView === "image_viewer"}
-              onOpenChange={(open) => !open && setActiveView("files")}
               imagePath={imageViewerPath}
               imageName={imageViewerName}
               imageType={imageViewerType}
@@ -805,8 +877,6 @@ export default function NoteTakingApp() {
           )}
           {activeView === "video_viewer" && (
             <VideoViewer
-              open={activeView === "video_viewer"}
-              onOpenChange={(open) => !open && setActiveView("files")}
               videoPath={videoViewerPath}
               videoName={videoViewerName}
               videoType={videoViewerType}

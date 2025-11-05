@@ -13,8 +13,7 @@ import {
   Maximize2,
   Minimize2,
   SkipBack,
-  SkipForward,
-  X
+  SkipForward
 } from "lucide-react"
 import videojs from 'video.js'
 import 'video.js/dist/video-js.css'
@@ -22,16 +21,14 @@ import 'video.js/dist/video-js.css'
 // Video.js plugins will be loaded dynamically to avoid SSR issues
 
 export interface VideoViewerProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
   videoPath: string
   videoName: string
   videoType: string
 }
 
-export function VideoViewer({ open, onOpenChange, videoPath, videoName, videoType }: VideoViewerProps) {
+export function VideoViewer({ videoPath, videoName, videoType }: VideoViewerProps) {
   console.log('🎥 VideoViewer: === COMPONENT RENDERED ===')
-  console.log('🎥 VideoViewer: Props received:', { open, videoPath, videoName, videoType })
+  console.log('🎥 VideoViewer: Props received:', { videoPath, videoName, videoType })
 
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -50,7 +47,6 @@ export function VideoViewer({ open, onOpenChange, videoPath, videoName, videoTyp
   // Initialize Video.js player
   useEffect(() => {
     console.log('🎥 VideoViewer: useEffect triggered with:', {
-      open,
       videoPath: videoPath ? videoPath.substring(0, 50) + '...' : 'null/empty',
       hasVideoRef: !!videoRef.current,
       hasPlayer: !!playerRef.current,
@@ -59,13 +55,12 @@ export function VideoViewer({ open, onOpenChange, videoPath, videoName, videoTyp
     })
 
     console.log('🎥 VideoViewer: Detailed condition check:')
-    console.log('🎥 VideoViewer: - open:', open)
     console.log('🎥 VideoViewer: - videoPath exists:', !!videoPath)
     console.log('🎥 VideoViewer: - videoRef.current exists:', !!videoRef.current)
     console.log('🎥 VideoViewer: - playerRef.current exists:', !!playerRef.current)
-    console.log('🎥 VideoViewer: - Combined condition result:', open && videoPath && videoRef.current && !playerRef.current)
+    console.log('🎥 VideoViewer: - Combined condition result:', videoPath && videoRef.current && !playerRef.current)
 
-    if (open && videoPath && videoRef.current && !playerRef.current) {
+    if (videoPath && videoRef.current && !playerRef.current) {
       console.log('🎥 VideoViewer: Initializing Video.js player for:', videoPath)
 
       try {
@@ -163,7 +158,7 @@ export function VideoViewer({ open, onOpenChange, videoPath, videoName, videoTyp
       })
 
       // Fallback: Try to initialize anyway after a short delay
-      if (open && videoPath && !playerRef.current) {
+      if (videoPath && !playerRef.current) {
         console.log('🎥 VideoViewer: Attempting fallback initialization...')
         setTimeout(() => {
           console.log('🎥 VideoViewer: Fallback initialization - checking videoRef:', !!videoRef.current)
@@ -226,7 +221,7 @@ export function VideoViewer({ open, onOpenChange, videoPath, videoName, videoTyp
         playerRef.current = null
       }
     }
-  }, [open, videoPath])
+  }, [videoPath])
 
   // Clean up file path to remove double extensions
   const cleanFilePath = (path: string): string => {
@@ -456,218 +451,55 @@ export function VideoViewer({ open, onOpenChange, videoPath, videoName, videoTyp
     return `${minutes}:${seconds.toString().padStart(2, '0')}`
   }
 
-  if (!open) {
-    console.log('🎥 VideoViewer: Component not open, returning null')
-    return null
-  }
-
   console.log('🎥 VideoViewer: Rendering video viewer')
 
   return (
     <div className="w-full h-full flex flex-col bg-black">
-      {/* Header with controls */}
-      <div className="p-4 pb-2 bg-black/80 text-white border-b border-gray-700">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">🎥</span>
-            <h2 className="text-lg font-semibold text-white">{videoName}</h2>
-          </div>
-          <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleSkipBackward}
-                className="text-white hover:bg-white/20"
-                title="Reculer de 10s"
-              >
-                <SkipBack className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handlePlayPause}
-                className="text-white hover:bg-white/20"
-                title={isPlaying ? "Pause" : "Lecture"}
-              >
-                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleStop}
-                className="text-white hover:bg-white/20"
-                title="Arrêter"
-              >
-                <Square className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleSkipForward}
-                className="text-white hover:bg-white/20"
-                title="Avancer de 10s"
-              >
-                <SkipForward className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleMuteToggle}
-                className="text-white hover:bg-white/20"
-                title={isMuted ? "Activer le son" : "Couper le son"}
-              >
-                {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleFullscreenToggle}
-                className="text-white hover:bg-white/20"
-                title={isFullscreen ? "Quitter plein écran" : "Plein écran"}
-              >
-                {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onOpenChange(false)}
-                className="text-white hover:bg-white/20"
-                title="Fermer"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex-1 p-4 pt-0 bg-black">
-          <div className="flex items-center justify-center h-full bg-black rounded-lg overflow-hidden">
-            {error ? (
-              <div className="flex items-center justify-center h-full text-white">
-                <div className="text-center">
-                  <div className="text-4xl mb-4">⚠️</div>
-                  <p className="text-lg font-semibold">Erreur de chargement</p>
-                  <p className="text-sm text-gray-300 mt-2">
-                    {error || "Impossible de charger la vidéo"}
-                  </p>
-                </div>
+      {/* Video.js has built-in controls, no custom header needed */}
+      <div className="flex-1 bg-black">
+        <div className="flex items-center justify-center h-full w-full bg-black">
+          {error ? (
+            <div className="flex items-center justify-center h-full text-white">
+              <div className="text-center">
+                <div className="text-4xl mb-4">⚠️</div>
+                <p className="text-lg font-semibold">Erreur de chargement</p>
+                <p className="text-sm text-gray-300 mt-2">
+                  {error || "Impossible de charger la vidéo"}
+                </p>
               </div>
-            ) : (
-              <div
-                ref={containerRef}
-                className="w-full h-full flex items-center justify-center"
-                style={{ minHeight: '400px' }}
-              >
-                {isLoading && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
-                    <div className="text-center text-white">
-                      <div className="text-4xl mb-4 animate-spin">⏳</div>
-                      <p className="text-lg">Chargement de la vidéo...</p>
-                    </div>
+            </div>
+          ) : (
+            <div
+              ref={containerRef}
+              className="w-full h-full flex items-center justify-center"
+            >
+              {isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
+                  <div className="text-center text-white">
+                    <div className="text-4xl mb-4 animate-spin">⏳</div>
+                    <p className="text-lg">Chargement de la vidéo...</p>
                   </div>
-                )}
-                <video
-                  ref={videoRef}
-                  className="video-js vjs-default-skin vjs-big-play-centered"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    maxWidth: '100%',
-                    maxHeight: '100%'
-                  }}
-                  onError={() => {
-                    console.error('Video element error')
-                    setError("Impossible de charger la vidéo")
-                    setIsLoading(false)
-                  }}
-                />
-              </div>
-            )}
-          </div>
+                </div>
+              )}
+              <video
+                ref={videoRef}
+                className="video-js vjs-default-skin vjs-big-play-centered"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  maxWidth: '100%',
+                  maxHeight: '100%'
+                }}
+                onError={() => {
+                  console.error('Video element error')
+                  setError("Impossible de charger la vidéo")
+                  setIsLoading(false)
+                }}
+              />
+            </div>
+          )}
         </div>
-
-        {/* Custom Controls */}
-        <div className="p-4 bg-black/80 text-white border-t border-gray-700">
-          {/* Progress Bar */}
-          <div className="mb-4">
-            <Slider
-              value={[currentTime]}
-              max={duration || 100}
-              step={1}
-              onValueChange={handleSeek}
-              className="w-full"
-            />
-            <div className="flex justify-between text-xs text-gray-300 mt-1">
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(duration)}</span>
-            </div>
-          </div>
-
-          {/* Control Buttons */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handlePlayPause}
-                className="text-white hover:bg-white/20"
-              >
-                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleStop}
-                className="text-white hover:bg-white/20"
-              >
-                <Square className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleMuteToggle}
-                className="text-white hover:bg-white/20"
-              >
-                {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-              </Button>
-              <div className="flex items-center gap-2 min-w-[100px]">
-                <VolumeX className="h-3 w-3 text-gray-400" />
-                <Slider
-                  value={[isMuted ? 0 : volume]}
-                  max={1}
-                  step={0.1}
-                  onValueChange={handleVolumeChange}
-                  className="flex-1"
-                />
-                <Volume2 className="h-3 w-3 text-gray-400" />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-300">
-                {playbackRate}x
-              </span>
-              <select
-                value={playbackRate}
-                onChange={(e) => handlePlaybackRateChange(parseFloat(e.target.value))}
-                className="bg-black border border-gray-600 text-white text-sm rounded px-2 py-1"
-              >
-                <option value={0.5}>0.5x</option>
-                <option value={1}>1x</option>
-                <option value={1.25}>1.25x</option>
-                <option value={1.5}>1.5x</option>
-                <option value={2}>2x</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Video Info */}
-          <div className="flex items-center justify-between text-sm text-gray-300 mt-2">
-            <span>Type: {videoType.toUpperCase()}</span>
-            <span>Durée: {formatTime(duration)}</span>
-            <span>Résolution: {isFullscreen ? 'Plein écran' : 'Fenêtré'}</span>
-          </div>
-        </div>
+      </div>
     </div>
   )
 }
