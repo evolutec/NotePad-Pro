@@ -6,6 +6,7 @@ import { ExcelViewer } from './excel-viewer';
 import { PowerPointViewer } from './powerpoint-viewer';
 import { OfficeWordEditor } from './office-word-editor';
 import { OfficeExcelEditor } from './office-excel-editor';
+import { OnlyOfficeViewer } from './onlyoffice-viewer';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -45,6 +46,10 @@ export function DocumentViewer({ filePath, fileName, fileType, onClose }: Docume
   const [error, setError] = useState<string | null>(null);
   const [isTextFile, setIsTextFile] = useState(false);
   const [editMode, setEditMode] = useState(false); // Toggle between view and edit modes
+
+  // OnlyOffice integration state
+  const [onlyOfficeOpen, setOnlyOfficeOpen] = useState(false);
+  const [onlyOfficeType, setOnlyOfficeType] = useState<'word' | 'cell' | 'slide'>('word');
 
   // Check if file is a text-based format that should use the note editor
   const textExtensions = ['.txt', '.csv', '.tsv', '.md'];
@@ -127,20 +132,17 @@ export function DocumentViewer({ filePath, fileName, fileType, onClose }: Docume
     }
   };
 
-  // Prepare documents array for DocViewer
-  const fileExtension = getFileExtension(fileName);
 
-  // Use local HTTP server to serve files (running on port 38274)
-  // This allows react-doc-viewer to access local files without CORS issues
-  // Encode the full path properly as a query parameter to avoid issues with : and \
+  // Helpers accessibles dans le scope du composant
+  const fileExtension = getFileExtension(fileName);
   const fileUrl = `http://localhost:38274/?file=${encodeURIComponent(filePath)}`;
-  
   const docs = [{
     uri: fileUrl,
     fileType: fileType || fileExtension.substring(1),
     fileName: fileName,
   }];
 
+  // Debug
   console.log('DocViewer docs:', docs);
   console.log('File path for DocViewer:', filePath);
   console.log('File URL for DocViewer:', fileUrl);
@@ -157,7 +159,7 @@ export function DocumentViewer({ filePath, fileName, fileType, onClose }: Docume
             <h2 className="text-lg font-semibold">{fileName}</h2>
             <div className="flex items-center gap-2 mt-1">
               <Badge variant="secondary">
-                {getFileExtension(fileName).toUpperCase()}
+                {fileExtension.toUpperCase()}
               </Badge>
               <Badge variant="outline">
                 {getDocumentType(fileName) === 'text' ? 'Fichier texte' :
@@ -167,6 +169,31 @@ export function DocumentViewer({ filePath, fileName, fileType, onClose }: Docume
           </div>
         </div>
         <div className="flex gap-2">
+          {/* Bouton OnlyOffice pour tous les documents Office */}
+          {getDocumentType(fileName) === 'office' && (
+            <Button 
+              onClick={() => {
+                // Déterminer le type de document
+                const ext = fileName.split('.').pop()?.toLowerCase();
+                if (ext === 'docx' || ext === 'doc') {
+                  setOnlyOfficeType('word');
+                } else if (ext === 'xlsx' || ext === 'xls') {
+                  setOnlyOfficeType('cell');
+                } else if (ext === 'pptx' || ext === 'ppt') {
+                  setOnlyOfficeType('slide');
+                }
+                setOnlyOfficeOpen(true);
+              }} 
+              variant="default" 
+              size="sm"
+            >
+              <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+              </svg>
+              Ouvrir avec OnlyOffice
+            </Button>
+          )}
           {/* Edit button - for Word, Excel and PowerPoint documents */}
           {(fileExtension === '.docx' || fileExtension === '.doc' || 
             fileExtension === '.xlsx' || fileExtension === '.xls' ||
@@ -352,6 +379,15 @@ export function DocumentViewer({ filePath, fileName, fileType, onClose }: Docume
           );
         })()}
       </div>
+
+      {/* OnlyOffice Viewer Modal */}
+      <OnlyOfficeViewer
+        open={onlyOfficeOpen}
+        onOpenChange={setOnlyOfficeOpen}
+        filePath={filePath}
+        fileName={fileName}
+        fileType={onlyOfficeType}
+      />
     </div>
   );
 }

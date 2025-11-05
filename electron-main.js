@@ -63,6 +63,10 @@ function createFileServer() {
       res.writeHead(200, {
         'Content-Type': contentType,
         'Content-Length': stat.size,
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Cache-Control': 'no-cache',
       });
       
       console.log('[File Server] Serving file:', filePath, 'Size:', stat.size, 'Type:', contentType);
@@ -76,8 +80,9 @@ function createFileServer() {
     }
   });
   
-  fileServer.listen(38274, 'localhost', () => {
-    console.log('[File Server] Listening on http://localhost:38274');
+  // Écouter sur 0.0.0.0 pour permettre l'accès depuis Docker (host.docker.internal)
+  fileServer.listen(38274, '0.0.0.0', () => {
+    console.log('[File Server] Listening on http://0.0.0.0:38274 (accessible from Docker)');
   });
 }
 
@@ -90,9 +95,40 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      // Désactiver webSecurity pour permettre le chargement du CDN ZetaOffice
+      webSecurity: false,
+      // Active SharedArrayBuffer nécessaire pour WASM
+      enableBlinkFeatures: 'SharedArrayBuffer',
+      // Support pour les Web Workers nécessaires à ZetaOffice
+      nodeIntegrationInWorker: false,
+      // Permettre l'exécution de workers
+      backgroundThrottling: false,
+      // Activer les fonctionnalités expérimentales pour WASM
+      experimentalFeatures: true,
     },
   });
-  console.log('[Electron] Window created successfully');
+  
+  // Intercepter les requêtes pour ajouter les en-têtes CORS
+  const { session } = require('electron');
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const responseHeaders = { ...details.responseHeaders };
+    
+    // Supprimer tous les en-têtes CORS qui pourraient bloquer
+    delete responseHeaders['Cross-Origin-Opener-Policy'];
+    delete responseHeaders['Cross-Origin-Embedder-Policy'];
+    delete responseHeaders['Cross-Origin-Resource-Policy'];
+    
+    // Pour les ressources CDN de ZetaOffice, ajouter les bons en-têtes
+    if (details.url.includes('zetaoffice.net')) {
+      responseHeaders['Access-Control-Allow-Origin'] = ['*'];
+      responseHeaders['Access-Control-Allow-Methods'] = ['GET, HEAD, OPTIONS'];
+      responseHeaders['Access-Control-Allow-Headers'] = ['*'];
+    }
+    
+    callback({ responseHeaders });
+  });
+  
+  console.log('[Electron] Window created successfully with CORS headers for ZetaOffice');
 
   // Wait for the Next.js server to be ready
   const serverUrl = 'http://localhost:3000';

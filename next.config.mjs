@@ -9,6 +9,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Pas d'en-têtes CORS - géré par Electron avec webSecurity: false
 }
 
 export default nextConfig
