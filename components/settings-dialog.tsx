@@ -4,7 +4,7 @@ import type React from "react"
 // @ts-ignore
 const isElectron = typeof window !== 'undefined' && window.process && window.process.type === 'renderer';
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
@@ -23,6 +23,7 @@ interface SettingsDialogProps {
 }
 
 export function SettingsDialog({ children }: SettingsDialogProps) {
+  const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const [stylusSettings, setStylusSettings] = useState({
     pressureSensitivity: 1.0,
@@ -49,6 +50,19 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
     minimizeToTray: true,
   })
 
+  // Charger les paramètres existants au montage
+  useEffect(() => {
+    if (window.electronAPI && window.electronAPI.loadSettings) {
+      window.electronAPI.loadSettings().then((settings) => {
+        if (settings) {
+          if (settings.stylus) setStylusSettings(settings.stylus);
+          if (settings.files) setFileSettings(settings.files);
+          if (settings.app) setAppSettings(settings.app);
+        }
+      });
+    }
+  }, []);
+
   // Fonction de sauvegarde des paramètres
   const saveSettings = useCallback(() => {
     const settings = {
@@ -58,12 +72,21 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
     };
     if (window.electronAPI && window.electronAPI.saveSettings) {
       window.electronAPI.saveSettings(settings)
-        .then(() => {
-          toast({
-            title: "Paramètres sauvegardés",
-            description: "Les paramètres ont été enregistrés avec succès.",
-            variant: "default",
-          });
+        .then((result) => {
+          if (result) {
+            toast({
+              title: "Paramètres sauvegardés",
+              description: "Les paramètres ont été enregistrés avec succès.",
+              variant: "default",
+            });
+            setOpen(false);
+          } else {
+            toast({
+              title: "Erreur de sauvegarde",
+              description: "Impossible d'enregistrer les paramètres.",
+              variant: "destructive",
+            });
+          }
         })
         .catch(() => {
           toast({
@@ -115,7 +138,9 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
   const handleBrowseFolder = () => {
     if (window.electronAPI && window.electronAPI.selectFolder) {
       window.electronAPI.selectFolder()
-        .then((folderPath: string) => {
+        .then((result: any) => {
+          // Electron dialog returns an object with filePaths (array)
+          const folderPath = result && result.filePaths && result.filePaths[0];
           if (folderPath) {
             setFileSettings((prev) => ({ ...prev, rootPath: folderPath }));
           } else {
@@ -152,7 +177,7 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
   }
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto flex flex-col">
         <DialogHeader>
