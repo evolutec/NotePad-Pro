@@ -4,6 +4,10 @@ import * as React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { OnlyOfficeLikeToolbar } from "./ui/onlyoffice-like-toolbar"
+import { OnlyOfficeFileMenu } from "./ui/onlyoffice-file-menu"
+import { VideoHomeToolbar } from "./video-home-toolbar"
+import { VideoPlaybackToolbar } from "./video-playback-toolbar"
+import { VideoViewToolbar } from "./video-view-toolbar"
 import { Slider } from "@/components/ui/slider"
 import {
   Play,
@@ -28,7 +32,7 @@ export interface VideoViewerProps {
 }
 
 export function VideoViewer({ videoPath, videoName, videoType }: VideoViewerProps) {
-  const [activeTab, setActiveTab] = useState("Accueil");
+  const [activeTab, setActiveTab] = useState("Accueil")
   console.log('🎥 VideoViewer: === COMPONENT RENDERED ===')
   console.log('🎥 VideoViewer: Props received:', { videoPath, videoName, videoType })
 
@@ -41,6 +45,9 @@ export function VideoViewer({ videoPath, videoName, videoType }: VideoViewerProp
   const [playbackRate, setPlaybackRate] = useState(1)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [showControls, setShowControls] = useState(true)
+  const [showStats, setShowStats] = useState(false)
+  const [viewTheme, setViewTheme] = useState("auto")
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const playerRef = useRef<any>(null)
@@ -456,32 +463,67 @@ export function VideoViewer({ videoPath, videoName, videoType }: VideoViewerProp
   console.log('🎥 VideoViewer: Rendering video viewer')
 
   return (
-    <div className="w-full h-full flex flex-col bg-black">
+    <div className="w-full h-full flex flex-col bg-black relative">
       <OnlyOfficeLikeToolbar
         tabs={[
           { label: "Fichier" },
-          { label: "Accueil", active: true },
+          { label: "Accueil" },
+          { label: "Lecture" },
           { label: "Affichage" },
         ]}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
-        rightContent={
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => playerRef.current?.play?.()} title="Lecture">
-              <Play className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => playerRef.current?.pause?.()} title="Pause">
-              <Pause className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => setIsMuted(!isMuted)} title={isMuted ? "Activer le son" : "Couper le son"}>
-              {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => setIsFullscreen(!isFullscreen)} title={isFullscreen ? "Quitter le plein écran" : "Plein écran"}>
-              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-            </Button>
-          </div>
-        }
+        onTabChange={(tab) => {
+          setActiveTab(tab);
+        }}
       />
+
+      {/* File Menu */}
+      {activeTab === "Fichier" && (
+        <OnlyOfficeFileMenu
+          onClose={() => setActiveTab("Accueil")}
+          type="video"
+          onExport={(format) => {
+            console.log('Exporting video as:', format)
+            // TODO: Implement video export
+          }}
+        />
+      )}
+
+      {/* Conditional Toolbars */}
+      {activeTab === "Accueil" && (
+        <VideoHomeToolbar
+          isPlaying={isPlaying}
+          isMuted={isMuted}
+          volume={volume}
+          onPlayPause={handlePlayPause}
+          onStop={handleStop}
+          onSkipBackward={handleSkipBackward}
+          onSkipForward={handleSkipForward}
+          onMuteToggle={handleMuteToggle}
+          onFullscreenToggle={handleFullscreenToggle}
+        />
+      )}
+
+      {activeTab === "Lecture" && (
+        <VideoPlaybackToolbar
+          playbackRate={playbackRate}
+          onPlaybackRateChange={handlePlaybackRateChange}
+        />
+      )}
+
+      {activeTab === "Affichage" && (
+        <VideoViewToolbar
+          isFullscreen={isFullscreen}
+          onFullscreenToggle={handleFullscreenToggle}
+          showControls={showControls}
+          onControlsToggle={() => setShowControls(!showControls)}
+          showStats={showStats}
+          onStatsToggle={() => setShowStats(!showStats)}
+          theme={viewTheme}
+          onThemeChange={setViewTheme}
+        />
+      )}
+
       <div className="flex-1 bg-black">
         <div className="flex items-center justify-center h-full w-full bg-black">
           {error ? (
