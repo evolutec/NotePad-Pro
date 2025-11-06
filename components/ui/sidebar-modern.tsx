@@ -29,7 +29,8 @@ import {
   FolderOpen,
   Palette,
   Table,
-  Presentation
+  Presentation,
+  Sheet
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -754,16 +755,68 @@ export function ModernSidebar({
                 <div className="space-y-2">
                   {recentFiles().map((file) => {
                     const getFileIcon = () => {
-                      if (file.name.endsWith('.draw')) {
-                        return <Palette className="w-4 h-4 text-purple-600 dark:text-purple-400" />;
-                      } else if (file.name.endsWith('.md') || file.name.endsWith('.txt')) {
-                        return <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
+                      const ext = file.name.split('.').pop()?.toLowerCase() || ''
+                      
+                      // Images - yellow
+                      if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext)) {
+                        return <FileImage className="w-4 h-4 text-yellow-500" />;
                       }
-                      return <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
+                      // Videos - gray
+                      else if (['mp4', 'webm', 'ogg', 'avi', 'mov', 'mkv', 'wmv', 'flv', '3gp'].includes(ext)) {
+                        return <FileVideo className="w-4 h-4 text-gray-500" />;
+                      }
+                      // Audio - pink
+                      else if (['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac'].includes(ext)) {
+                        return <FileAudio className="w-4 h-4 text-pink-500" />;
+                      }
+                      // Excel - green
+                      else if (['xls', 'xlsx'].includes(ext)) {
+                        return <Table className="w-4 h-4 text-green-600" />;
+                      }
+                      // PowerPoint - orange
+                      else if (['ppt', 'pptx'].includes(ext)) {
+                        return <Presentation className="w-4 h-4 text-orange-600" />;
+                      }
+                      // PDF - red
+                      else if (ext === 'pdf') {
+                        return <FileText className="w-4 h-4 text-red-600" />;
+                      }
+                      // Draw - purple
+                      else if (file.name.endsWith('.draw')) {
+                        return <Palette className="w-4 h-4 text-purple-600" />;
+                      }
+                      // Code - orange
+                      else if (['js', 'ts', 'jsx', 'tsx', 'py', 'java', 'cpp', 'cs', 'html', 'css', 'json'].includes(ext)) {
+                        return <FileCode className="w-4 h-4 text-orange-500" />;
+                      }
+                      // Documents - blue
+                      else if (['doc', 'docx', 'rtf'].includes(ext)) {
+                        return <FileText className="w-4 h-4 text-blue-600" />;
+                      }
+                      // Notes - blue
+                      else if (['md', 'txt'].includes(ext)) {
+                        return <FileText className="w-4 h-4 text-blue-500" />;
+                      }
+                      // Default
+                      return <FileText className="w-4 h-4 text-blue-600" />;
                     };
 
                     const getFileColor = () => {
-                      if (file.name.endsWith('.draw')) {
+                      const ext = file.name.split('.').pop()?.toLowerCase() || ''
+                      
+                      if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext)) {
+                        return 'bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800';
+                      } else if (['mp4', 'webm', 'avi', 'mov', 'mkv'].includes(ext)) {
+                        return 'bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-800';
+                      } else if (['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext)) {
+                        return 'bg-pink-50 dark:bg-pink-950 border-pink-200 dark:border-pink-800';
+                      } else if (['xls', 'xlsx'].includes(ext)) {
+                        return 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800';
+                      } else if (['ppt', 'pptx'].includes(ext)) {
+                        return 'bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800';
+                      } else if (ext === 'pdf') {
+                        return 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800';
+                      } else if (file.name.endsWith('.draw')) {
                         return 'bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800';
                       }
                       return 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800';
@@ -807,16 +860,68 @@ export function ModernSidebar({
                 <div className="space-y-2">
                   {starredFiles().map((file) => {
                     const getFileIcon = () => {
-                      if (file.name.endsWith('.draw')) {
-                        return <Palette className="w-4 h-4 text-purple-600 dark:text-purple-400" />;
-                      } else if (file.name.endsWith('.md') || file.name.endsWith('.txt')) {
-                        return <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
+                      const ext = file.name.split('.').pop()?.toLowerCase() || ''
+                      
+                      // Images - yellow
+                      if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext)) {
+                        return <FileImage className="w-4 h-4 text-yellow-500" />;
                       }
-                      return <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
+                      // Videos - gray
+                      else if (['mp4', 'webm', 'ogg', 'avi', 'mov', 'mkv', 'wmv', 'flv', '3gp'].includes(ext)) {
+                        return <FileVideo className="w-4 h-4 text-gray-500" />;
+                      }
+                      // Audio - pink
+                      else if (['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac'].includes(ext)) {
+                        return <FileAudio className="w-4 h-4 text-pink-500" />;
+                      }
+                      // Excel - green
+                      else if (['xls', 'xlsx'].includes(ext)) {
+                        return <Table className="w-4 h-4 text-green-600" />;
+                      }
+                      // PowerPoint - orange
+                      else if (['ppt', 'pptx'].includes(ext)) {
+                        return <Presentation className="w-4 h-4 text-orange-600" />;
+                      }
+                      // PDF - red
+                      else if (ext === 'pdf') {
+                        return <FileText className="w-4 h-4 text-red-600" />;
+                      }
+                      // Draw - purple
+                      else if (file.name.endsWith('.draw')) {
+                        return <Palette className="w-4 h-4 text-purple-600" />;
+                      }
+                      // Code - orange
+                      else if (['js', 'ts', 'jsx', 'tsx', 'py', 'java', 'cpp', 'cs', 'html', 'css', 'json'].includes(ext)) {
+                        return <FileCode className="w-4 h-4 text-orange-500" />;
+                      }
+                      // Documents - blue
+                      else if (['doc', 'docx', 'rtf'].includes(ext)) {
+                        return <FileText className="w-4 h-4 text-blue-600" />;
+                      }
+                      // Notes - blue
+                      else if (['md', 'txt'].includes(ext)) {
+                        return <FileText className="w-4 h-4 text-blue-500" />;
+                      }
+                      // Default
+                      return <FileText className="w-4 h-4 text-blue-600" />;
                     };
 
                     const getFileColor = () => {
-                      if (file.name.endsWith('.draw')) {
+                      const ext = file.name.split('.').pop()?.toLowerCase() || ''
+                      
+                      if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext)) {
+                        return 'bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800';
+                      } else if (['mp4', 'webm', 'avi', 'mov', 'mkv'].includes(ext)) {
+                        return 'bg-gray-50 dark:bg-gray-950 border-gray-200 dark:border-gray-800';
+                      } else if (['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext)) {
+                        return 'bg-pink-50 dark:bg-pink-950 border-pink-200 dark:border-pink-800';
+                      } else if (['xls', 'xlsx'].includes(ext)) {
+                        return 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800';
+                      } else if (['ppt', 'pptx'].includes(ext)) {
+                        return 'bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800';
+                      } else if (ext === 'pdf') {
+                        return 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800';
+                      } else if (file.name.endsWith('.draw')) {
                         return 'bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800';
                       }
                       return 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800';

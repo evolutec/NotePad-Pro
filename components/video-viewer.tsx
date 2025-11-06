@@ -52,24 +52,50 @@ export function VideoViewer({ videoPath, videoName, videoType }: VideoViewerProp
   const videoRef = useRef<HTMLVideoElement>(null)
   const playerRef = useRef<any>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const isInitializing = useRef(false)
+  // Génère une clé unique pour le <video> selon le chemin
+  const videoKey = React.useMemo(() => `${videoPath}-${videoType}`, [videoPath, videoType])
 
   // Initialize Video.js player
   useEffect(() => {
+    // Empêcher les initialisations multiples simultanées
+    if (isInitializing.current) {
+      console.log('🎥 VideoViewer: Already initializing, skipping...')
+      return
+    }
+
     console.log('🎥 VideoViewer: useEffect triggered with:', {
       videoPath: videoPath ? videoPath.substring(0, 50) + '...' : 'null/empty',
       hasVideoRef: !!videoRef.current,
       hasPlayer: !!playerRef.current,
-      videoRefType: typeof videoRef.current,
-      playerRefType: typeof playerRef.current
     })
 
-    console.log('🎥 VideoViewer: Detailed condition check:')
-    console.log('🎥 VideoViewer: - videoPath exists:', !!videoPath)
-    console.log('🎥 VideoViewer: - videoRef.current exists:', !!videoRef.current)
-    console.log('🎥 VideoViewer: - playerRef.current exists:', !!playerRef.current)
-    console.log('🎥 VideoViewer: - Combined condition result:', videoPath && videoRef.current && !playerRef.current)
+    // Nettoyer le player existant avant d'en créer un nouveau
+    if (playerRef.current) {
+      console.log('🎥 VideoViewer: Disposing existing player before creating new one')
+      try {
+        playerRef.current.dispose()
+      } catch (e) {
+        console.warn('Erreur lors du dispose video.js:', e)
+      }
+      playerRef.current = null
+    }
 
-    if (videoPath && videoRef.current && !playerRef.current) {
+    if (!videoPath || !videoRef.current) {
+      console.log('🎥 VideoViewer: Missing videoPath or videoRef, skipping initialization')
+      return
+    }
+
+    isInitializing.current = true
+
+    // Petit délai pour s'assurer que le DOM est stable
+    const initTimeout = setTimeout(() => {
+      if (!videoRef.current) {
+        console.log('🎥 VideoViewer: videoRef disappeared during timeout')
+        isInitializing.current = false
+        return
+      }
+
       console.log('🎥 VideoViewer: Initializing Video.js player for:', videoPath)
 
       try {
@@ -153,80 +179,28 @@ export function VideoViewer({ videoPath, videoName, videoType }: VideoViewerProp
           setIsLoading(false)
         }
 
+        isInitializing.current = false
+
       } catch (err) {
         console.error('🎥 VideoViewer: Error initializing Video.js:', err)
         setError('Erreur lors de l\'initialisation du lecteur vidéo')
         setIsLoading(false)
+        isInitializing.current = false
       }
-    } else {
-      console.log('🎥 VideoViewer: useEffect conditions not met:', {
-        open,
-        hasVideoPath: !!videoPath,
-        hasVideoRef: !!videoRef.current,
-        hasPlayer: !!playerRef.current
-      })
-
-      // Fallback: Try to initialize anyway after a short delay
-      if (videoPath && !playerRef.current) {
-        console.log('🎥 VideoViewer: Attempting fallback initialization...')
-        setTimeout(() => {
-          console.log('🎥 VideoViewer: Fallback initialization - checking videoRef:', !!videoRef.current)
-          if (videoRef.current && !playerRef.current) {
-            console.log('🎥 VideoViewer: Fallback initialization - proceeding with initialization')
-            // Re-run the initialization logic
-            try {
-              const videoElement = videoRef.current
-              const options = {
-                autoplay: false,
-                controls: true,
-                responsive: true,
-                fluid: true,
-                playbackRates: [0.5, 1, 1.25, 1.5, 2],
-                html5: {
-                  vhs: {
-                    overrideNative: !videojs.browser.IS_SAFARI
-                  }
-                }
-              }
-
-              const player = videojs(videoElement, options, function onPlayerReady() {
-                console.log('🎥 VideoViewer: Fallback - Video.js player is ready!')
-
-                this.on('loadedmetadata', () => {
-                  console.log('🎥 VideoViewer: Fallback - Video metadata loaded, duration:', this.duration())
-                  setDuration(this.duration() || 0)
-                  setIsLoading(false)
-                })
-
-                this.on('error', (e: any) => {
-                  console.error('🎥 VideoViewer: Fallback - Video.js error:', e)
-                  setError('Erreur lors du chargement de la vidéo')
-                  setIsLoading(false)
-                })
-              })
-
-              playerRef.current = player
-
-              if (window.electronAPI?.readFile) {
-                loadVideoSource(player)
-              } else {
-                setError('API Electron non disponible pour charger la vidéo')
-                setIsLoading(false)
-              }
-            } catch (err) {
-              console.error('🎥 VideoViewer: Fallback - Error initializing Video.js:', err)
-              setError('Erreur lors de l\'initialisation du lecteur vidéo')
-              setIsLoading(false)
-            }
-          }
-        }, 100)
-      }
-    }
+    }, 100)
 
     return () => {
+      clearTimeout(initTimeout)
+      isInitializing.current = false
+      
+      // S'assure que le player est bien détruit avant tout changement de DOM
       if (playerRef.current) {
-        console.log('🎥 VideoViewer: Cleaning up Video.js player')
-        playerRef.current.dispose()
+        try {
+          console.log('🎥 VideoViewer: Cleaning up Video.js player')
+          playerRef.current.dispose()
+        } catch (e) {
+          console.warn('Erreur lors du dispose video.js:', e)
+        }
         playerRef.current = null
       }
     }
@@ -550,6 +524,7 @@ export function VideoViewer({ videoPath, videoName, videoType }: VideoViewerProp
                 </div>
               )}
               <video
+                key={videoKey}
                 ref={videoRef}
                 className="video-js vjs-default-skin vjs-big-play-centered"
                 style={{

@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Archive, Copy, Download, Edit, Eye, File, FileCode, FileText, FileWarning, Folder, FolderOpen, Grid, ImageIcon, Link, List, MoreHorizontal, Move, Music, NotebookText, Palette, Plus, Scissors, Search, SearchX, Share, Trash, Upload, UploadCloud, Video, FilePlus, ChevronLeft, ChevronRight, Home } from "lucide-react"
+import { Archive, Copy, Download, Edit, Eye, File, FileCode, FileText, FileWarning, Folder, FolderOpen, Grid, ImageIcon, Link, List, MoreHorizontal, Move, Music, NotebookText, Palette, Plus, Scissors, Search, SearchX, Share, Trash, Upload, UploadCloud, Video, FilePlus, ChevronLeft, ChevronRight, Home, FileImage, FileVideo, FileAudio, Sheet, Presentation } from "lucide-react"
 
 // Custom PDF icon component
 const FileIconPdf = ({ className }: { className?: string }) => (
@@ -64,17 +64,39 @@ const FILE_TYPES: {
   }
 } = {
   folder: { icon: Folder, color: "text-yellow-500", extensions: [] },
-  image: { icon: ImageIcon, color: "text-red-500", extensions: ["jpg", "jpeg", "png", "gif", "svg", "webp"] },
+  image: { icon: FileImage, color: "text-yellow-500", extensions: ["jpg", "jpeg", "png", "gif", "svg", "webp"] },
   pdf: { icon: FileText, color: "text-red-600", extensions: ["pdf"] },
-  document: { icon: FileText, color: "text-green-500", extensions: ["doc", "docx", "rtf"] },
-  note: { icon: FileCode, color: "text-blue-500", extensions: ["md"] },
-  draw: { icon: Palette, color: "text-purple-600 dark:text-purple-400", extensions: ["draw"] },
-  audio: { icon: Music, color: "text-purple-500", extensions: ["mp3", "wav", "ogg", "m4a"] },
-  video: { icon: Video, color: "text-blue-500", extensions: ["mp4", "webm", "ogg", "avi", "mov", "mkv", "wmv", "flv", "3gp"] },
+  document: { icon: FileText, color: "text-blue-600", extensions: ["doc", "docx", "rtf"] },
+  excel: { icon: Sheet, color: "text-green-600", extensions: ["xls", "xlsx"] },
+  powerpoint: { icon: Presentation, color: "text-orange-600", extensions: ["ppt", "pptx"] },
+  note: { icon: FileText, color: "text-blue-500", extensions: ["md", "txt"] },
+  draw: { icon: Palette, color: "text-purple-600", extensions: ["draw"] },
+  audio: { icon: FileAudio, color: "text-pink-500", extensions: ["mp3", "wav", "ogg", "m4a", "flac", "aac"] },
+  video: { icon: FileVideo, color: "text-gray-500", extensions: ["mp4", "webm", "ogg", "avi", "mov", "mkv", "wmv", "flv", "3gp"] },
   archive: { icon: Archive, color: "text-gray-500", extensions: ["zip", "rar", "7z", "tar"] },
   link: { icon: Link, color: "text-cyan-600", extensions: [] },
   code: { icon: FileCode, color: "text-orange-500", extensions: ["js", "ts", "jsx", "tsx", "py", "java", "cpp", "cs", "html", "css", "json"] },
   other: { icon: File, color: "text-gray-600", extensions: [] },
+}
+
+// Fonction utilitaire pour obtenir l'icône et la couleur selon le type de fichier
+const getFileIconAndColor = (fileName: string) => {
+  const ext = fileName.split('.').pop()?.toLowerCase() || ''
+  
+  // Vérifier chaque type de fichier
+  for (const [type, config] of Object.entries(FILE_TYPES)) {
+    if (config.extensions.includes(ext)) {
+      return { Icon: config.icon, color: config.color, type }
+    }
+  }
+  
+  // Cas spéciaux basés sur l'extension complète
+  if (fileName.endsWith('.draw')) {
+    return { Icon: Palette, color: "text-purple-600", type: 'draw' }
+  }
+  
+  // Par défaut
+  return { Icon: File, color: "text-gray-600", type: 'other' }
 }
 
 export function FileManager({
@@ -793,20 +815,11 @@ export function FileManager({
                   /* Regular files - Same design as sidebar */
                   <div className="flex flex-col items-center justify-center p-4">
                     {(() => {
-                      const getFileIcon = () => {
-                        if (file.name.endsWith('.draw')) {
-                          return <Palette className="w-20 h-20 text-purple-600 dark:text-purple-400" />;
-                        } else if (file.name.endsWith('.md') || file.name.endsWith('.txt')) {
-                          return <FileText className="w-20 h-20 text-blue-600 dark:text-blue-400" />;
-                        } else if (file.name.endsWith('.pdf')) {
-                          return <FileText className="w-20 h-20 text-red-600 dark:text-red-400" />;
-                        }
-                        return <FileText className="w-20 h-20 text-blue-600 dark:text-blue-400" />;
-                      };
+                      const { Icon, color } = getFileIconAndColor(file.name)
 
                       return (
                         <div className="relative flex flex-col items-center justify-center gap-2">
-                          {getFileIcon()}
+                          <Icon className={`w-20 h-20 ${color}`} />
                           <span className="text-xs font-medium text-center truncate max-w-full px-1">
                             {file.name}
                           </span>

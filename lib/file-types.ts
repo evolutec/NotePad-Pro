@@ -14,7 +14,9 @@ import {
   Image,
   Mic,
   FolderOpen,
-  Plus
+  Plus,
+  Table,
+  Presentation
 } from "lucide-react"
 
 export type FileType =
@@ -314,8 +316,8 @@ export const FILE_TYPES: Record<FileType, FileTypeConfig> = {
     name: 'Excel',
     description: 'Tableur Excel',
     colorTheme: 'green',
-    icon: FileText,
-    buttonIcon: FileText,
+    icon: Table,
+    buttonIcon: Table,
     extensions: ['xlsx', 'xls'],
     mimeTypes: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'],
     category: 'document',
@@ -338,8 +340,8 @@ export const FILE_TYPES: Record<FileType, FileTypeConfig> = {
     name: 'PowerPoint',
     description: 'Présentation PowerPoint',
     colorTheme: 'orange',
-    icon: FileText,
-    buttonIcon: FileText,
+    icon: Presentation,
+    buttonIcon: Presentation,
     extensions: ['pptx', 'ppt'],
     mimeTypes: ['application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/vnd.ms-powerpoint'],
     category: 'document',
