@@ -22,6 +22,9 @@ export type FileType =
   | 'note'
   | 'draw'
   | 'document'
+  | 'pdf'
+  | 'excel'
+  | 'powerpoint'
   | 'image'
   | 'video'
   | 'audio'
@@ -166,48 +169,48 @@ export const FILE_TYPES: Record<FileType, FileTypeConfig> = {
     type: 'image',
     name: 'Image',
     description: 'Images et photos',
-    colorTheme: 'green',
+    colorTheme: 'yellow',
     icon: FileImage,
     buttonIcon: FileImage,
     extensions: ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp'],
     mimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'image/webp'],
     category: 'media',
     sidebarButton: {
-      background: 'bg-green-100 hover:bg-green-200',
-      hover: 'hover:bg-green-200',
-      text: 'text-green-600',
-      darkBackground: 'dark:bg-green-900 dark:hover:bg-green-800',
-      darkHover: 'dark:hover:bg-green-800',
-      darkText: 'dark:text-green-400'
+      background: 'bg-yellow-100 hover:bg-yellow-200',
+      hover: 'hover:bg-yellow-200',
+      text: 'text-yellow-600',
+      darkBackground: 'dark:bg-yellow-900 dark:hover:bg-yellow-800',
+      darkHover: 'dark:hover:bg-yellow-800',
+      darkText: 'dark:text-yellow-400'
     },
     modal: {
-      gradient: 'from-green-500 to-green-600',
-      accent: 'bg-green-500 hover:bg-green-600',
-      line: 'bg-green-500'
+      gradient: 'from-yellow-500 to-yellow-600',
+      accent: 'bg-yellow-500 hover:bg-yellow-600',
+      line: 'bg-yellow-500'
     }
   },
   video: {
     type: 'video',
     name: 'Vidéo',
     description: 'Vidéos et films',
-    colorTheme: 'purple',
+    colorTheme: 'gray',
     icon: FileVideo,
     buttonIcon: FileVideo,
     extensions: ['mp4', 'webm', 'ogg', 'avi', 'mov', 'mkv', 'wmv', 'flv', '3gp'],
     mimeTypes: ['video/mp4', 'video/webm', 'video/ogg', 'video/x-msvideo', 'video/quicktime', 'video/x-matroska'],
     category: 'media',
     sidebarButton: {
-      background: 'bg-purple-100 hover:bg-purple-200',
-      hover: 'hover:bg-purple-200',
-      text: 'text-purple-600',
-      darkBackground: 'dark:bg-purple-900 dark:hover:bg-purple-800',
-      darkHover: 'dark:hover:bg-purple-800',
-      darkText: 'dark:text-purple-400'
+      background: 'bg-gray-100 hover:bg-gray-200',
+      hover: 'hover:bg-gray-200',
+      text: 'text-gray-600',
+      darkBackground: 'dark:bg-gray-900 dark:hover:bg-gray-800',
+      darkHover: 'dark:hover:bg-gray-800',
+      darkText: 'dark:text-gray-400'
     },
     modal: {
-      gradient: 'from-purple-500 to-purple-600',
-      accent: 'bg-purple-500 hover:bg-purple-600',
-      line: 'bg-purple-500'
+      gradient: 'from-gray-500 to-gray-600',
+      accent: 'bg-gray-500 hover:bg-gray-600',
+      line: 'bg-gray-500'
     }
   },
   audio: {
@@ -280,6 +283,78 @@ export const FILE_TYPES: Record<FileType, FileTypeConfig> = {
       gradient: 'from-gray-500 to-gray-600',
       accent: 'bg-gray-500 hover:bg-gray-600',
       line: 'bg-gray-500'
+    }
+  },
+  pdf: {
+    type: 'pdf',
+    name: 'PDF',
+    description: 'Document PDF',
+    colorTheme: 'red',
+    icon: FileText,
+    buttonIcon: FileText,
+    extensions: ['pdf'],
+    mimeTypes: ['application/pdf'],
+    category: 'document',
+    sidebarButton: {
+      background: 'bg-red-100 hover:bg-red-200',
+      hover: 'hover:bg-red-200',
+      text: 'text-red-600',
+      darkBackground: 'dark:bg-red-900 dark:hover:bg-red-800',
+      darkHover: 'dark:hover:bg-red-800',
+      darkText: 'dark:text-red-400'
+    },
+    modal: {
+      gradient: 'from-red-500 to-red-600',
+      accent: 'bg-red-500 hover:bg-red-600',
+      line: 'bg-red-500'
+    }
+  },
+  excel: {
+    type: 'excel',
+    name: 'Excel',
+    description: 'Tableur Excel',
+    colorTheme: 'green',
+    icon: FileText,
+    buttonIcon: FileText,
+    extensions: ['xlsx', 'xls'],
+    mimeTypes: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'],
+    category: 'document',
+    sidebarButton: {
+      background: 'bg-green-100 hover:bg-green-200',
+      hover: 'hover:bg-green-200',
+      text: 'text-green-600',
+      darkBackground: 'dark:bg-green-900 dark:hover:bg-green-800',
+      darkHover: 'dark:hover:bg-green-800',
+      darkText: 'dark:text-green-400'
+    },
+    modal: {
+      gradient: 'from-green-500 to-green-600',
+      accent: 'bg-green-500 hover:bg-green-600',
+      line: 'bg-green-500'
+    }
+  },
+  powerpoint: {
+    type: 'powerpoint',
+    name: 'PowerPoint',
+    description: 'Présentation PowerPoint',
+    colorTheme: 'orange',
+    icon: FileText,
+    buttonIcon: FileText,
+    extensions: ['pptx', 'ppt'],
+    mimeTypes: ['application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/vnd.ms-powerpoint'],
+    category: 'document',
+    sidebarButton: {
+      background: 'bg-orange-100 hover:bg-orange-200',
+      hover: 'hover:bg-orange-200',
+      text: 'text-orange-600',
+      darkBackground: 'dark:bg-orange-900 dark:hover:bg-orange-800',
+      darkHover: 'dark:hover:bg-orange-800',
+      darkText: 'dark:text-orange-400'
+    },
+    modal: {
+      gradient: 'from-orange-500 to-orange-600',
+      accent: 'bg-orange-500 hover:bg-orange-600',
+      line: 'bg-orange-500'
     }
   },
   generic: {

@@ -22,9 +22,10 @@ export interface AddNoteDialogProps {
   onOpenChange: (open: boolean) => void;
   parentPath: string;
   onNoteCreated: (note: NoteMeta) => void;
+  onRefreshTree?: () => void;
 }
 
-export function AddNoteDialog({ open, onOpenChange, parentPath, onNoteCreated }: AddNoteDialogProps) {
+export function AddNoteDialog({ open, onOpenChange, parentPath, onNoteCreated, onRefreshTree }: AddNoteDialogProps) {
   const [noteName, setNoteName] = useState("");
   const [noteType, setNoteType] = useState<"text" | "markdown" | "doc" | "docx">("text");
   const [tags, setTags] = useState<string[]>([]);
@@ -106,8 +107,9 @@ export function AddNoteDialog({ open, onOpenChange, parentPath, onNoteCreated }:
     console.log('=== handleFolderSelect called ===');
     console.log('folderId:', folderId);
     console.log('folderPath:', folderPath);
-    console.log('Setting parentId to:', folderId);
-    setParentId(folderId || undefined);
+    console.log('Setting parentId to folderPath:', folderPath);
+    // Use folderPath instead of folderId because we need the actual path for file creation
+    setParentId(folderPath || undefined);
     setShowFolderModal(false); // Close the modal after selection
   };
 
@@ -153,6 +155,7 @@ export function AddNoteDialog({ open, onOpenChange, parentPath, onNoteCreated }:
       });
       setCreationSuccess("Note créée avec succès !");
       if (onNoteCreated) onNoteCreated(newNote);
+      if (onRefreshTree) onRefreshTree();
       setTimeout(() => {
         setNoteName("");
         setNoteType("text");

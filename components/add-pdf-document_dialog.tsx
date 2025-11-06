@@ -139,8 +139,9 @@ export function AddPdfDocumentDialog({ open, onOpenChange, parentPath, onDocumen
     console.log('=== handleFolderSelect called ===');
     console.log('folderId:', folderId);
     console.log('folderPath:', folderPath);
-    console.log('Setting parentId to:', folderId);
-    setParentId(folderId || undefined);
+    console.log('Setting parentId to folderPath:', folderPath);
+    // Use folderPath instead of folderId because we need the actual path for file creation
+    setParentId(folderPath || undefined);
     setShowFolderModal(false); // Close the modal after selection
   };
 

@@ -21,9 +21,10 @@ export interface AddDrawDialogProps {
   onOpenChange: (open: boolean) => void;
   parentPath: string;
   onDrawCreated: (draw: DrawMeta) => void;
+  onRefreshTree?: () => void;
 }
 
-export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }: AddDrawDialogProps) {
+export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated, onRefreshTree }: AddDrawDialogProps) {
   const [drawName, setDrawName] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState("");
@@ -167,7 +168,8 @@ export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }:
 
   // Handle folder selection
   const handleFolderSelect = (folderId: string | null, folderPath: string) => {
-    setParentId(folderId || undefined);
+    // Use folderPath instead of folderId because we need the actual path for file creation
+    setParentId(folderPath || undefined);
   };
 
   // Get selected folder name for display
@@ -324,6 +326,7 @@ export function AddDrawDialog({ open, onOpenChange, parentPath, onDrawCreated }:
 
       setCreationSuccess("Dessin créé avec succès !");
       if (onDrawCreated) onDrawCreated(newDraw);
+      if (onRefreshTree) onRefreshTree();
 
       setTimeout(() => {
         setDrawName("");

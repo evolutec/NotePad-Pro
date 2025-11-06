@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Archive, Copy, Download, Edit, Eye, File, FileCode, FileText, FileWarning, Folder, FolderOpen, Grid, ImageIcon, Link, List, MoreHorizontal, Move, Music, NotebookText, Palette, Plus, Scissors, Search, SearchX, Share, Trash, Upload, UploadCloud, Video, FilePlus } from "lucide-react"
+import { Archive, Copy, Download, Edit, Eye, File, FileCode, FileText, FileWarning, Folder, FolderOpen, Grid, ImageIcon, Link, List, MoreHorizontal, Move, Music, NotebookText, Palette, Plus, Scissors, Search, SearchX, Share, Trash, Upload, UploadCloud, Video, FilePlus, ChevronLeft, ChevronRight, Home } from "lucide-react"
 
 // Custom PDF icon component
 const FileIconPdf = ({ className }: { className?: string }) => (
@@ -234,7 +234,7 @@ export function FileManager({
     try {
       if (window.electronAPI?.readFile) {
         const result = await window.electronAPI.readFile(filename);
-        if (result.success) {
+        if (result.success && result.data) {
           return JSON.parse(result.data);
         }
       }
@@ -612,9 +612,80 @@ export function FileManager({
           -webkit-box-orient: vertical;
         }
       `}</style>
-      <div className="flex items-center justify-between p-4">
-        <h2 className="text-xl font-semibold">File Manager</h2>
-        <div className="flex items-center space-x-2">
+      <div className="flex flex-col gap-2 p-4 border-b">
+        {/* Breadcrumb navigation */}
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => {
+              // Navigate to parent folder
+              if (selectedFolder && selectedFolder.includes('\\')) {
+                const parentPath = selectedFolder.substring(0, selectedFolder.lastIndexOf('\\'));
+                if (onFolderSelect && parentPath) {
+                  onFolderSelect(parentPath);
+                }
+              } else if (folderTree?.path) {
+                // Go to root
+                if (onFolderSelect) {
+                  onFolderSelect(folderTree.path);
+                }
+              }
+            }}
+            disabled={!selectedFolder || selectedFolder === folderTree?.path}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          
+          {/* Breadcrumb path */}
+          <div className="flex items-center gap-1 flex-1 overflow-x-auto">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => {
+                if (folderTree?.path && onFolderSelect) {
+                  onFolderSelect(folderTree.path);
+                }
+              }}
+              className="flex items-center gap-1 h-8"
+            >
+              <Home className="h-3 w-3" />
+              <span className="text-sm">Home</span>
+            </Button>
+            
+            {selectedFolder && selectedFolder !== folderTree?.path && (() => {
+              const parts = selectedFolder.split('\\');
+              const rootParts = folderTree?.path?.split('\\') || [];
+              const relativeParts = parts.slice(rootParts.length);
+              
+              return relativeParts.map((part, index) => {
+                const fullPath = [...rootParts, ...relativeParts.slice(0, index + 1)].join('\\');
+                return (
+                  <div key={index} className="flex items-center gap-1">
+                    <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => {
+                        if (onFolderSelect) {
+                          onFolderSelect(fullPath);
+                        }
+                      }}
+                      className="h-8 text-sm"
+                    >
+                      {part}
+                    </Button>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        </div>
+        
+        {/* Toolbar */}
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">File Manager</h2>
+          <div className="flex items-center space-x-2">
           <Input
             placeholder="Search files..."
             value={searchQuery}
@@ -642,6 +713,7 @@ export function FileManager({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        </div>
         </div>
       </div>
       <input

@@ -27,7 +27,9 @@ import {
   Trash2,
   Folder,
   FolderOpen,
-  Palette
+  Palette,
+  Table,
+  Presentation
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -39,6 +41,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import ModernFolderTree, { EnhancedFolderNode } from './FolderTree-modern';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { AddExcelDialog } from '@/components/add-excel_dialog';
+import { AddPowerpointDialog } from '@/components/add-powerpoint_dialog';
+import { AddPdfDocumentDialog } from '@/components/add-pdf-document_dialog';
 // CSS import - side-effect import for styles
 // @ts-ignore - Suppress TypeScript error for CSS import
 import './tree-styles.css';
@@ -87,6 +92,9 @@ export function ModernSidebar({
   const [isElectronMode, setIsElectronMode] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [enhancedTree, setEnhancedTree] = useState<EnhancedFolderNode | null>(null);
+  const [showExcelDialog, setShowExcelDialog] = useState(false);
+  const [showPowerpointDialog, setShowPowerpointDialog] = useState(false);
+  const [showPdfDialog, setShowPdfDialog] = useState(false);
 
   // Use useEffect to detect Electron mode on client side only
   React.useEffect(() => {
@@ -293,13 +301,14 @@ export function ModernSidebar({
               {/* Collapsed layout - only essential buttons */}
               {isCollapsed ? (
                 <>
+                  {/* Dossier, Note, Dessin - une seule fois chacun */}
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-1 bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900 dark:hover:bg-yellow-800 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300"
+                          className="h-7 w-7 p-1 bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700 text-white"
                           onClick={handleNewFolder}
                         >
                           <FolderPlus className="w-3 h-3" />
@@ -316,7 +325,7 @@ export function ModernSidebar({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-1 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                          className="h-7 w-7 p-1 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400 hover:text-blue-700"
                           onClick={() => onNewFile?.('root', 'note')}
                         >
                           <FilePlus className="w-3 h-3" />
@@ -333,7 +342,7 @@ export function ModernSidebar({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-1 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+                          className="h-7 w-7 p-1 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 hover:text-purple-700"
                           onClick={handleNewDraw}
                         >
                           <Palette className="w-3 h-3" />
@@ -350,8 +359,42 @@ export function ModernSidebar({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-1 bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                          onClick={() => onNewFile?.('root', 'document')}
+                          className="h-7 w-7 p-1 bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-600 dark:text-green-400 hover:text-green-700"
+                          onClick={() => setShowExcelDialog(true)}
+                        >
+                          <Table className="w-3 h-3" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        Nouveau tableur
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-1 bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-600 dark:text-orange-400 hover:text-orange-700"
+                          onClick={() => setShowPowerpointDialog(true)}
+                        >
+                          <Presentation className="w-3 h-3" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        Nouvelle présentation
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-1 bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-600 dark:text-red-400 hover:text-red-700"
+                          onClick={() => setShowPdfDialog(true)}
                         >
                           <FileText className="w-3 h-3" />
                         </Button>
@@ -367,24 +410,7 @@ export function ModernSidebar({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-1 bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300"
-                          onClick={() => onNewFile?.('root', 'generic')}
-                        >
-                          <FileArchive className="w-3 h-3" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        Importer document
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-1 bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
+                          className="h-7 w-7 p-1 bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900 dark:hover:bg-yellow-800 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700"
                           onClick={() => onNewFile?.('root', 'image')}
                         >
                           <FileImage className="w-3 h-3" />
@@ -401,7 +427,7 @@ export function ModernSidebar({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-1 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+                          className="h-7 w-7 p-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-900 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-700"
                           onClick={() => onNewFile?.('root', 'video')}
                         >
                           <FileVideo className="w-3 h-3" />
@@ -418,7 +444,7 @@ export function ModernSidebar({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-1 bg-pink-100 hover:bg-pink-200 dark:bg-pink-900 dark:hover:bg-pink-800 text-pink-600 dark:text-pink-400 hover:text-pink-700 dark:hover:text-pink-300"
+                          className="h-7 w-7 p-1 bg-pink-100 hover:bg-pink-200 dark:bg-pink-900 dark:hover:bg-pink-800 text-pink-600 dark:text-pink-400 hover:text-pink-700"
                           onClick={() => onNewFile?.('root', 'audio')}
                         >
                           <FileAudio className="w-3 h-3" />
@@ -441,7 +467,7 @@ export function ModernSidebar({
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-12 w-12 p-0 bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900 dark:hover:bg-yellow-800 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300"
+                            className="h-12 w-12 p-0 bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700 text-white"
                             onClick={handleNewFolder}
                           >
                             <FolderPlus className="w-4 h-4" />
@@ -492,14 +518,15 @@ export function ModernSidebar({
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-12 w-12 p-0 bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                            onClick={() => onNewFile?.('root', 'document')}
+                            className="h-12 w-12 p-0 bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
+                            onClick={() => setShowExcelDialog(true)}
                           >
-                            <FileText className="w-4 h-4" />
+                            {/* Utiliser FileSpreadsheet ou FileTable */}
+                            <Table className="w-4 h-4" />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="right">
-                          Nouveau PDF
+                          Nouveau tableur
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -510,13 +537,14 @@ export function ModernSidebar({
                             variant="ghost"
                             size="sm"
                             className="h-12 w-12 p-0 bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300"
-                            onClick={() => onNewFile?.('root', 'generic')}
+                            onClick={() => setShowPowerpointDialog(true)}
                           >
-                            <FileArchive className="w-4 h-4" />
+                            {/* Utiliser Presentation ou FilePresentation */}
+                            <Presentation className="w-4 h-4" />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="right">
-                          Importer document
+                          Nouvelle présentation
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -530,7 +558,7 @@ export function ModernSidebar({
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-12 w-12 p-0 bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
+                            className="h-12 w-12 p-0 bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900 dark:hover:bg-yellow-800 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300"
                             onClick={() => onNewFile?.('root', 'image')}
                           >
                             <FileImage className="w-4 h-4" />
@@ -547,7 +575,7 @@ export function ModernSidebar({
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-12 w-12 p-0 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+                            className="h-12 w-12 p-0 bg-gray-100 hover:bg-gray-200 dark:bg-gray-900 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                             onClick={() => onNewFile?.('root', 'video')}
                           >
                             <FileVideo className="w-4 h-4" />
@@ -572,6 +600,23 @@ export function ModernSidebar({
                         </TooltipTrigger>
                         <TooltipContent side="right">
                           Nouvel audio
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-12 w-12 p-0 bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                            onClick={() => setShowPdfDialog(true)}
+                          >
+                            <FileText className="w-4 h-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          Nouveau PDF
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -824,6 +869,32 @@ export function ModernSidebar({
           </div>
         </>
       )}
+
+      {/* Dialogs */}
+      <AddExcelDialog
+        open={showExcelDialog}
+        onOpenChange={setShowExcelDialog}
+        parentPath="root"
+        onExcelCreated={(excel) => {
+          onNewFile?.('root', 'excel');
+        }}
+      />
+      <AddPowerpointDialog
+        open={showPowerpointDialog}
+        onOpenChange={setShowPowerpointDialog}
+        parentPath="root"
+        onPowerpointCreated={(powerpoint) => {
+          onNewFile?.('root', 'powerpoint');
+        }}
+      />
+      <AddPdfDocumentDialog
+        open={showPdfDialog}
+        onOpenChange={setShowPdfDialog}
+        parentPath="root"
+        onDocumentCreated={(pdf) => {
+          onNewFile?.('root', 'pdf');
+        }}
+      />
     </aside>
   );
 }

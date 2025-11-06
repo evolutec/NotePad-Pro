@@ -171,7 +171,8 @@ export function AddImageDialog({ open, onOpenChange, parentPath, onImageCreated,
 
   // Handle folder selection
   const handleFolderSelect = (folderId: string | null, folderPath: string) => {
-    setParentId(folderId || undefined);
+    // Use folderPath instead of folderId because we need the actual path for file creation
+    setParentId(folderPath || undefined);
   };
 
   // Get selected folder name for display
@@ -820,7 +821,7 @@ export function AddImageDialog({ open, onOpenChange, parentPath, onImageCreated,
 
   // Debug info - only show in development
   const debugInfo = process.env.NODE_ENV === 'development' ? (
-    <div className="text-xs text-gray-500 mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded">
+  <div className="text-xs text-yellow-600 mt-2 p-2 bg-yellow-100 dark:bg-yellow-800 rounded">
       <div><strong>🔧 Debug Info:</strong></div>
       <div>selectedFile: {selectedFile ? `✅ ${selectedFile.name}` : '❌ null'}</div>
       <div>imageSrc: {imageSrc ? '✅ loaded' : '❌ null'}</div>
@@ -859,7 +860,7 @@ export function AddImageDialog({ open, onOpenChange, parentPath, onImageCreated,
       {selectedFile && (
         <div className="space-y-4">
           {/* Large Preview Area */}
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border">
+          <div className="bg-yellow-50 dark:bg-yellow-800 p-4 rounded-lg border border-yellow-200">
             <div className="flex items-center justify-between mb-3">
               <Label className="text-base font-semibold text-gray-900 dark:text-gray-100">
                 Aperçu et modification de l'image
@@ -873,7 +874,7 @@ export function AddImageDialog({ open, onOpenChange, parentPath, onImageCreated,
             <div className="flex justify-center mb-4">
               <div 
                 ref={previewContainerRef}
-                className="bg-gray-100 dark:bg-gray-700 rounded-lg border-2 border-gray-300 shadow-lg overflow-hidden relative" 
+                className="bg-yellow-100 dark:bg-yellow-700 rounded-lg border-2 border-yellow-300 shadow-lg overflow-hidden relative" 
                 style={{ width: '700px', height: '450px' }}
               >
                 {imageSrc ? (
@@ -941,7 +942,7 @@ export function AddImageDialog({ open, onOpenChange, parentPath, onImageCreated,
           {/* All Controls Below Preview */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* Crop Controls */}
-            <div className="bg-white dark:bg-gray-800 p-3 rounded border">
+            <div className="bg-yellow-50 dark:bg-yellow-800 p-3 rounded border border-yellow-200">
               <Label className="text-sm font-semibold mb-2 block">Recadrage</Label>
               <div className="space-y-2">
                 <Button
@@ -970,7 +971,7 @@ export function AddImageDialog({ open, onOpenChange, parentPath, onImageCreated,
             </div>
 
             {/* Zoom Controls */}
-            <div className="bg-white dark:bg-gray-800 p-3 rounded border">
+            <div className="bg-yellow-50 dark:bg-yellow-800 p-3 rounded border border-yellow-200">
               <Label className="text-sm font-semibold mb-2 block">Zoom & Position</Label>
               <div className="space-y-2">
                 <div className="flex items-center gap-1">
@@ -999,7 +1000,7 @@ export function AddImageDialog({ open, onOpenChange, parentPath, onImageCreated,
 
             {/* Resize Controls */}
             {originalImageDimensions && (
-              <div className="bg-white dark:bg-gray-800 p-3 rounded border">
+              <div className="bg-yellow-50 dark:bg-yellow-800 p-3 rounded border border-yellow-200">
                 <Label className="text-sm font-semibold mb-2 block">Dimensions</Label>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
@@ -1049,7 +1050,7 @@ export function AddImageDialog({ open, onOpenChange, parentPath, onImageCreated,
             )}
 
             {/* Image Type Selection */}
-            <div className="bg-white dark:bg-gray-800 p-3 rounded border">
+            <div className="bg-yellow-50 dark:bg-yellow-800 p-3 rounded border border-yellow-200">
               <Label className="text-sm font-semibold mb-2 block">Format</Label>
               <div className="grid grid-cols-2 gap-1">
                 <Button
@@ -1076,7 +1077,7 @@ export function AddImageDialog({ open, onOpenChange, parentPath, onImageCreated,
 
           {/* Crop Dimensions Display */}
           {completedCrop && completedCrop.width > 0 && (
-            <div className="text-sm text-gray-600 dark:text-gray-400 text-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
+            <div className="text-sm text-yellow-700 dark:text-yellow-400 text-center p-2 bg-yellow-50 dark:bg-yellow-800 rounded">
               Zone sélectionnée: {Math.round(completedCrop.width)} x {Math.round(completedCrop.height)} pixels
               <Button
                 variant="outline"
@@ -1120,7 +1121,7 @@ export function AddImageDialog({ open, onOpenChange, parentPath, onImageCreated,
         title="Créer une nouvelle image"
         icon={<ImageIcon className="h-6 w-6" />}
         description="Importez et modifiez une image depuis votre ordinateur"
-        colorTheme="green"
+        colorTheme="yellow"
         fileType="image"
         size="xl"
         fields={fields}

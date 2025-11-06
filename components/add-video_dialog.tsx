@@ -27,7 +27,6 @@ export interface AddVideoDialogProps {
 export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated, onRefreshTree }: AddVideoDialogProps) {
   // State management
   const [activeTab, setActiveTab] = useState<'upload' | 'record'>('upload');
-  const [selectedPath, setSelectedPath] = useState<string>(parentPath);
 
   // Upload tab state
   const [videoName, setVideoName] = useState("");
@@ -145,7 +144,8 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
 
   // Handle folder selection
   const handleFolderSelect = (folderId: string | null, folderPath: string) => {
-    setParentId(folderId || undefined);
+    // Use folderPath instead of folderId because we need the actual path for file creation
+    setParentId(folderPath || undefined);
   };
 
   // Get selected folder name for display
@@ -341,17 +341,23 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
       // Read the selected file as binary data
       const fileData = await selectedFile.arrayBuffer();
 
+      // Get final parent path from parentId
+      let finalParentPath = parentPath;
+      if (parentId) {
+        const parentFolder = existingFolders.find(f => f.id === parentId || f.path === parentId);
+        finalParentPath = parentFolder?.path || parentId;
+      }
+
       // Create file name with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const fileName = `${videoName.trim()}_${timestamp}.${videoType}`;
-      const filePath = selectedPath ? `${selectedPath}/${fileName}` : fileName;
 
       // Create video file using Electron API
       if (window.electronAPI?.videoCreate) {
         const result = await window.electronAPI.videoCreate({
           name: fileName,
           type: videoType,
-          parentPath: selectedPath,
+          parentPath: finalParentPath,
           tags: tags,
           content: fileData,
           isBinary: true,
@@ -393,6 +399,13 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
         return;
       }
 
+      // Get final parent path from parentId
+      let finalParentPath = parentPath;
+      if (parentId) {
+        const parentFolder = existingFolders.find(f => f.id === parentId || f.path === parentId);
+        finalParentPath = parentFolder?.path || parentId;
+      }
+
       // Create image from canvas
       canvas.toBlob(async (blob) => {
         if (!blob) {
@@ -403,14 +416,13 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
         // Create file name for photo
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const photoName = `${videoName.trim()}_${timestamp}.png`;
-        const photoPath = selectedPath ? `${selectedPath}/${photoName}` : photoName;
 
         // Create photo file using Electron API
         if (window.electronAPI?.imageCreate) {
           const result = await window.electronAPI.imageCreate({
             name: photoName,
             type: 'png',
-            parentPath: selectedPath,
+            parentPath: finalParentPath,
             tags: tags,
             content: blob,
             isBinary: true,
@@ -449,18 +461,24 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
         mediaRecorder.stop();
         setIsRecording(false);
 
+        // Get final parent path from parentId
+        let finalParentPath = parentPath;
+        if (parentId) {
+          const parentFolder = existingFolders.find(f => f.id === parentId || f.path === parentId);
+          finalParentPath = parentFolder?.path || parentId;
+        }
+
         // Save the recorded video
         mediaRecorder.ondataavailable = async (event) => {
           if (event.data && event.data.size > 0) {
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
             const videoFileName = `${videoName.trim()}_${timestamp}.webm`;
-            const videoPath = selectedPath ? `${selectedPath}/${videoFileName}` : videoFileName;
 
             if (window.electronAPI?.videoCreate) {
               const result = await window.electronAPI.videoCreate({
                 name: videoFileName,
                 type: 'webm',
-                parentPath: selectedPath,
+                parentPath: finalParentPath,
                 tags: tags,
                 content: event.data,
                 isBinary: true,
@@ -486,16 +504,22 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
     } else {
       // Start recording
       try {
+        // Get final parent path from parentId
+        let finalParentPath = parentPath;
+        if (parentId) {
+          const parentFolder = existingFolders.find(f => f.id === parentId || f.path === parentId);
+          finalParentPath = parentFolder?.path || parentId;
+        }
+
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const videoFileName = `${videoName.trim()}_${timestamp}.webm`;
-        const videoPath = selectedPath ? `${selectedPath}/${videoFileName}` : videoFileName;
 
         // Create initial video file
         if (window.electronAPI?.videoCreate) {
           const result = await window.electronAPI.videoCreate({
             name: videoFileName,
             type: 'webm',
-            parentPath: selectedPath,
+            parentPath: finalParentPath,
             tags: tags,
             content: '',
             isBinary: true,
@@ -518,6 +542,13 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
         };
 
         recorder.onstop = async () => {
+          // Get final parent path from parentId
+          let finalParentPath = parentPath;
+          if (parentId) {
+            const parentFolder = existingFolders.find(f => f.id === parentId || f.path === parentId);
+            finalParentPath = parentFolder?.path || parentId;
+          }
+
           // Combine all chunks and save
           if (recordedChunks.length > 0) {
             const blob = new Blob(recordedChunks, { type: 'video/webm' });
@@ -526,37 +557,14 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
               const result = await window.electronAPI.videoCreate({
                 name: videoFileName,
                 type: 'webm',
-                parentPath: selectedPath,
+                parentPath: finalParentPath,
                 tags: tags,
                 content: blob,
                 isBinary: true,
               });
 
               if (result.success) {
-                // Store metadata using NTFS ADS for video files
-                if (window.electronAPI?.fileSetMetadata) {
-                  try {
-                    const metadataResult = await window.electronAPI.fileSetMetadata(result.path, {
-                      id: Date.now().toString(),
-                      name: videoFileName,
-                      type: 'webm',
-                      parentPath: selectedPath,
-                      createdAt: new Date().toISOString(),
-                      tags: tags,
-                      path: result.path
-                    });
-
-                    if (metadataResult.success) {
-                      console.log('✅ Video metadata stored in NTFS ADS successfully');
-                    } else {
-                      console.error('❌ Failed to store metadata in NTFS ADS:', metadataResult.error);
-                    }
-                  } catch (metadataError) {
-                    console.error('❌ Error storing NTFS ADS metadata for video:', metadataError);
-                  }
-                } else {
-                  console.log('NTFS ADS API not available for video metadata');
-                }
+                console.log('✅ Video created successfully:', result.path);
 
                 setCreationSuccess("Vidéo enregistrée avec succès !");
                 setTimeout(() => {
@@ -733,7 +741,7 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
           {/* Live Preview - Centered Square */}
           <div className="space-y-3">
             <Label className="text-base font-semibold flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-green-500"></div>
+              <div className="w-2 h-2 rounded-full bg-gray-500"></div>
               Aperçu en direct
             </Label>
             <div className="flex justify-center">
@@ -757,7 +765,7 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
                 {!stream && (
                   <div className="absolute inset-0 flex items-center justify-center text-white bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl">
                     <div className="text-center p-8">
-                      <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-700 flex items-center justify-center">
+                      <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
                         <Camera className="h-10 w-10 opacity-50" />
                       </div>
                       <p className="text-lg font-medium mb-2">Aperçu de la caméra</p>
@@ -815,7 +823,7 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
                 </>
               ) : (
                 <>
-                  <div className="p-2 rounded-full bg-green-100 mr-3">
+                  <div className="p-2 rounded-full bg-gray-100 mr-3">
                     <Camera className="h-5 w-5" />
                   </div>
                   <div className="text-left">
@@ -872,7 +880,7 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
         title="Créer une nouvelle vidéo"
         icon={<VideoIcon className="h-6 w-6" />}
         description="Importez un fichier vidéo existant ou enregistrez une nouvelle vidéo avec votre caméra"
-        colorTheme="purple"
+        colorTheme="gray"
         fileType="video"
         size="xl"
         tabs={tabs}

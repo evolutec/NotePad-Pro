@@ -132,8 +132,9 @@ export function AddFolderDialog({ folders, onFolderAdded, open, onOpenChange }: 
     console.log('=== handleFolderSelect called ===');
     console.log('folderId:', folderId);
     console.log('folderPath:', folderPath);
-    console.log('Setting parentId to:', folderId);
-    setParentId(folderId || undefined);
+    console.log('Setting parentId to folderPath:', folderPath);
+    // Use folderPath instead of folderId because we need the actual path for file creation
+    setParentId(folderPath || undefined);
     setShowFolderModal(false); // Close the modal after selection
   };
 
@@ -251,10 +252,15 @@ export function AddFolderDialog({ folders, onFolderAdded, open, onOpenChange }: 
       }
     }
 
+    // IMPORTANT: Use parentId from state, not from formData
+    const actualParentId = parentId || formData.parentId;
+    console.log('Using parentId:', actualParentId);
+
     let parentPath: string;
-    if (formData.parentId) {
-      const parentFolder = existingFolders.find(f => f.id === formData.parentId);
-      parentPath = parentFolder?.path || "";
+    if (actualParentId) {
+      const parentFolder = existingFolders.find(f => f.id === actualParentId || f.path === actualParentId);
+      parentPath = parentFolder?.path || actualParentId;
+      console.log('Found parent folder path:', parentPath);
     } else {
       if (window.electronAPI?.loadSettings) {
         const config = await window.electronAPI.loadSettings();
@@ -286,7 +292,7 @@ export function AddFolderDialog({ folders, onFolderAdded, open, onOpenChange }: 
           createdAt: new Date(),
           notes: [],
           icon: formData.icon || undefined,
-          parentId: formData.parentId || undefined,
+          parentId: actualParentId || undefined,
           path: result.path
         };
 

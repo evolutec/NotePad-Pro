@@ -19,9 +19,10 @@ export interface AddCodeDialogProps {
   onOpenChange: (open: boolean) => void;
   parentPath: string;
   onCodeCreated: (code: CodeMeta) => void;
+  onRefreshTree?: () => void;
 }
 
-export function AddCodeDialog({ open, onOpenChange, parentPath, onCodeCreated }: AddCodeDialogProps) {
+export function AddCodeDialog({ open, onOpenChange, parentPath, onCodeCreated, onRefreshTree }: AddCodeDialogProps) {
   const [codeName, setCodeName] = useState("");
   const [codeType, setCodeType] = useState<string>("js"); // Default to js code
   const [tags, setTags] = useState<string[]>([]);
@@ -99,7 +100,8 @@ export function AddCodeDialog({ open, onOpenChange, parentPath, onCodeCreated }:
 
   // Handle folder selection
   const handleFolderSelect = (folderId: string | null, folderPath: string) => {
-    setParentId(folderId || undefined);
+    // Use folderPath instead of folderId because we need the actual path for file creation
+    setParentId(folderPath || undefined);
   };
 
   // Get selected folder name for display
@@ -206,6 +208,7 @@ export function AddCodeDialog({ open, onOpenChange, parentPath, onCodeCreated }:
 
       setCreationSuccess("Fichier de code créé avec succès !");
       if (onCodeCreated) onCodeCreated(newCode);
+      if (onRefreshTree) onRefreshTree();
       setTimeout(() => {
         setCodeName("");
         setCodeType("js");

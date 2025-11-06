@@ -154,7 +154,8 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated,
 
   // Handle folder selection
   const handleFolderSelect = (folderId: string | null, folderPath: string) => {
-    setParentId(folderId || undefined);
+    // Use folderPath instead of folderId because we need the actual path for file creation
+    setParentId(folderPath || undefined);
   };
 
   // Get selected folder name for display

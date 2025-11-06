@@ -27,8 +27,11 @@ import {
   Settings,
   Users,
   Bookmark,
-  Trash2
+  Trash2,
+  Table,
+  Presentation
 } from 'lucide-react';
+import { getFileTypeConfig, type FileType as LibFileType } from '@/lib/file-types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -53,7 +56,7 @@ const FileIconPdf = ({ className }: { className?: string }) => (
 )
 
 // Enhanced type definitions
-export type FileType = 'folder' | 'note' | 'draw' | 'document' | 'image' | 'video' | 'audio' | 'code' | 'archive' | 'link' | 'file';
+export type FileType = 'folder' | 'note' | 'draw' | 'document' | 'pdf' | 'excel' | 'powerpoint' | 'image' | 'video' | 'audio' | 'code' | 'archive' | 'link' | 'file';
 
 export type EnhancedFolderNode = {
   id?: string;
@@ -109,47 +112,59 @@ const iconNameToComponent = (iconName: string) => {
 // File type detection and icon mapping
 const getFileType = (node: EnhancedFolderNode): FileType => {
   if (node.type === 'folder') return 'folder';
-  if (node.name.endsWith('.md') || node.name.endsWith('.txt')) return 'note';
   if (node.name.endsWith('.draw')) return 'draw';
 
-  // Check for PDF first (most specific)
-  if (node.name.endsWith('.pdf')) {
-    console.log('PDF file detected in getFileType:', node.name);
-    return 'document'; // Using 'document' type but will use custom PDF icon
-  }
-
-  if (node.name.match(/\.(doc|docx|odt)$/i)) return 'document';
+  // Check for specific Office formats
+  if (node.name.match(/\.pdf$/i)) return 'pdf';
+  if (node.name.match(/\.(xlsx|xls)$/i)) return 'excel';
+  if (node.name.match(/\.(pptx|ppt)$/i)) return 'powerpoint';
+  
+  // Text/document formats - all treated as 'note' for blue color
+  if (node.name.match(/\.(md|txt|doc|docx|odt)$/i)) return 'note';
+  
+  // Media files
   if (node.name.match(/\.(jpg|jpeg|png|gif|svg|webp)$/i)) return 'image';
   if (node.name.match(/\.(mp4|webm|ogg|avi|mov|mkv|wmv|flv|3gp)$/i)) return 'video';
   if (node.name.match(/\.(mp3|wav|flac|aac)$/i)) return 'audio';
+  
+  // Development files
   if (node.name.match(/\.(js|ts|jsx|tsx|py|java|cpp|cs|html|css|json)$/i)) return 'code';
+  
+  // Archives
   if (node.name.match(/\.(zip|rar|7z|tar|gz)$/i)) return 'archive';
+  
   return 'file';
 };
 
 const getFileIcon = (type: FileType, isExpanded: boolean = false, nodeName?: string) => {
   const iconClass = "w-4 h-4";
 
-  // Special case for PDF files - use custom PDF icon
-  if (nodeName && nodeName.toLowerCase().endsWith('.pdf')) {
-    console.log('PDF file detected in getFileIcon:', nodeName);
-    return <FileIconPdf className={iconClass} />;
+  // Special handling for folders
+  if (type === 'folder') {
+    return isExpanded ? <FolderOpen className={iconClass} /> : <Folder className={iconClass} />;
   }
 
+  // For other types, try to get config from file-types.ts
+  const config = getFileTypeConfig(type as LibFileType);
+  if (config?.icon) {
+    const IconComponent = config.icon;
+    return <IconComponent className={iconClass} />;
+  }
+
+  // Fallback icons
   switch (type) {
-    case 'folder':
-      return isExpanded ? <FolderOpen className={iconClass} /> : <Folder className={iconClass} />;
     case 'note':
       return <FileText className={iconClass} />;
     case 'draw':
       return <Palette className={iconClass} />;
     case 'document':
-      // Check if it's actually a PDF file
-      if (nodeName && nodeName.toLowerCase().endsWith('.pdf')) {
-        console.log('PDF file detected in document case:', nodeName);
-        return <FileIconPdf className={iconClass} />;
-      }
       return <FileText className={iconClass} />;
+    case 'pdf':
+      return <FileText className={iconClass} />;
+    case 'excel':
+      return <Table className={iconClass} />;
+    case 'powerpoint':
+      return <Presentation className={iconClass} />;
     case 'image':
       return <FileImage className={iconClass} />;
     case 'video':
@@ -166,6 +181,13 @@ const getFileIcon = (type: FileType, isExpanded: boolean = false, nodeName?: str
 };
 
 const getFileColor = (type: FileType) => {
+  // Try to get config from file-types.ts
+  const config = getFileTypeConfig(type as LibFileType);
+  if (config?.sidebarButton?.text) {
+    return config.sidebarButton.text;
+  }
+
+  // Fallback colors matching file-types.ts themes
   switch (type) {
     case 'folder':
       return 'text-yellow-500';
@@ -174,19 +196,23 @@ const getFileColor = (type: FileType) => {
     case 'draw':
       return 'text-purple-600 dark:text-purple-400';
     case 'document':
-      return 'text-red-500';
+      return 'text-red-600 dark:text-red-400';
+    case 'pdf':
+      return 'text-red-600 dark:text-red-400';
+    case 'excel':
+      return 'text-green-600 dark:text-green-400';
+    case 'powerpoint':
+      return 'text-orange-600 dark:text-orange-400';
     case 'image':
-      return 'text-red-500';
+      return 'text-yellow-600 dark:text-yellow-400';
     case 'video':
-      return 'text-blue-500';
+      return 'text-gray-600 dark:text-gray-400';
     case 'audio':
-      return 'text-purple-500';
+      return 'text-pink-600 dark:text-pink-400';
     case 'code':
-      return 'text-orange-500';
+      return 'text-orange-600 dark:text-orange-400';
     case 'archive':
-      return 'text-gray-500';
-    case 'link':
-      return 'text-cyan-600';
+      return 'text-gray-600 dark:text-gray-400';
     default:
       return 'text-gray-600';
   }
@@ -317,19 +343,12 @@ const TreeItem = React.memo(({
             <div className="h-6 w-6" aria-hidden />
           )}
 
-          {/* Icon or Avatar */}
-          <div className={cn(
-            "flex items-center justify-center w-8 h-8 rounded-md bg-background border border-border/50",
-            fileType === 'folder' && "bg-yellow-100 dark:bg-yellow-900 border-orange-200 dark:border-orange-800",
-            fileType === 'note' && "bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800",
-            fileType === 'draw' && "bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800"
-          )}>
+          {/* Icon - Simple icon without background */}
+          <div className={cn(getFileColor(fileType))}>
             {node.icon ? (
               React.createElement(iconNameToComponent(node.icon), { className: "w-4 h-4" })
             ) : (
-              <div className={cn(getFileColor(fileType))}>
-                {getFileIcon(fileType, isExpanded, node.name)}
-              </div>
+              getFileIcon(fileType, isExpanded, node.name)
             )}
           </div>
 

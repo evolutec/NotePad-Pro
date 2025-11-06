@@ -242,6 +242,63 @@ export default function NoteTakingApp() {
     }
   };
 
+  // Helper function to refresh folder tree and optionally select/open a file
+  const refreshTreeAndOpenFile = useCallback(async (filePath?: string, fileType?: string) => {
+    console.log('refreshTreeAndOpenFile called with:', filePath, fileType);
+    
+    // Refresh the folder tree
+    if (window.electronAPI?.foldersScan) {
+      const result = await window.electronAPI.foldersScan();
+      if (result && result.length > 0) {
+        setFolderTree(result[0]);
+        setTreeVersion(prev => prev + 1);
+        console.log('✅ Folder tree refreshed');
+      }
+    }
+
+    // If a file path is provided, select and open it
+    if (filePath) {
+      setSelectedNote(filePath);
+      
+      // Determine the view type based on file extension
+      const ext = filePath.split('.').pop()?.toLowerCase() || '';
+      const fileName = filePath.split('\\').pop() || filePath.split('/').pop() || '';
+      const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+      
+      if (fileType === 'draw' || ext === 'draw') {
+        setActiveView('canvas');
+        setCurrentDocumentTitle(fileNameWithoutExt);
+        setCurrentDocumentPath(filePath);
+      } else if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext)) {
+        setActiveView('image_viewer');
+        setImageViewerPath(filePath);
+        setImageViewerName(fileName);
+        setImageViewerType(ext);
+        setCurrentDocumentTitle(fileNameWithoutExt);
+        setCurrentDocumentPath(filePath);
+      } else if (['mp4', 'webm', 'ogg', 'avi', 'mov', 'mkv', 'wmv', 'flv', '3gp'].includes(ext)) {
+        setActiveView('video_viewer');
+        setVideoViewerPath(filePath);
+        setVideoViewerName(fileName);
+        setVideoViewerType(ext);
+        setCurrentDocumentTitle(fileNameWithoutExt);
+        setCurrentDocumentPath(filePath);
+      } else if (['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'rtf', 'odt', 'txt', 'md'].includes(ext)) {
+        setActiveView('document_viewer');
+        setDocumentViewerPath(filePath);
+        setDocumentViewerName(fileName);
+        setDocumentViewerType(ext);
+        setCurrentDocumentTitle(fileNameWithoutExt);
+        setCurrentDocumentPath(filePath);
+      } else {
+        // Default to files view
+        setActiveView('files');
+      }
+      
+      console.log(`✅ File auto-opened: ${filePath} in ${activeView} view`);
+    }
+  }, []);
+
   // Initialize folder tree from config.json on component mount
   useEffect(() => {
     // Only run on client side
@@ -447,6 +504,10 @@ export default function NoteTakingApp() {
             if (typeof window === 'undefined') return;
             console.log('Image selected from sidebar:', path, name, type);
             const fileNameWithoutExt = name.replace(/\.[^/.]+$/, '');
+            
+            // Set selectedNote for sidebar highlighting
+            setSelectedNote(path);
+            
             setActiveView('image_viewer');
             setImageViewerPath(path);
             setImageViewerName(name);
@@ -459,6 +520,10 @@ export default function NoteTakingApp() {
             if (typeof window === 'undefined') return;
             console.log('Video selected from sidebar:', path, name, type);
             const fileNameWithoutExt = name.replace(/\.[^/.]+$/, '');
+            
+            // Set selectedNote for sidebar highlighting
+            setSelectedNote(path);
+            
             setActiveView('video_viewer');
             setVideoViewerPath(path);
             setVideoViewerName(name);
@@ -585,15 +650,22 @@ export default function NoteTakingApp() {
                   setFolderTree(folderTree);
                 }
 
-                // If the deleted item was selected, clear the selection
-                if (selectedFolder === deletePath) {
-                  setSelectedFolder(null);
-                  setActiveView("files");
+                // Get parent folder path
+                const parentPath = deletePath.substring(0, deletePath.lastIndexOf('\\'));
+                console.log('Parent path after delete:', parentPath);
+
+                // Select parent folder and switch to files view to show parent content
+                if (parentPath) {
+                  setSelectedFolder(parentPath);
+                  setSelectedNote(parentPath); // Highlight parent in sidebar
+                } else {
+                  // If no parent (root level), select root
+                  if (folderTree?.path) {
+                    setSelectedFolder(folderTree.path);
+                    setSelectedNote(folderTree.path);
+                  }
                 }
-                if (selectedNote === deletePath) {
-                  setSelectedNote(null);
-                  setActiveView("canvas");
-                }
+                setActiveView("files");
 
               } else {
                 console.error(`Failed to delete ${deletePath}:`, result.error);
@@ -841,7 +913,7 @@ export default function NoteTakingApp() {
             </SettingsDialog>
           </div>
         </header>
-        <main className="flex-1 overflow-auto px-2 py-2 min-w-0">
+        <main className="flex-1 overflow-hidden px-2 py-2 min-w-0 flex flex-col">
           {activeView === "landing" && (
             <LandingPage
               onNavigateToFiles={() => {
@@ -864,7 +936,7 @@ export default function NoteTakingApp() {
               recentFiles={[]} // You can populate this with actual recent files
             />
           )}
-          {activeView === "canvas" && <DrawingCanvas selectedNote={selectedNote || undefined} />}
+          {activeView === "canvas" && <DrawingCanvas selectedNote={selectedNote || null} selectedFolder={selectedFolder} />}
           {/* Suppression de NoteEditor : tout passe par DocumentViewer (OnlyOffice) */}
           {activeView === "image_viewer" && (
             <ImageViewer
@@ -932,13 +1004,12 @@ export default function NoteTakingApp() {
         onOpenChange={setIsAddFolderOpen}
         folders={[]}
         onFolderAdded={async (newFolder) => {
-          console.log('Folder added:', newFolder)
-          // Reload the folder tree to reflect changes
-          if (window.electronAPI?.foldersScan) {
-            const result = await window.electronAPI.foldersScan()
-            if (result && result.length > 0) {
-              setFolderTree(result[0])
-            }
+          console.log('Folder added:', newFolder);
+          await refreshTreeAndOpenFile();
+          // Select the new folder in files view
+          if (newFolder.path) {
+            setSelectedFolder(newFolder.path);
+            setActiveView('files');
           }
         }}
       />
@@ -947,14 +1018,10 @@ export default function NoteTakingApp() {
         onOpenChange={setIsAddNoteOpen}
         parentPath={selectedFolder || ''}
         onNoteCreated={async (newNote) => {
-          console.log('Note created:', newNote)
-          // Reload the folder tree to reflect changes
-          if (window.electronAPI?.foldersScan) {
-            const result = await window.electronAPI.foldersScan()
-            if (result && result.length > 0) {
-              setFolderTree(result[0])
-            }
-          }
+          console.log('Note created:', newNote);
+          // Refresh tree and auto-open the note
+          const notePath = newNote.parentPath ? `${newNote.parentPath}\\${newNote.name}` : newNote.name;
+          await refreshTreeAndOpenFile(notePath, 'note');
         }}
       />
       <RenameDialog
@@ -1042,14 +1109,9 @@ export default function NoteTakingApp() {
         onOpenChange={setIsAddDrawOpen}
         parentPath={selectedFolder || ''}
         onDrawCreated={async (newDraw) => {
-          console.log('Draw created:', newDraw)
-          // Reload the folder tree to reflect changes
-          if (window.electronAPI?.foldersScan) {
-            const result = await window.electronAPI.foldersScan()
-            if (result && result.length > 0) {
-              setFolderTree(result[0])
-            }
-          }
+          console.log('Draw created:', newDraw);
+          const drawPath = newDraw.parentPath ? `${newDraw.parentPath}\\${newDraw.name}` : newDraw.name;
+          await refreshTreeAndOpenFile(drawPath, 'draw');
         }}
       />
       <AddPdfDocumentDialog
@@ -1057,14 +1119,9 @@ export default function NoteTakingApp() {
         onOpenChange={setIsAddDocumentOpen}
         parentPath={selectedFolder || ''}
         onDocumentCreated={async (newDocument) => {
-          console.log('PDF Document created:', newDocument)
-          // Reload the folder tree to reflect changes
-          if (window.electronAPI?.foldersScan) {
-            const result = await window.electronAPI.foldersScan()
-            if (result && result.length > 0) {
-              setFolderTree(result[0])
-            }
-          }
+          console.log('PDF Document created:', newDocument);
+          const pdfPath = newDocument.parentPath ? `${newDocument.parentPath}\\${newDocument.name}` : newDocument.name;
+          await refreshTreeAndOpenFile(pdfPath, 'pdf');
         }}
       />
       <AddAudioDialog
@@ -1072,14 +1129,9 @@ export default function NoteTakingApp() {
         onOpenChange={setIsAddAudioOpen}
         parentPath={selectedFolder || ''}
         onAudioCreated={async (newAudio) => {
-          console.log('Audio created:', newAudio)
-          // Reload the folder tree to reflect changes
-          if (window.electronAPI?.foldersScan) {
-            const result = await window.electronAPI.foldersScan()
-            if (result && result.length > 0) {
-              setFolderTree(result[0])
-            }
-          }
+          console.log('Audio created:', newAudio);
+          const audioPath = newAudio.parentPath ? `${newAudio.parentPath}\\${newAudio.name}` : newAudio.name;
+          await refreshTreeAndOpenFile(audioPath, 'audio');
         }}
       />
       <AddImageDialog
@@ -1087,23 +1139,12 @@ export default function NoteTakingApp() {
         onOpenChange={setIsAddImageOpen}
         parentPath={selectedFolder || ''}
         onImageCreated={async (newImage) => {
-          console.log('Image created:', newImage)
-          // Reload the folder tree to reflect changes
-          if (window.electronAPI?.foldersScan) {
-            const result = await window.electronAPI.foldersScan()
-            if (result && result.length > 0) {
-              setFolderTree(result[0])
-            }
-          }
+          console.log('Image created:', newImage);
+          const imagePath = newImage.parentPath ? `${newImage.parentPath}\\${newImage.name}` : newImage.name;
+          await refreshTreeAndOpenFile(imagePath, 'image');
         }}
-        onRefreshTree={() => {
-          if (window.electronAPI?.foldersScan) {
-            window.electronAPI.foldersScan().then(result => {
-              if (result && result.length > 0) {
-                setFolderTree(result[0])
-              }
-            })
-          }
+        onRefreshTree={async () => {
+          await refreshTreeAndOpenFile();
         }}
       />
       <AddVideoDialog
@@ -1111,23 +1152,12 @@ export default function NoteTakingApp() {
         onOpenChange={setIsAddVideoOpen}
         parentPath={selectedFolder || ''}
         onVideoCreated={async (newVideo) => {
-          console.log('Video created:', newVideo)
-          // Reload the folder tree to reflect changes
-          if (window.electronAPI?.foldersScan) {
-            const result = await window.electronAPI.foldersScan()
-            if (result && result.length > 0) {
-              setFolderTree(result[0])
-            }
-          }
+          console.log('Video created:', newVideo);
+          const videoPath = newVideo.parentPath ? `${newVideo.parentPath}\\${newVideo.name}` : newVideo.name;
+          await refreshTreeAndOpenFile(videoPath, 'video');
         }}
-        onRefreshTree={() => {
-          if (window.electronAPI?.foldersScan) {
-            window.electronAPI.foldersScan().then(result => {
-              if (result && result.length > 0) {
-                setFolderTree(result[0])
-              }
-            })
-          }
+        onRefreshTree={async () => {
+          await refreshTreeAndOpenFile();
         }}
       />
       <AddCodeDialog
@@ -1135,14 +1165,9 @@ export default function NoteTakingApp() {
         onOpenChange={setIsAddCodeOpen}
         parentPath={selectedFolder || ''}
         onCodeCreated={async (newCode) => {
-          console.log('Code created:', newCode)
-          // Reload the folder tree to reflect changes
-          if (window.electronAPI?.foldersScan) {
-            const result = await window.electronAPI.foldersScan()
-            if (result && result.length > 0) {
-              setFolderTree(result[0])
-            }
-          }
+          console.log('Code created:', newCode);
+          const codePath = newCode.parentPath ? `${newCode.parentPath}\\${newCode.name}` : newCode.name;
+          await refreshTreeAndOpenFile(codePath, 'code');
         }}
       />
       <AddDocumentDialog
@@ -1150,14 +1175,9 @@ export default function NoteTakingApp() {
         onOpenChange={setIsAddGenericDocumentOpen}
         parentPath={selectedFolder || ''}
         onDocumentCreated={async (newDocument) => {
-          console.log('Generic document created:', newDocument)
-          // Reload the folder tree to reflect changes
-          if (window.electronAPI?.foldersScan) {
-            const result = await window.electronAPI.foldersScan()
-            if (result && result.length > 0) {
-              setFolderTree(result[0])
-            }
-          }
+          console.log('Generic document created:', newDocument);
+          const docPath = newDocument.parentPath ? `${newDocument.parentPath}\\${newDocument.name}` : newDocument.name;
+          await refreshTreeAndOpenFile(docPath, 'document');
         }}
       />
     </div>
