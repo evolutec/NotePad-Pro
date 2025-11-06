@@ -9,6 +9,11 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
+import { OnlyOfficeLikeToolbar } from "@/components/ui/onlyoffice-like-toolbar"
+import { OnlyOfficeFileMenu } from "@/components/ui/onlyoffice-file-menu"
+import { PageLayoutToolbar } from "@/components/page-layout-toolbar"
+import { HomeToolbar } from "@/components/home-toolbar"
+import { ViewToolbar } from "@/components/view-toolbar"
 import {
   Pen,
   Eraser,
@@ -62,6 +67,143 @@ interface ConvertedText {
   position: { x: number; y: number }
   fontSize: number
   color: string
+}
+
+// Composant toolbar pour les outils de dessin
+function WhiteboardToolbar({ currentTool, setCurrentTool, clearCanvas, undo, redo, undoStack, redoStack, autoConvert, setAutoConvert, strokeSmoothing, setStrokeSmoothing, performOCR, isProcessingOCR, saveDrawing }: any) {
+  return (
+    <div className="border-b border-border bg-card p-4">
+      <div className="flex items-center gap-4 flex-wrap">
+        {/* Drawing Tools */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant={currentTool.type === "pen" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setCurrentTool((prev: any) => ({ ...prev, type: "pen" }))}
+            className="flex items-center gap-2"
+          >
+            <Pen className="h-4 w-4" />
+            <span className="hidden sm:inline">Pen</span>
+          </Button>
+          <Button
+            variant={currentTool.type === "eraser" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setCurrentTool((prev: any) => ({ ...prev, type: "eraser" }))}
+            className="flex items-center gap-2"
+          >
+            <Eraser className="h-4 w-4" />
+            <span className="hidden sm:inline">Eraser</span>
+          </Button>
+          <Button
+            variant={currentTool.type === "rectangle" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setCurrentTool((prev: any) => ({ ...prev, type: "rectangle" }))}
+            className="flex items-center gap-2"
+          >
+            <Square className="h-4 w-4" />
+            <span className="hidden sm:inline">Rectangle</span>
+          </Button>
+          <Button
+            variant={currentTool.type === "circle" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setCurrentTool((prev: any) => ({ ...prev, type: "circle" }))}
+            className="flex items-center gap-2"
+          >
+            <Circle className="h-4 w-4" />
+            <span className="hidden sm:inline">Circle</span>
+          </Button>
+          <Button
+            variant={currentTool.type === "text" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setCurrentTool((prev: any) => ({ ...prev, type: "text" }))}
+            className="flex items-center gap-2"
+          >
+            <Type className="h-4 w-4" />
+            <span className="hidden sm:inline">Text</span>
+          </Button>
+        </div>
+
+        <Separator orientation="vertical" className="h-8" />
+
+        {/* Color Picker */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">Couleur:</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="w-12 h-8 p-0">
+                <div className="w-6 h-6 rounded border" style={{ backgroundColor: currentTool.color }} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <div className="grid grid-cols-5 gap-1 p-2">
+                {COLORS.map((color) => (
+                  <button
+                    key={color}
+                    className="w-8 h-8 rounded border hover:scale-110 transition-transform"
+                    style={{ backgroundColor: color }}
+                    onClick={() => setCurrentTool((prev: any) => ({ ...prev, color }))}
+                  />
+                ))}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <Separator orientation="vertical" className="h-8" />
+
+        {/* Brush Size */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">Taille:</span>
+          <div className="w-24">
+            <Slider
+              value={[currentTool.size]}
+              onValueChange={([size]) => setCurrentTool((prev: any) => ({ ...prev, size }))}
+              min={1}
+              max={20}
+              step={1}
+            />
+          </div>
+          <span className="text-sm w-8">{currentTool.size}</span>
+        </div>
+
+        <Separator orientation="vertical" className="h-8" />
+
+        {/* Additional Tools */}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={clearCanvas} className="flex items-center gap-2">
+            <Trash2 className="h-4 w-4" />
+            <span className="hidden sm:inline">Effacer</span>
+          </Button>
+          <Button variant="outline" size="sm" onClick={undo} disabled={undoStack.length === 0} className="flex items-center gap-2">
+            <Undo className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={redo} disabled={redoStack.length === 0} className="flex items-center gap-2">
+            <Redo className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={saveDrawing} className="flex items-center gap-2">
+            <Save className="h-4 w-4" />
+            <span className="hidden sm:inline">Sauvegarder</span>
+          </Button>
+        </div>
+
+        <Separator orientation="vertical" className="h-8" />
+
+        {/* Options */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Wand2 className="h-4 w-4 text-blue-600" />
+            <span className="text-sm">Auto-conversion:</span>
+            <Switch checked={autoConvert} onCheckedChange={setAutoConvert} />
+          </div>
+          <div className="flex items-center gap-2">
+            <RefreshCw className="h-4 w-4 text-green-600" />
+            <span className="text-sm">Lissage:</span>
+            <Switch checked={strokeSmoothing} onCheckedChange={setStrokeSmoothing} />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 const COLORS = [
@@ -125,6 +267,7 @@ export function DrawingCanvas({ selectedNote, selectedFolder }: DrawingCanvasPro
   const containerRef = useRef<HTMLDivElement>(null)
   const backupCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const [isDrawing, setIsDrawing] = useState(false)
+  const [activeTab, setActiveTab] = useState("Accueil")
   const [currentTool, setCurrentTool] = useState<DrawingTool>({
     type: "pen",
     color: "#000000",
@@ -144,6 +287,21 @@ export function DrawingCanvas({ selectedNote, selectedFolder }: DrawingCanvasPro
   const [strokeSmoothing, setStrokeSmoothing] = useState(true)
   const [lastStrokeTime, setLastStrokeTime] = useState(0)
   const [pendingStrokes, setPendingStrokes] = useState<string[]>([])
+  
+  // Shape drawing states
+  const [shapeStart, setShapeStart] = useState<{ x: number; y: number } | null>(null)
+  const [currentShape, setCurrentShape] = useState<DrawingStroke | null>(null)
+  
+  // Page layout states
+  const [pageOrientation, setPageOrientation] = useState<"portrait" | "landscape">("landscape")
+  const [showGrid, setShowGrid] = useState(false)
+  const [showRuler, setShowRuler] = useState(false)
+  const [canvasZoom, setCanvasZoom] = useState(100)
+  const [canvasBackgroundColor, setCanvasBackgroundColor] = useState("#FFFFFF")
+  
+  // View states
+  const [fullscreen, setFullscreen] = useState(false)
+  const [viewTheme, setViewTheme] = useState<"light" | "dark" | "auto">("auto")
 
   // Charger le fichier de dessin sélectionné
   useEffect(() => {
@@ -196,86 +354,6 @@ export function DrawingCanvas({ selectedNote, selectedFolder }: DrawingCanvasPro
     }
   }, [])
 
-  useEffect(() => {
-    if (!autoConvert || pendingStrokes.length === 0) return
-
-    const timer = setTimeout(async () => {
-      await performAutoOCR(pendingStrokes)
-      setPendingStrokes([])
-    }, 2000) // 2 secondes après la dernière écriture
-
-    return () => clearTimeout(timer)
-  }, [lastStrokeTime, pendingStrokes, autoConvert])
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    const container = containerRef.current
-    if (!canvas || !container) return
-
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
-
-    const resizeCanvas = () => {
-      const containerRect = container.getBoundingClientRect()
-      const dpr = window.devicePixelRatio || 1
-
-      const backupCanvas = backupCanvasRef.current
-      if (backupCanvas && canvas.width > 0 && canvas.height > 0) {
-        backupCanvas.width = canvas.width
-        backupCanvas.height = canvas.height
-        const backupCtx = backupCanvas.getContext("2d")
-        if (backupCtx) {
-          backupCtx.drawImage(canvas, 0, 0)
-        }
-      }
-
-      canvas.width = containerRect.width * dpr
-      canvas.height = containerRect.height * dpr
-
-      canvas.style.width = containerRect.width + "px"
-      canvas.style.height = containerRect.height + "px"
-
-      ctx.scale(dpr, dpr)
-      ctx.imageSmoothingEnabled = true
-      ctx.imageSmoothingQuality = "high"
-
-      ctx.lineCap = "round"
-      ctx.lineJoin = "round"
-
-      console.log("[v0] Canvas resized:", {
-        width: canvas.width,
-        height: canvas.height,
-        displayWidth: containerRect.width,
-        displayHeight: containerRect.height,
-        dpr,
-      })
-
-      if (backupCanvas && backupCanvas.width > 0 && backupCanvas.height > 0) {
-        const scaleX = containerRect.width / (backupCanvas.width / dpr)
-        const scaleY = containerRect.height / (backupCanvas.height / dpr)
-        ctx.drawImage(backupCanvas, 0, 0, containerRect.width * scaleX, containerRect.height * scaleY)
-      } else {
-        redrawCanvas()
-      }
-    }
-
-    const resizeObserver = new ResizeObserver(() => {
-      requestAnimationFrame(resizeCanvas)
-    })
-
-    resizeObserver.observe(container)
-    resizeCanvas()
-
-    const savedCalibration = localStorage.getItem("stylus-calibration")
-    if (savedCalibration) {
-      setCalibrationOffset(JSON.parse(savedCalibration))
-    }
-
-    return () => {
-      resizeObserver.disconnect()
-    }
-  }, [])
-
   const redrawCanvas = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -283,25 +361,53 @@ export function DrawingCanvas({ selectedNote, selectedFolder }: DrawingCanvasPro
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    ctx.clearRect(0, 0, canvas.width / (window.devicePixelRatio || 1), canvas.height / (window.devicePixelRatio || 1))
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
 
     console.log("[v0] Redrawing canvas with", strokes.length, "strokes")
 
     strokes.forEach((stroke) => {
       if (stroke.points.length < 1) return
 
-      const pointsToUse = strokeSmoothing && stroke.smoothedPoints ? stroke.smoothedPoints : stroke.points
-
-      ctx.beginPath()
       ctx.strokeStyle = stroke.tool.color
+      ctx.fillStyle = stroke.tool.color
       ctx.lineCap = "round"
       ctx.lineJoin = "round"
+      ctx.lineWidth = stroke.tool.size
 
       if (stroke.tool.type === "eraser") {
         ctx.globalCompositeOperation = "destination-out"
       } else {
         ctx.globalCompositeOperation = "source-over"
       }
+
+      // Dessiner les rectangles
+      if (stroke.tool.type === "rectangle" && stroke.points.length >= 2) {
+        const start = stroke.points[0]
+        const end = stroke.points[stroke.points.length - 1]
+        const width = end.x - start.x
+        const height = end.y - start.y
+        ctx.strokeRect(start.x, start.y, width, height)
+        return
+      }
+
+      // Dessiner les cercles/ellipses
+      if (stroke.tool.type === "circle" && stroke.points.length >= 2) {
+        const start = stroke.points[0]
+        const end = stroke.points[stroke.points.length - 1]
+        const centerX = (start.x + end.x) / 2
+        const centerY = (start.y + end.y) / 2
+        const radiusX = Math.abs(end.x - start.x) / 2
+        const radiusY = Math.abs(end.y - start.y) / 2
+        
+        ctx.beginPath()
+        ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI)
+        ctx.stroke()
+        return
+      }
+
+      // Dessiner pen et eraser
+      const pointsToUse = strokeSmoothing && stroke.smoothedPoints ? stroke.smoothedPoints : stroke.points
 
       if (pointsToUse.length === 1) {
         const point = pointsToUse[0]
@@ -339,6 +445,7 @@ export function DrawingCanvas({ selectedNote, selectedFolder }: DrawingCanvasPro
       }
     })
 
+    // Dessiner les textes convertis
     convertedTexts.forEach((convertedText) => {
       ctx.globalCompositeOperation = "source-over"
       ctx.fillStyle = convertedText.color
@@ -350,23 +457,115 @@ export function DrawingCanvas({ selectedNote, selectedFolder }: DrawingCanvasPro
   }, [strokes, convertedTexts, strokeSmoothing])
 
   useEffect(() => {
+    if (!autoConvert || pendingStrokes.length === 0) return
+
+    const timer = setTimeout(async () => {
+      await performAutoOCR(pendingStrokes)
+      setPendingStrokes([])
+    }, 2000) // 2 secondes après la dernière écriture
+
+    return () => clearTimeout(timer)
+  }, [lastStrokeTime, pendingStrokes, autoConvert])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    // Définir les dimensions du canvas basées sur l'orientation
+    const width = pageOrientation === "landscape" ? 1122 : 794
+    const height = pageOrientation === "landscape" ? 794 : 1122
+
+    // Sauvegarder le contenu existant
+    const backupCanvas = backupCanvasRef.current
+    if (backupCanvas && canvas.width > 0 && canvas.height > 0) {
+      backupCanvas.width = canvas.width
+      backupCanvas.height = canvas.height
+      const backupCtx = backupCanvas.getContext("2d")
+      if (backupCtx) {
+        backupCtx.drawImage(canvas, 0, 0)
+      }
+    }
+
+    // Configurer le canvas avec des dimensions fixes (pas de scaling DPR)
+    canvas.width = width
+    canvas.height = height
+
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = "high"
+    ctx.lineCap = "round"
+    ctx.lineJoin = "round"
+
+    console.log("[v0] Canvas configured:", {
+      width: canvas.width,
+      height: canvas.height,
+      orientation: pageOrientation
+    })
+
+    // Restaurer le contenu ou redessiner
+    if (backupCanvas && backupCanvas.width > 0 && backupCanvas.height > 0) {
+      ctx.drawImage(backupCanvas, 0, 0, width, height)
+    } else {
+      redrawCanvas()
+    }
+  }, [pageOrientation, redrawCanvas])
+
+  useEffect(() => {
     redrawCanvas()
   }, [redrawCanvas])
+
+  // Fullscreen effect
+  useEffect(() => {
+    const handleFullscreen = async () => {
+      try {
+        if (fullscreen) {
+          if (document.documentElement.requestFullscreen) {
+            await document.documentElement.requestFullscreen()
+          }
+        } else {
+          if (document.fullscreenElement && document.exitFullscreen) {
+            await document.exitFullscreen()
+          }
+        }
+      } catch (error) {
+        console.error('Erreur lors du changement de mode plein écran:', error)
+      }
+    }
+
+    handleFullscreen()
+
+    // Listen for fullscreen changes from escape key
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement && fullscreen) {
+        setFullscreen(false)
+      }
+    }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+    }
+  }, [fullscreen])
 
   const getPointerPos = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
     if (!canvas) return { x: 0, y: 0, pressure: 0.5 }
 
     const rect = canvas.getBoundingClientRect()
-    const scaleX = canvas.width / rect.width / (window.devicePixelRatio || 1)
-    const scaleY = canvas.height / rect.height / (window.devicePixelRatio || 1)
-
-    const x = (e.clientX - rect.left) * scaleX + calibrationOffset.x
-    const y = (e.clientY - rect.top) * scaleY + calibrationOffset.y
+    
+    // Position relative au canvas visible (après zoom et transformations)
+    const x = (e.clientX - rect.left)
+    const y = (e.clientY - rect.top)
+    
+    // Pas besoin de scaling car on dessine directement sur le canvas aux bonnes coordonnées
+    // Le canvas lui-même gère son propre système de coordonnées
 
     let pressure = 0.5
     if (e.pointerType === "pen" && e.pressure > 0) {
       pressure = Math.max(0.1, Math.min(1.0, e.pressure))
+      setIsStylusActive(true)
     } else if (e.pointerType === "touch") {
       pressure = 0.7
     }
@@ -382,11 +581,6 @@ export function DrawingCanvas({ selectedNote, selectedFolder }: DrawingCanvasPro
       canvas.setPointerCapture(e.pointerId)
     }
 
-    setIsDrawing(true)
-
-    const isStylusInput = e.pointerType === "pen"
-    setIsStylusActive(isStylusInput)
-
     const pos = getPointerPos(e)
     setCurrentPressure(pos.pressure)
 
@@ -394,8 +588,18 @@ export function DrawingCanvas({ selectedNote, selectedFolder }: DrawingCanvasPro
       pointerType: e.pointerType,
       pressure: e.pressure,
       pos,
-      isStylusInput,
+      tool: currentTool.type,
     })
+
+    // Pour les formes (rectangle, circle), on stocke juste le point de départ
+    if (currentTool.type === "rectangle" || currentTool.type === "circle") {
+      setShapeStart({ x: pos.x, y: pos.y })
+      setIsDrawing(true)
+      return
+    }
+
+    // Pour pen et eraser, on commence un nouveau trait
+    setIsDrawing(true)
 
     const newStroke: DrawingStroke = {
       id: Date.now().toString(),
@@ -420,6 +624,54 @@ export function DrawingCanvas({ selectedNote, selectedFolder }: DrawingCanvasPro
     const pos = getPointerPos(e)
     setCurrentPressure(pos.pressure)
 
+    // Dessiner les formes en preview
+    if ((currentTool.type === "rectangle" || currentTool.type === "circle") && shapeStart) {
+      const tempShape: DrawingStroke = {
+        id: "temp-shape",
+        tool: { ...currentTool },
+        points: [
+          { x: shapeStart.x, y: shapeStart.y, pressure: pos.pressure },
+          { x: pos.x, y: pos.y, pressure: pos.pressure }
+        ],
+        timestamp: new Date(),
+      }
+      setCurrentShape(tempShape)
+      
+      // Redessiner immédiatement pour la preview
+      requestAnimationFrame(() => {
+        const canvas = canvasRef.current
+        if (!canvas) return
+        const ctx = canvas.getContext("2d")
+        if (!ctx) return
+        
+        // Redessiner tout
+        redrawCanvas()
+        
+        // Dessiner la preview de la forme
+        ctx.strokeStyle = currentTool.color
+        ctx.lineWidth = currentTool.size
+        ctx.lineCap = "round"
+        ctx.lineJoin = "round"
+        
+        if (currentTool.type === "rectangle") {
+          const width = pos.x - shapeStart.x
+          const height = pos.y - shapeStart.y
+          ctx.strokeRect(shapeStart.x, shapeStart.y, width, height)
+        } else if (currentTool.type === "circle") {
+          const centerX = (shapeStart.x + pos.x) / 2
+          const centerY = (shapeStart.y + pos.y) / 2
+          const radiusX = Math.abs(pos.x - shapeStart.x) / 2
+          const radiusY = Math.abs(pos.y - shapeStart.y) / 2
+          
+          ctx.beginPath()
+          ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI)
+          ctx.stroke()
+        }
+      })
+      return
+    }
+
+    // Pour pen et eraser, ajouter des points
     setStrokes((prev) => {
       const newStrokes = [...prev]
       const currentStroke = newStrokes[newStrokes.length - 1]
@@ -438,15 +690,36 @@ export function DrawingCanvas({ selectedNote, selectedFolder }: DrawingCanvasPro
       canvas.releasePointerCapture(e.pointerId)
     }
 
+    // Finaliser les formes
+    if ((currentTool.type === "rectangle" || currentTool.type === "circle") && shapeStart) {
+      const pos = getPointerPos(e)
+      
+      const finalShape: DrawingStroke = {
+        id: Date.now().toString(),
+        tool: { ...currentTool },
+        points: [
+          { x: shapeStart.x, y: shapeStart.y, pressure: 0.5 },
+          { x: pos.x, y: pos.y, pressure: 0.5 }
+        ],
+        timestamp: new Date(),
+      }
+      
+      setStrokes((prev) => [...prev, finalShape])
+      setUndoStack((prev) => [...prev, strokes])
+      setRedoStack([])
+      setShapeStart(null)
+      setCurrentShape(null)
+    }
+
     setIsDrawing(false)
     setIsStylusActive(false)
     setCurrentPressure(0.5)
 
-    if (strokeSmoothing) {
+    if (strokeSmoothing && currentTool.type === "pen") {
       setStrokes((prev) => {
         const newStrokes = [...prev]
         const lastStroke = newStrokes[newStrokes.length - 1]
-        if (lastStroke && lastStroke.points.length > 2) {
+        if (lastStroke && lastStroke.points.length > 2 && lastStroke.tool.type === "pen") {
           lastStroke.smoothedPoints = smoothStroke(lastStroke.points)
         }
         return newStrokes
@@ -702,195 +975,205 @@ export function DrawingCanvas({ selectedNote, selectedFolder }: DrawingCanvasPro
   }
 
   return (
-    <div className="h-full flex flex-col bg-background">
-      <div className="border-b border-border bg-card p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Button
-                variant={currentTool.type === "pen" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setCurrentTool((prev) => ({ ...prev, type: "pen" }))}
-              >
-                <Pen className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={currentTool.type === "eraser" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setCurrentTool((prev) => ({ ...prev, type: "eraser" }))}
-              >
-                <Eraser className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={currentTool.type === "rectangle" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setCurrentTool((prev) => ({ ...prev, type: "rectangle" }))}
-              >
-                <Square className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={currentTool.type === "circle" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setCurrentTool((prev) => ({ ...prev, type: "circle" }))}
-              >
-                <Circle className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={currentTool.type === "text" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setCurrentTool((prev) => ({ ...prev, type: "text" }))}
-              >
-                <Type className="h-4 w-4" />
-              </Button>
-            </div>
+    <div className="h-full flex flex-col bg-background relative">
+      {/* OnlyOffice-like Toolbar */}
+      <OnlyOfficeLikeToolbar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        tabs={[
+          { label: "Fichier" },
+          { label: "Accueil" },
+          { label: "Dessiner" },
+          { label: "Mise en Page" },
+          { label: "Affichage" },
+        ]}
+      />
 
-            <Separator orientation="vertical" className="h-6" />
+      {/* Mega Menu for "Fichier" */}
+      {activeTab === "Fichier" && (
+        <OnlyOfficeFileMenu
+          type="draw"
+          onClose={() => setActiveTab("Accueil")}
+          onExport={exportCanvas}
+        />
+      )}
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="w-12 h-8 p-0 bg-transparent">
-                  <div className="w-6 h-6 rounded border" style={{ backgroundColor: currentTool.color }} />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <div className="grid grid-cols-5 gap-1 p-2">
-                  {COLORS.map((color) => (
-                    <button
-                      key={color}
-                      className="w-8 h-8 rounded border hover:scale-110 transition-transform"
-                      style={{ backgroundColor: color }}
-                      onClick={() => setCurrentTool((prev) => ({ ...prev, color }))}
-                    />
-                  ))}
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
+      {/* Home Toolbar for "Accueil" tab */}
+      {activeTab === "Accueil" && (
+        <HomeToolbar
+          undo={undo}
+          redo={redo}
+          undoStack={undoStack}
+          redoStack={redoStack}
+          clearCanvas={clearCanvas}
+          saveDrawing={saveDrawing}
+          exportCanvas={exportCanvas}
+          zoom={canvasZoom}
+          onZoomChange={setCanvasZoom}
+        />
+      )}
 
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-600">Taille:</span>
-              <div className="w-24">
-                <Slider
-                  value={[currentTool.size]}
-                  onValueChange={([size]) => setCurrentTool((prev) => ({ ...prev, size }))}
-                  min={1}
-                  max={20}
-                  step={1}
-                />
-              </div>
-              <span className="text-sm text-foreground w-6">{currentTool.size}</span>
-            </div>
+      {/* Drawing Tools for "Dessiner" tab */}
+      {activeTab === "Dessiner" && (
+        <WhiteboardToolbar
+          currentTool={currentTool}
+          setCurrentTool={setCurrentTool}
+          clearCanvas={clearCanvas}
+          undo={undo}
+          redo={redo}
+          undoStack={undoStack}
+          redoStack={redoStack}
+          autoConvert={autoConvert}
+          setAutoConvert={setAutoConvert}
+          strokeSmoothing={strokeSmoothing}
+          setStrokeSmoothing={setStrokeSmoothing}
+          performOCR={performOCR}
+          isProcessingOCR={isProcessingOCR}
+          saveDrawing={saveDrawing}
+        />
+      )}
 
-            <Separator orientation="vertical" className="h-6" />
+      {/* Page Layout Toolbar for "Mise en Page" tab */}
+      {activeTab === "Mise en Page" && (
+        <PageLayoutToolbar
+          orientation={pageOrientation}
+          onOrientationChange={setPageOrientation}
+          showGrid={showGrid}
+          onShowGridChange={setShowGrid}
+          showRuler={showRuler}
+          onShowRulerChange={setShowRuler}
+          zoom={canvasZoom}
+          onZoomChange={setCanvasZoom}
+          backgroundColor={canvasBackgroundColor}
+          onBackgroundColorChange={setCanvasBackgroundColor}
+        />
+      )}
 
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <Wand2 className="h-4 w-4 text-blue-600" />
-                <span className="text-sm text-slate-600">Auto-conversion:</span>
-                <Switch checked={autoConvert} onCheckedChange={setAutoConvert} />
-              </div>
+      {/* View Toolbar for "Affichage" tab */}
+      {activeTab === "Affichage" && (
+        <ViewToolbar
+          zoom={canvasZoom}
+          onZoomChange={setCanvasZoom}
+          showGrid={showGrid}
+          onShowGridChange={setShowGrid}
+          showRuler={showRuler}
+          onShowRulerChange={setShowRuler}
+          fullscreen={fullscreen}
+          onFullscreenToggle={() => setFullscreen(!fullscreen)}
+          theme={viewTheme}
+          onThemeChange={setViewTheme}
+          showOCR={showOCR}
+          onShowOCRToggle={() => setShowOCR(!showOCR)}
+          canvasBackgroundColor={canvasBackgroundColor}
+          onBackgroundColorChange={setCanvasBackgroundColor}
+        />
+      )}
 
-              <div className="flex items-center gap-2">
-                <RefreshCw className="h-4 w-4 text-green-600" />
-                <span className="text-sm text-slate-600">Lissage:</span>
-                <Switch checked={strokeSmoothing} onCheckedChange={setStrokeSmoothing} />
-              </div>
-            </div>
-
-            {isStylusActive && (
-              <>
-                <Separator orientation="vertical" className="h-6" />
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                  <span className="text-sm text-foreground">Stylet</span>
-                  <span className="text-xs text-slate-600">Pression: {Math.round(currentPressure * 100)}%</span>
-                  <Button variant="ghost" size="sm" onClick={calibrateStylus}>
-                    Calibrer
-                  </Button>
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={undo} disabled={undoStack.length === 0}>
-              <Undo className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={redo} disabled={redoStack.length === 0}>
-              <Redo className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={clearCanvas}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
-
-            <Separator orientation="vertical" className="h-6" />
-
-            <Button variant="outline" size="sm" onClick={performOCR} disabled={isProcessingOCR || strokes.length === 0}>
-              {isProcessingOCR ? "Analyse..." : "Analyser"}
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowOCR(!showOCR)} disabled={ocrResults.length === 0}>
-              {showOCR ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </Button>
-
-            <Separator orientation="vertical" className="h-6" />
-
-            <Button variant="outline" size="sm" onClick={exportCanvas}>
-              <Download className="h-4 w-4" />
-            </Button>
-            <Button variant="default" size="sm" onClick={saveDrawing}>
-              <Save className="h-4 w-4 mr-2" />
-              Sauvegarder
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex-1 flex">
-        <div className="flex-1 relative" ref={containerRef}>
-          <canvas
-            ref={canvasRef}
-            className="absolute inset-0 w-full h-full cursor-crosshair bg-white border-r border-border"
-            onPointerDown={startDrawing}
-            onPointerMove={draw}
-            onPointerUp={stopDrawing}
-            onPointerLeave={stopDrawing}
-            style={{ touchAction: "none" }}
-          />
-
-          {showOCR && ocrResults.length > 0 && (
-            <div className="absolute inset-0 pointer-events-none">
-              {ocrResults.map((result, index) => (
-                <div
-                  key={index}
-                  className={`absolute border-2 rounded border-blue-500 bg-blue-500/10`}
-                  style={{
-                    left: result.boundingBox.x,
-                    top: result.boundingBox.y,
-                    width: result.boundingBox.width,
-                    height: result.boundingBox.height,
-                  }}
-                >
-                  <div className="absolute -top-6 left-0 text-xs px-1 rounded bg-blue-500 text-white">
-                    {result.engine} {Math.round(result.confidence * 100)}%
-                  </div>
-                </div>
-              ))}
-            </div>
+      <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 relative overflow-auto" ref={containerRef} style={{ backgroundColor: canvasBackgroundColor }}>
+          {/* Grid overlay */}
+          {showGrid && (
+            <div 
+              className="absolute inset-0 pointer-events-none z-10"
+              style={{
+                backgroundImage: `
+                  linear-gradient(to right, rgba(0,0,0,0.1) 1px, transparent 1px),
+                  linear-gradient(to bottom, rgba(0,0,0,0.1) 1px, transparent 1px)
+                `,
+                backgroundSize: '20px 20px'
+              }}
+            />
           )}
 
-          {convertedTexts.map((convertedText) => (
-            <div
-              key={convertedText.id}
-              className="absolute pointer-events-none bg-yellow-100/80 border border-yellow-300 rounded px-1"
-              style={{
-                left: convertedText.position.x,
-                top: convertedText.position.y - convertedText.fontSize,
-                fontSize: convertedText.fontSize,
-                color: convertedText.color,
+          {/* Ruler - horizontal */}
+          {showRuler && (
+            <>
+              <div className="absolute top-0 left-8 right-0 h-8 bg-gray-100 border-b border-gray-300 z-20 flex">
+                {Array.from({ length: 100 }).map((_, i) => (
+                  <div key={i} className="relative" style={{ width: '10px' }}>
+                    <div className={`absolute bottom-0 left-0 w-px bg-gray-400 ${i % 10 === 0 ? 'h-4' : i % 5 === 0 ? 'h-3' : 'h-2'}`} />
+                    {i % 10 === 0 && <span className="absolute bottom-4 left-0 text-[8px] text-gray-600">{i}</span>}
+                  </div>
+                ))}
+              </div>
+              
+              {/* Ruler - vertical */}
+              <div className="absolute left-0 top-8 bottom-0 w-8 bg-gray-100 border-r border-gray-300 z-20 flex flex-col">
+                {Array.from({ length: 100 }).map((_, i) => (
+                  <div key={i} className="relative" style={{ height: '10px' }}>
+                    <div className={`absolute right-0 top-0 h-px bg-gray-400 ${i % 10 === 0 ? 'w-4' : i % 5 === 0 ? 'w-3' : 'w-2'}`} />
+                    {i % 10 === 0 && <span className="absolute right-4 top-0 text-[8px] text-gray-600 -rotate-90 origin-top-right">{i}</span>}
+                  </div>
+                ))}
+              </div>
+              
+              {/* Corner box */}
+              <div className="absolute top-0 left-0 w-8 h-8 bg-gray-200 border-r border-b border-gray-300 z-20" />
+            </>
+          )}
+
+          <div 
+            className="relative"
+            style={{ 
+              transform: `scale(${canvasZoom / 100})`,
+              transformOrigin: 'top left',
+              width: `${100 / (canvasZoom / 100)}%`,
+              height: `${100 / (canvasZoom / 100)}%`,
+              marginLeft: showRuler ? '32px' : '0',
+              marginTop: showRuler ? '32px' : '0'
+            }}
+          >
+            <canvas
+              ref={canvasRef}
+              className="cursor-crosshair border border-border"
+              onPointerDown={startDrawing}
+              onPointerMove={draw}
+              onPointerUp={stopDrawing}
+              onPointerLeave={stopDrawing}
+              style={{ 
+                touchAction: "none",
+                backgroundColor: canvasBackgroundColor,
+                width: pageOrientation === "landscape" ? "1122px" : "794px",
+                height: pageOrientation === "landscape" ? "794px" : "1122px"
               }}
-            >
-              {convertedText.text}
-            </div>
-          ))}
+            />
+
+            {showOCR && ocrResults.length > 0 && (
+              <div className="absolute inset-0 pointer-events-none">
+                {ocrResults.map((result, index) => (
+                  <div
+                    key={index}
+                    className={`absolute border-2 rounded border-blue-500 bg-blue-500/10`}
+                    style={{
+                      left: result.boundingBox.x,
+                      top: result.boundingBox.y,
+                      width: result.boundingBox.width,
+                      height: result.boundingBox.height,
+                    }}
+                  >
+                    <div className="absolute -top-6 left-0 text-xs px-1 rounded bg-blue-500 text-white">
+                      {result.engine} {Math.round(result.confidence * 100)}%
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {convertedTexts.map((convertedText) => (
+              <div
+                key={convertedText.id}
+                className="absolute pointer-events-none bg-yellow-100/80 border border-yellow-300 rounded px-1"
+                style={{
+                  left: convertedText.position.x,
+                  top: convertedText.position.y - convertedText.fontSize,
+                  fontSize: convertedText.fontSize,
+                  color: convertedText.color,
+                }}
+              >
+                {convertedText.text}
+              </div>
+            ))}
+          </div>
         </div>
 
         {showOCR && ocrResults.length > 0 && (
@@ -960,3 +1243,5 @@ export function DrawingCanvas({ selectedNote, selectedFolder }: DrawingCanvasPro
     </div>
   )
 }
+
+export default DrawingCanvas

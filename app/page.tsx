@@ -5,7 +5,7 @@ import { OnlyOfficeEditor } from "@/components/onlyoffice-editor"
 import React, { useState, useEffect, useCallback } from "react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { ModernSidebar } from "@/components/ui/sidebar-modern"
-import { DrawingCanvas } from "@/components/drawing-canvas"
+import DrawingCanvas from "@/components/drawing-canvas"
 // import { NoteEditor } from "@/components/note-editor"
 import { FileManager } from "@/components/file-manager"
 import { SettingsDialog } from "@/components/settings-dialog"
@@ -864,7 +864,7 @@ export default function NoteTakingApp() {
               recentFiles={[]} // You can populate this with actual recent files
             />
           )}
-          {activeView === "canvas" && <DrawingCanvas selectedNote={selectedNote} selectedFolder={selectedFolder} />}
+          {activeView === "canvas" && <DrawingCanvas selectedNote={selectedNote || undefined} />}
           {/* Suppression de NoteEditor : tout passe par DocumentViewer (OnlyOffice) */}
           {activeView === "image_viewer" && (
             <ImageViewer
