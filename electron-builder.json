@@ -1,0 +1,58 @@
+{
+  "appId": "com.notepadpro.app",
+  "productName": "NotePad-Pro",
+  "directories": {
+    "output": "dist",
+    "buildResources": "build"
+  },
+  "files": [
+    "**/*",
+    "!**/*.ts",
+    "!*.map",
+    "!node_modules/**/*",
+    "node_modules/next/**/*",
+    "node_modules/react/**/*",
+    "node_modules/react-dom/**/*",
+    "out/**/*",
+    "!dist/**/*",
+    "!.next/**/*",
+    "!Test/**/*",
+    "!installer/**/*"
+  ],
+  "asarUnpack": [
+    "out/**/*"
+  ],
+  "extraResources": [
+    {
+      "from": "installer/scripts",
+      "to": "installer/scripts",
+      "filter": ["**/*.ps1"]
+    },
+    {
+      "from": "installer/docker",
+      "to": "installer/docker",
+      "filter": ["**/*.json"]
+    }
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      }
+    ],
+    "artifactName": "${productName}-Setup-${version}.${ext}"
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": true,
+    "allowElevation": true,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "NotePad-Pro",
+    "include": "build/installer.nsh",
+    "warningsAsErrors": false
+  },
+  "publish": null
+}

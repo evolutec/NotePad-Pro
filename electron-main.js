@@ -7,6 +7,85 @@ const url = require('url');
 
 let mainWindow;
 let fileServer;
+let nextServer; // Serveur pour les fichiers Next.js
+
+// Create a simple HTTP server to serve Next.js static files in production
+function createNextServer() {
+  const isDev = !app.isPackaged;
+
+  if (isDev) {
+    console.log('[Next Server] Dev mode - using Next.js dev server on port 3000');
+    return Promise.resolve();
+  }
+
+  // En production, créer un serveur HTTP pour servir les fichiers statiques
+  return new Promise((resolve, reject) => {
+    try {
+      nextServer = http.createServer((req, res) => {
+    // When packaged, files in asarUnpack are in app.asar.unpacked folder
+    const outDir = app.isPackaged 
+      ? path.join(process.resourcesPath, 'app.asar.unpacked', 'out')
+      : path.join(__dirname, 'out');
+    
+    let filePath = path.join(outDir, req.url === '/' ? 'index.html' : req.url);
+    
+    // Gérer les fichiers dans _next
+    if (req.url.startsWith('/_next/')) {
+      filePath = path.join(outDir, req.url);
+    }
+    
+    console.log('[Next Server] Request:', req.url, '-> File:', filePath);
+    
+    // Déterminer le type de contenu
+    const ext = path.extname(filePath).toLowerCase();
+    const contentTypes = {
+      '.html': 'text/html',
+      '.js': 'application/javascript',
+      '.css': 'text/css',
+      '.json': 'application/json',
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.svg': 'image/svg+xml',
+      '.ico': 'image/x-icon',
+      '.woff': 'font/woff',
+      '.woff2': 'font/woff2',
+      '.ttf': 'font/ttf',
+    };
+    
+    const contentType = contentTypes[ext] || 'application/octet-stream';
+    
+        fs.readFile(filePath, (err, data) => {
+          if (err) {
+            console.error('[Next Server] File not found:', filePath);
+            res.writeHead(404, { 'Content-Type': 'text/plain' });
+            res.end('Not found');
+            return;
+          }
+
+          res.writeHead(200, {
+            'Content-Type': contentType,
+            'Cache-Control': 'no-cache'
+          });
+          res.end(data);
+        });
+      });
+
+      nextServer.once('error', (err) => {
+        console.error('[Next Server] Error starting server:', err);
+        reject(err);
+      });
+
+      nextServer.listen(3000, '127.0.0.1', () => {
+        console.log('[Next Server] Production server listening on http://127.0.0.1:3000');
+        resolve();
+      });
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
 
 // Create a simple HTTP server to serve local files
 function createFileServer() {
@@ -82,8 +161,16 @@ function createFileServer() {
   });
   
   // Écouter sur 0.0.0.0 pour permettre l'accès depuis Docker (host.docker.internal)
-  fileServer.listen(38274, '0.0.0.0', () => {
-    console.log('[File Server] Listening on http://0.0.0.0:38274 (accessible from Docker)');
+  return new Promise((resolve, reject) => {
+    fileServer.once('error', (err) => {
+      console.error('[File Server] Error starting:', err);
+      reject(err);
+    });
+
+    fileServer.listen(38274, '0.0.0.0', () => {
+      console.log('[File Server] Listening on http://0.0.0.0:38274 (accessible from Docker)');
+      resolve();
+    });
   });
 }
 
@@ -131,9 +218,13 @@ function createWindow() {
   
   console.log('[Electron] Window created successfully with CORS headers for ZetaOffice');
 
-  // Wait for the Next.js server to be ready
+  // Détecter si on est en développement ou en production
+  const isDev = !app.isPackaged;
   const serverUrl = 'http://localhost:3000';
+  
+  console.log('[Electron] Mode:', isDev ? 'Development' : 'Production');
   console.log('[Electron] Loading URL:', serverUrl);
+  
   mainWindow.loadURL(serverUrl);
   console.log('[Electron] URL loaded');
 
@@ -1504,17 +1595,40 @@ app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit();
 });
 
-app.whenReady().then(() => {
-  console.log('[Electron] App is ready, creating window...');
-  createWindow();
+app.whenReady().then(async () => {
+  console.log('[Electron] App is ready - starting embedded servers before creating window');
+
+  // persistent simple main-process log file for diagnostics
+  const logPath = path.join(app.getPath('userData'), 'main.log');
+  function writeLog(line) {
+    try {
+      fs.appendFileSync(logPath, `${new Date().toISOString()} ${line}\n`);
+    } catch (e) {
+      console.error('Failed to write to main.log', e);
+    }
+  }
+
+  writeLog('App ready - init servers');
+
+  try {
+    // Start servers sequentially and wait until they are listening
+    await createNextServer();
+    writeLog('Next static server started');
+
+    await createFileServer();
+    writeLog('File server started');
+
+    // Once servers are ready, create the BrowserWindow
+    createWindow();
+  } catch (err) {
+    console.error('[Electron] Error during server startup:', err);
+    writeLog(`Error during server startup: ${err && err.message}`);
+    // Still attempt to create window so user can see the error
+    createWindow();
+  }
+
   app.on('activate', function () {
     console.log('[Electron] App activated');
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
-});
-
-app.on('ready', () => {
-  console.log('[Electron] App ready event fired');
-  // Start the file server
-  createFileServer();
 });

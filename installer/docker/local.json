@@ -1,0 +1,15 @@
+{
+  "services": {
+    "CoAuthoring": {
+      "request-filtering-agent": {
+        "allowPrivateIPAddress": true,
+        "allowMetaIPAddress": true
+      }
+    }
+  },
+  "storage": {
+    "fs": {
+      "secretString": "notePadProSecretKey2024"
+    }
+  }
+}

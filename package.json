@@ -1,13 +1,20 @@
 {
-  "name": "my-v0-project",
-  "version": "0.1.0",
+  "name": "notepad-pro",
+  "version": "1.0.0",
+  "description": "NotePad-Pro - Application de prise de notes avec support OnlyOffice",
+  "author": "NotePad-Pro Team",
   "private": true,
+  "main": "electron-main.js",
   "scripts": {
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
     "start": "next start",
-    "electron": "concurrently \"next dev\" \"electron .\\electron-main.js\""
+    "electron": "concurrently \"next dev\" \"electron .\\electron-main.js\"",
+    "electron:build": "next build && electron-builder build --win --publish never",
+    "electron:build:dir": "next build && electron-builder build --win --dir",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -96,6 +103,7 @@
     "@types/react-dom": "^18",
     "concurrently": "^9.2.1",
     "electron": "^38.1.2",
+    "electron-builder": "^25.1.8",
     "file-icon-vectors": "^1.0.0",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.9",
