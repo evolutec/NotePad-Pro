@@ -82,6 +82,7 @@ export interface GenericModalProps {
 
   // Content configuration
   tabs?: ModalTab[]
+  onTabChange?: (tabId: string) => void
   fields?: ModalField[]
   children?: React.ReactNode
 
@@ -212,6 +213,7 @@ export const GenericModal = forwardRef<GenericModalRef, GenericModalProps>(({
   fileType,
   size = 'lg',
   tabs,
+  onTabChange,
   fields,
   children,
   buttons,
@@ -614,7 +616,7 @@ export const GenericModal = forwardRef<GenericModalRef, GenericModalProps>(({
 
           {/* Tabs */}
           {tabs && tabs.length > 0 && (
-            <Tabs defaultValue={tabs[0].id} className="w-full">
+            <Tabs defaultValue={tabs[0].id} className="w-full" onValueChange={onTabChange}>
               <TabsList className={cn(
                 "flex w-full h-14 p-1 rounded-xl shadow-inner bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm",
                 "border border-gray-200 dark:border-gray-700"

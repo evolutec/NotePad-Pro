@@ -30,7 +30,6 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated,
 
   // Upload tab state
   const [audioName, setAudioName] = useState("");
-  const [audioType, setAudioType] = useState<string>("mp3"); // Default to mp3 audio
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -60,7 +59,6 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated,
     if (open) {
       // Reset all form fields
       setAudioName("");
-      setAudioType("mp3");
       setTags([]);
       setCurrentTag("");
       setSelectedFile(null);
@@ -73,7 +71,8 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated,
       setRecordedChunks([]);
       setCreationError(null);
       setCreationSuccess(null);
-      setParentId(undefined);
+      // Don't reset parentId - keep the folder selection across modal opens
+      // setParentId(undefined);
 
       // Initialize microphone devices
       navigator.mediaDevices?.enumerateDevices().then(devices => {
@@ -222,14 +221,14 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated,
 
     let finalParentPath = parentPath;
     if (parentId) {
-      const parentFolder = existingFolders.find(f => f.id === parentId);
-      finalParentPath = parentFolder?.path || parentPath;
+      // parentId is now actually the full path
+      finalParentPath = parentId;
     }
 
     if (window.electronAPI?.audioCreate) {
       const result = await window.electronAPI.audioCreate({
         name: audioName.trim(),
-        type: audioType,
+        type: 'mp3', // Default for manual creation
         parentPath: finalParentPath,
         tags,
       });
@@ -242,7 +241,7 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated,
       const newAudio: AudioMeta = {
         id: Date.now().toString(),
         name: audioName.trim(),
-        type: audioType,
+        type: 'mp3',
         parentPath: finalParentPath,
         createdAt: new Date().toISOString(),
         tags,
@@ -256,7 +255,6 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated,
       }
       setTimeout(() => {
         setAudioName("");
-        setAudioType("mp3");
         setTags([]);
         setCurrentTag("");
         setCreationSuccess(null);
@@ -293,22 +291,33 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated,
       // Read the selected file as binary data
       const fileData = await selectedFile.arrayBuffer();
 
+      // Auto-detect file extension from the selected file
+      const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase() || 'mp3';
+
       let finalParentPath = parentPath;
       if (parentId) {
-        const parentFolder = existingFolders.find(f => f.id === parentId);
-        finalParentPath = parentFolder?.path || parentPath;
+        // parentId is now actually the full path
+        finalParentPath = parentId;
       }
 
-      // Create file name with timestamp
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const fileName = `${audioName.trim()}_${timestamp}.${audioType}`;
-      const filePath = finalParentPath ? `${finalParentPath}/${fileName}` : fileName;
+      console.log('[Import Audio] parentId:', parentId);
+      console.log('[Import Audio] parentPath:', parentPath);
+      console.log('[Import Audio] finalParentPath:', finalParentPath);
+
+      // Use the user-provided name directly, add extension if missing
+      let fileName = audioName.trim();
+      if (!fileName.includes('.')) {
+        // If no extension, add the original file extension
+        fileName = `${fileName}.${fileExtension}`;
+      }
+
+      console.log('[Import Audio] fileName:', fileName);
 
       // Create audio file using Electron API
       if (window.electronAPI?.audioCreate) {
         const result = await window.electronAPI.audioCreate({
           name: fileName,
-          type: audioType,
+          type: fileExtension,
           parentPath: finalParentPath,
           tags: tags,
           content: fileData,
@@ -470,35 +479,49 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated,
           mimeType: 'audio/webm;codecs=opus'
         });
 
+        const chunks: Blob[] = [];
+
         recorder.ondataavailable = (event) => {
           if (event.data && event.data.size > 0) {
-            setRecordedChunks(prev => [...prev, event.data]);
+            chunks.push(event.data);
           }
         };
 
         recorder.onstop = async () => {
           try {
             // Combine all chunks and save
-            const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+            const blob = new Blob(chunks, { type: 'audio/webm' });
 
             let finalParentPath = parentPath;
             if (parentId) {
-              const parentFolder = existingFolders.find(f => f.id === parentId);
-              finalParentPath = parentFolder?.path || parentPath;
+              // parentId is now actually the full path
+              finalParentPath = parentId;
             }
 
-            // Create file name for recording
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const audioFileName = `${audioName.trim()}_${timestamp}.webm`;
-            const audioPath = finalParentPath ? `${finalParentPath}/${audioFileName}` : audioFileName;
+            console.log('[Record Audio] parentId:', parentId);
+            console.log('[Record Audio] parentPath:', parentPath);
+            console.log('[Record Audio] finalParentPath:', finalParentPath);
+            console.log('[Record Audio] Blob size:', blob.size);
+            console.log('[Record Audio] Chunks count:', chunks.length);
+
+            // Use the user-provided name directly without any timestamp, add .oga extension for audio
+            let audioFileName = audioName.trim();
+            if (!audioFileName.includes('.')) {
+              audioFileName = `${audioFileName}.oga`; // Use .oga for WebM audio to avoid confusion with video
+            }
+
+            console.log('[Record Audio] audioFileName:', audioFileName);
 
             if (window.electronAPI?.audioCreate) {
+              const arrayBuffer = await blob.arrayBuffer();
+              console.log('[Record Audio] ArrayBuffer size:', arrayBuffer.byteLength);
+
               const result = await window.electronAPI.audioCreate({
                 name: audioFileName,
-                type: 'webm',
+                type: 'oga',
                 parentPath: finalParentPath,
                 tags: tags,
-                content: blob,
+                content: arrayBuffer,
                 isBinary: true,
               });
 
@@ -581,20 +604,11 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated,
               onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
               ref={fileInputRef}
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="audio-type">Type d'audio</Label>
-            <select
-              id="audio-type"
-              className="w-full border rounded p-2 bg-zinc-900 text-white shadow-sm"
-              value={audioType}
-              onChange={(e) => setAudioType(e.target.value)}
-            >
-              <option value="mp3">MP3</option>
-              <option value="wav">WAV</option>
-              <option value="ogg">OGG</option>
-            </select>
+            {selectedFile && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Type détecté : {selectedFile.name.split('.').pop()?.toUpperCase() || 'Inconnu'}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -690,16 +704,12 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated,
           {/* Recording Interface - Centered */}
           <div className="space-y-3">
             <Label className="text-base font-semibold flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-green-500"></div>
+              <div className={`w-2 h-2 rounded-full ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`}></div>
               Interface d'enregistrement
             </Label>
             <div className="flex justify-center">
               <div className="relative bg-gradient-to-br from-gray-900 to-black rounded-xl p-8 border-2 border-gray-300 shadow-2xl" style={{ width: '400px', height: '280px' }}>
                 <div className="flex flex-col items-center justify-center h-full text-white">
-                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
-                    <Mic className="h-10 w-10" />
-                  </div>
-
                   {isRecording ? (
                     <>
                       {/* Animated Waveform Visualization */}
@@ -707,8 +717,8 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated,
                         <canvas
                           ref={waveformCanvasRef}
                           width={320}
-                          height={80}
-                          className="w-full h-20 rounded-lg bg-black/30"
+                          height={120}
+                          className="w-full h-32 rounded-lg bg-black/30"
                           style={{ background: 'linear-gradient(90deg, #1a1a1a 0%, #2d2d2d 100%)' }}
                         />
                       </div>
@@ -727,48 +737,26 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated,
                     </>
                   ) : (
                     <>
+                      {/* Waveform Visualization - Always visible */}
+                      <div className="w-full mb-4">
+                        <canvas
+                          ref={waveformCanvasRef}
+                          width={320}
+                          height={120}
+                          className="w-full h-32 rounded-lg bg-black/30"
+                          style={{ background: 'linear-gradient(90deg, #1a1a1a 0%, #2d2d2d 100%)' }}
+                        />
+                      </div>
+                      
                       <p className="text-lg font-medium mb-2">Prêt à enregistrer</p>
                       <p className="text-sm opacity-75 text-center">
-                        Cliquez sur le bouton ci-dessous pour démarrer l'enregistrement
+                        {selectedMicrophoneId ? 'Cliquez sur "Démarrer l\'enregistrement" ci-dessous' : 'Sélectionnez un microphone ci-dessus'}
                       </p>
                     </>
                   )}
                 </div>
-
-                {!stream && !isRecording && (
-                  <div className="absolute inset-0 flex items-center justify-center text-white bg-black/50 rounded-xl">
-                    <div className="text-center p-4">
-                      <Mic className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">Sélectionnez un microphone</p>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
-          </div>
-
-          {/* Recording Controls */}
-          <div className="flex justify-center">
-            <Button
-              className={`h-14 px-8 text-lg font-semibold transition-all duration-200 ${
-                isRecording
-                  ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700'
-                  : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700'
-              }`}
-              onClick={toggleRecording}
-            >
-              {isRecording ? (
-                <>
-                  <Square className="h-5 w-5 mr-3" />
-                  Arrêter l'enregistrement
-                </>
-              ) : (
-                <>
-                  <Mic className="h-5 w-5 mr-3" />
-                  Démarrer l'enregistrement
-                </>
-              )}
-            </Button>
           </div>
 
           <div className="space-y-2">
@@ -810,17 +798,22 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated,
         }
       ];
     } else if (activeTab === 'record') {
+      // Add recording button in footer for record mode
       return [
         {
-          label: 'Enregistrer l\'audio',
+          label: isRecording ? 'Arrêter l\'enregistrement' : 'Démarrer l\'enregistrement',
           variant: 'default',
           onClick: toggleRecording,
-          disabled: !audioName.trim() || isRecording
+          disabled: !audioName.trim() || !selectedMicrophoneId,
+          icon: isRecording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />,
+          className: isRecording 
+            ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white' 
+            : 'bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white'
         }
       ];
     }
     return [];
-  }, [activeTab, audioName, selectedFile, isRecording]);
+  }, [activeTab, audioName, selectedFile, isRecording, selectedMicrophoneId]);
 
   return (
     <>
@@ -834,6 +827,7 @@ export function AddAudioDialog({ open, onOpenChange, parentPath, onAudioCreated,
         fileType="audio"
         size="lg"
         tabs={tabs}
+        onTabChange={(tabId) => setActiveTab(tabId as 'upload' | 'record')}
         buttons={buttons}
         showCancelButton={true}
         cancelLabel="Annuler"

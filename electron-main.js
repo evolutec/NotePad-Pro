@@ -785,7 +785,7 @@ ipcMain.handle('document:create', async (_event, documentData) => {
 // Handler pour créer un fichier audio
 console.log('Registering audio:create handler');
 ipcMain.handle('audio:create', async (_event, audioData) => {
-  console.log('audio:create handler called with:', audioData);
+  console.log('audio:create handler called with:', { ...audioData, content: audioData.content ? `[Binary data: ${audioData.content.byteLength || audioData.content.size || 0} bytes]` : 'none' });
   try {
     const configPath = path.join(__dirname, 'config.json');
     if (!fs.existsSync(configPath)) {
@@ -799,19 +799,53 @@ ipcMain.handle('audio:create', async (_event, audioData) => {
       return { success: false, error: 'rootPath not set' };
     }
 
-    const { name, type, parentPath, tags } = audioData;
-    const fileName = `${name}.${type}`;
+    const { name, type, parentPath, tags, content, isBinary } = audioData;
+    
+    // Use the provided name directly (which already includes timestamp and extension)
+    const fileName = name.includes('.') ? name : `${name}.${type}`;
     const fullPath = path.join(parentPath || rootPath, fileName);
+
+    console.log('[Audio Create] Full path:', fullPath);
+    console.log('[Audio Create] Has content:', !!content);
+    console.log('[Audio Create] Is binary:', isBinary);
 
     if (fs.existsSync(fullPath)) {
       console.log('audio:create handler error: Audio file already exists');
       return { success: false, error: 'Audio file already exists' };
     }
 
-    // Create an empty audio file (placeholder)
-    // In a real implementation, you might want to create a proper audio file
-    // or copy from a template/source
-    fs.writeFileSync(fullPath, '', 'utf-8');
+    // Ensure parent directory exists
+    const dir = path.dirname(fullPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    // Write file content
+    if (content && isBinary) {
+      // Handle binary content (ArrayBuffer)
+      let buffer;
+      if (content instanceof ArrayBuffer || (typeof content === 'object' && content.byteLength !== undefined)) {
+        buffer = Buffer.from(content);
+      } else if (content.constructor && content.constructor.name === 'Uint8Array') {
+        buffer = Buffer.from(content);
+      } else if (Array.isArray(content)) {
+        // Handle array of numbers (from ArrayBuffer conversion)
+        buffer = Buffer.from(content);
+      } else if (typeof content === 'object' && content.data) {
+        // Handle Node Buffer-like objects with data property
+        buffer = Buffer.from(content.data || content);
+      } else {
+        console.error('[Audio Create] Unknown content type:', typeof content, content.constructor?.name);
+        buffer = Buffer.from(content);
+      }
+      
+      console.log('[Audio Create] Writing binary data, size:', buffer.length);
+      fs.writeFileSync(fullPath, buffer);
+    } else {
+      // Create empty file for manual audio creation
+      fs.writeFileSync(fullPath, Buffer.alloc(0));
+    }
+
     console.log('audio:create handler returning success');
     return { success: true, path: fullPath };
   } catch (err) {
@@ -1587,6 +1621,46 @@ ipcMain.handle('file:download', async (_event, filePath, fileName) => {
     return { success: false, error: 'Download canceled' };
   } catch (err) {
     console.error('[Electron] Error downloading file:', err.message);
+    return { success: false, error: err.message };
+  }
+});
+
+// Handler pour ouvrir une fenêtre audio séparée
+ipcMain.handle('audio:openWindow', async (_event, audioPath) => {
+  try {
+    console.log('[Electron] Opening audio window for:', audioPath);
+    
+    // Create a new window for audio player
+    const audioWindow = new BrowserWindow({
+      width: 800,
+      height: 600,
+      minWidth: 600,
+      minHeight: 400,
+      backgroundColor: '#18181b',
+      title: 'Lecteur Audio - ' + path.basename(audioPath),
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        preload: path.join(__dirname, 'preload.js')
+      },
+      autoHideMenuBar: true
+    });
+
+    // Load the audio player page with the file path as query param
+    const isDev = !app.isPackaged;
+    const baseUrl = isDev ? 'http://localhost:3000' : 'http://127.0.0.1:3000';
+    const encodedPath = encodeURIComponent(audioPath);
+    audioWindow.loadURL(`${baseUrl}/audio-player?audioPath=${encodedPath}`);
+
+    // Open DevTools in development
+    if (isDev) {
+      audioWindow.webContents.openDevTools();
+    }
+
+    console.log('[Electron] Audio window created successfully');
+    return { success: true };
+  } catch (err) {
+    console.error('[Electron] Error opening audio window:', err.message);
     return { success: false, error: err.message };
   }
 });

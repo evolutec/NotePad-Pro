@@ -55,8 +55,8 @@ export interface OnlyOfficeFileMenuProps {
 export const OnlyOfficeFileMenu: React.FC<OnlyOfficeFileMenuProps> = ({ type, onClose, onExport }) => {
   const formats = EXPORT_FORMATS[type] || [];
   return (
-    <div className="absolute left-0 right-0 bottom-0 flex z-50" style={{ top: '0' }}>
-      <div className="w-80 bg-[#23272b] text-white flex flex-col border-r border-neutral-800">
+    <div className="absolute inset-0 flex z-40">
+      <div className="w-80 bg-[#23272b] text-white flex flex-col border-r border-neutral-800 shadow-xl">
         <button className="flex items-center gap-2 px-4 py-3 hover:bg-neutral-700" onClick={onClose}>
           <ArrowLeft className="h-5 w-5" /> Retour
         </button>

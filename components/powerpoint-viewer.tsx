@@ -284,7 +284,7 @@ export const PowerPointViewer: React.FC<PowerPointViewerProps> = ({ filePath, fi
   }
 
   return (
-    <div className="h-full w-full flex flex-col bg-background">
+    <div className="relative h-full w-full flex flex-col bg-background">
       {/* Presentation Header */}
       <div className="p-6 border-b bg-card">
         <div className="flex items-center gap-4">

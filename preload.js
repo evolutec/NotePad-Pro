@@ -163,4 +163,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     console.log('Preload: Downloading file:', filePath);
     return ipcRenderer.invoke('file:download', filePath, fileName);
   },
+
+  // Audio window APIs
+  openAudioWindow: (audioPath) => {
+    console.log('Preload: Opening audio in new window:', audioPath);
+    return ipcRenderer.invoke('audio:openWindow', audioPath);
+  },
 });

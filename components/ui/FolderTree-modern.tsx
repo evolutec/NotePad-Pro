@@ -124,8 +124,8 @@ const getFileType = (node: EnhancedFolderNode): FileType => {
   
   // Media files
   if (node.name.match(/\.(jpg|jpeg|png|gif|svg|webp)$/i)) return 'image';
-  if (node.name.match(/\.(mp4|webm|ogg|avi|mov|mkv|wmv|flv|3gp)$/i)) return 'video';
-  if (node.name.match(/\.(mp3|wav|flac|aac)$/i)) return 'audio';
+  if (node.name.match(/\.(mp4|webm|ogv|avi|mov|mkv|wmv|flv)$/i)) return 'video';
+  if (node.name.match(/\.(mp3|wav|wave|ogg|oga|opus|flac|aac|m4a|m4b|m4p|wma|aiff|aif|ape|mka|wv|tta|tak|mp2|mp1|mpa|ac3|dts|amr|3gp|ra|ram|weba)$/i)) return 'audio';
   
   // Development files
   if (node.name.match(/\.(js|ts|jsx|tsx|py|java|cpp|cs|html|css|json)$/i)) return 'code';

@@ -387,7 +387,7 @@ export const OfficePowerPointEditor: React.FC<OfficePowerPointEditorProps> = ({
   const activeSlide = slides[activeSlideIndex];
 
   return (
-    <div className="h-full w-full flex flex-col bg-background">
+    <div className="relative h-full w-full flex flex-col bg-background">
       {/* Header */}
       <div className="border-b bg-card p-4">
         <div className="flex items-center justify-between">

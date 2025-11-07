@@ -1162,6 +1162,9 @@ export default function NoteTakingApp() {
           const audioPath = newAudio.parentPath ? `${newAudio.parentPath}\\${newAudio.name}` : newAudio.name;
           await refreshTreeAndOpenFile(audioPath, 'audio');
         }}
+        onRefreshTree={async () => {
+          await refreshTreeAndOpenFile();
+        }}
       />
       <AddImageDialog
         open={isAddImageOpen}

@@ -215,7 +215,7 @@ export function OfficeExcelEditor({ filePath, fileName, onSave }: OfficeExcelEdi
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="relative flex flex-col h-full">
       {/* Toolbar */}
       <div className="border-b p-2 flex items-center gap-2 bg-gray-50 dark:bg-gray-900">
         <Button

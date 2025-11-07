@@ -198,7 +198,7 @@ export const FILE_TYPES: Record<FileType, FileTypeConfig> = {
     colorTheme: 'gray',
     icon: FileVideo,
     buttonIcon: FileVideo,
-    extensions: ['mp4', 'webm', 'ogg', 'avi', 'mov', 'mkv', 'wmv', 'flv', '3gp'],
+    extensions: ['mp4', 'webm', 'ogv', 'avi', 'mov', 'mkv', 'wmv', 'flv', '3gp'],
     mimeTypes: ['video/mp4', 'video/webm', 'video/ogg', 'video/x-msvideo', 'video/quicktime', 'video/x-matroska'],
     category: 'media',
     sidebarButton: {
@@ -222,7 +222,7 @@ export const FILE_TYPES: Record<FileType, FileTypeConfig> = {
     colorTheme: 'pink',
     icon: FileAudio,
     buttonIcon: FileAudio,
-    extensions: ['mp3', 'wav', 'wave', 'ogg', 'oga', 'opus', 'm4a', 'm4b', 'flac', 'aac', 'wma', 'webm', 'aiff', 'aif', 'ape', 'mka', 'wv', 'tta', 'tak', 'mp2', 'mp1', 'mpa', 'ac3', 'dts', 'amr', '3gp', 'ra', 'ram'],
+    extensions: ['mp3', 'wav', 'wave', 'ogg', 'oga', 'opus', 'm4a', 'm4b', 'flac', 'aac', 'wma', 'weba', 'aiff', 'aif', 'ape', 'mka', 'wv', 'tta', 'tak', 'mp2', 'mp1', 'mpa', 'ac3', 'dts', 'amr', '3gp', 'ra', 'ram'],
     mimeTypes: ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/opus', 'audio/mp4', 'audio/flac', 'audio/aac', 'audio/x-ms-wma', 'audio/webm', 'audio/aiff', 'audio/ape', 'audio/x-matroska', 'audio/wavpack', 'audio/ac3', 'audio/vnd.dts', 'audio/amr', 'audio/3gpp', 'audio/vnd.rn-realaudio'],
     category: 'media',
     sidebarButton: {
