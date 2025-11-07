@@ -579,15 +579,23 @@ export function ModernFolderTree({
     const fileExtension = node.path.split('.').pop()?.toLowerCase() || '';
     console.log('File extension from path:', fileExtension, 'for file:', node.name, 'path:', node.path);
 
-    // Check if it's a PDF file specifically - this should take priority
+    // Priorité : audio
+    const audioExtensions = ['mp3', 'wav', 'wave', 'ogg', 'oga', 'opus', 'flac', 'aac', 'm4a', 'm4b', 'm4p', 'wma', 'webm', 'aiff', 'aif', 'ape', 'mka', 'wv', 'tta', 'tak', 'mp2', 'mp1', 'mpa', 'ac3', 'dts', 'amr', '3gp', 'ra', 'ram'];
+    if (audioExtensions.includes(fileExtension)) {
+      console.log('Audio file detected, calling onNoteSelect with path:', node.path);
+      onNoteSelect?.(node.path);
+      return;
+    }
+
+    // PDF
     if (fileExtension === 'pdf') {
       console.log('PDF file detected, calling onNoteSelect with path:', node.path);
       onNoteSelect?.(node.path);
       return;
     }
 
-    // Check for document files that should use document viewer
-  const documentExtensions = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'rtf', 'odt', 'ods', 'odp', 'txt', 'csv', 'tsv', 'md'];
+    // Documents
+    const documentExtensions = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'rtf', 'odt', 'ods', 'odp', 'txt', 'csv', 'tsv', 'md'];
     if (documentExtensions.includes(fileExtension)) {
       console.log('Document file detected, calling onNoteSelect with path:', node.path);
       onNoteSelect?.(node.path);

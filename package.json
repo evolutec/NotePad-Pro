@@ -1,8 +1,8 @@
 {
-  "name": "notepad-pro",
+  "name": "fusion",
   "version": "1.0.0",
-  "description": "NotePad-Pro - Application de prise de notes avec support OnlyOffice",
-  "author": "NotePad-Pro Team",
+  "description": "Fusion - Application de prise de notes avec support OnlyOffice",
+  "author": "Fusion Team",
   "private": true,
   "main": "electron-main.js",
   "scripts": {
@@ -93,6 +93,7 @@
     "videojs-contrib-hls": "^5.15.0",
     "videojs-contrib-quality-levels": "^4.1.0",
     "videojs-record": "^4.8.0",
+    "wavesurfer.js": "^7.11.1",
     "xlsx": "^0.18.5",
     "zod": "3.25.67"
   },

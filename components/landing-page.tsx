@@ -258,7 +258,10 @@ export function LandingPage({
             transition={{ delay: 0.2 }}
             className="text-4xl font-bold mt-6 mb-2"
           >
-            Bienvenue dans FUSION
+              <div className="flex items-center justify-center mb-2">
+                <img src="/icon.ico" alt="Fusion Icon" style={{ width: 36, height: 36, marginRight: 10 }} />
+                Bienvenue dans FUSION
+              </div>
           </motion.h1>
 
           <motion.p

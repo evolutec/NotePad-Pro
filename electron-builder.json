@@ -1,6 +1,6 @@
 {
-  "appId": "com.notepadpro.app",
-  "productName": "NotePad-Pro",
+  "appId": "fusion.app",
+  "productName": "Fusion",
   "directories": {
     "output": "dist",
     "buildResources": "build"
@@ -35,14 +35,15 @@
     }
   ],
   "win": {
-    "target": [
-      {
-        "target": "nsis",
-        "arch": ["x64"]
-      }
-    ],
-    "artifactName": "${productName}-Setup-${version}.${ext}"
-  },
+  "icon": "public/icon.ico",
+  "target": [
+    {
+      "target": "nsis",
+      "arch": ["x64"]
+    }
+  ],
+  "artifactName": "${productName}-Setup-${version}.${ext}"
+},
   "nsis": {
     "oneClick": false,
     "perMachine": true,
@@ -50,7 +51,7 @@
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
-    "shortcutName": "NotePad-Pro",
+    "shortcutName": "Fusion",
     "include": "build/installer.nsh",
     "warningsAsErrors": false
   },

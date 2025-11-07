@@ -28,10 +28,11 @@ import { RenameDialog } from "@/components/rename-dialog"
 import { ImageViewer } from "@/components/image-viewer"
 import { VideoViewer } from "@/components/video-viewer"
 import { LandingPage } from "@/components/landing-page"
+import { AudioViewer } from "@/components/audio-viewer"
 
 
 export default function NoteTakingApp() {
-  const [activeView, setActiveView] = useState<"canvas" | "editor" | "files" | "pdf_viewer" | "image_viewer" | "video_viewer" | "document_viewer" | "landing">("landing")
+  const [activeView, setActiveView] = useState<"canvas" | "editor" | "files" | "pdf_viewer" | "image_viewer" | "video_viewer" | "document_viewer" | "audio_viewer" | "landing">("landing")
   const [sidebarOpen, setSidebarOpen] = useState(false) // Start with collapsed sidebar for landing page
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true) // Track sidebar collapse state - collapsed by default
   const [sidebarWidth, setSidebarWidth] = useState(256)
@@ -269,22 +270,26 @@ export default function NoteTakingApp() {
         setActiveView('canvas');
         setCurrentDocumentTitle(fileNameWithoutExt);
         setCurrentDocumentPath(filePath);
-      } else if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext)) {
-        setActiveView('image_viewer');
+      } else if (["jpg", "jpeg", "png", "gif", "svg", "webp"].includes(ext)) {
+        setActiveView("image_viewer");
         setImageViewerPath(filePath);
         setImageViewerName(fileName);
         setImageViewerType(ext);
         setCurrentDocumentTitle(fileNameWithoutExt);
         setCurrentDocumentPath(filePath);
-      } else if (['mp4', 'webm', 'ogg', 'avi', 'mov', 'mkv', 'wmv', 'flv', '3gp'].includes(ext)) {
-        setActiveView('video_viewer');
+      } else if (["mp4", "webm", "ogg", "avi", "mov", "mkv", "wmv", "flv", "3gp"].includes(ext)) {
+        setActiveView("video_viewer");
         setVideoViewerPath(filePath);
         setVideoViewerName(fileName);
         setVideoViewerType(ext);
         setCurrentDocumentTitle(fileNameWithoutExt);
         setCurrentDocumentPath(filePath);
-      } else if (['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'rtf', 'odt', 'txt', 'md'].includes(ext)) {
-        setActiveView('document_viewer');
+      } else if (["mp3", "wav", "ogg", "flac", "aac", "m4a"].includes(ext)) {
+        setActiveView("audio_viewer");
+        setCurrentDocumentTitle(fileNameWithoutExt);
+        setCurrentDocumentPath(filePath);
+      } else if (["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "rtf", "odt", "txt", "md"].includes(ext)) {
+        setActiveView("document_viewer");
         setDocumentViewerPath(filePath);
         setDocumentViewerName(fileName);
         setDocumentViewerType(ext);
@@ -292,7 +297,7 @@ export default function NoteTakingApp() {
         setCurrentDocumentPath(filePath);
       } else {
         // Default to files view
-        setActiveView('files');
+        setActiveView("files");
       }
       
       console.log(`✅ File auto-opened: ${filePath} in ${activeView} view`);
@@ -456,6 +461,27 @@ export default function NoteTakingApp() {
       setCurrentDocumentTitle(fileNameWithoutExt);
       setCurrentDocumentPath(notePath);
     } else {
+      // Check for audio files
+      const audioExtensions = ['mp3', 'wav', 'wave', 'ogg', 'oga', 'opus', 'flac', 'aac', 'm4a', 'm4b', 'm4p', 'wma', 'webm', 'aiff', 'aif', 'ape', 'mka', 'wv', 'tta', 'tak', 'mp2', 'mp1', 'mpa', 'ac3', 'dts', 'amr', '3gp', 'ra', 'ram'];
+      if (audioExtensions.includes(fileExtension || '')) {
+        console.log('Audio file detected, loading audio viewer...');
+        
+        const fileName = notePath.split('\\').pop() || notePath.split('/').pop() || 'Audio';
+        const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+        
+        setSelectedNote(notePath);
+        setActiveView('audio_viewer');
+        setCurrentDocumentTitle(fileNameWithoutExt);
+        setCurrentDocumentPath(notePath);
+        
+        toast({
+          title: "Audio loaded successfully!",
+          variant: "default",
+        });
+        console.log('Audio viewer set successfully');
+        return;
+      }
+      
       // Check for document files that should use the document viewer
   const documentExtensions = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'rtf', 'odt', 'ods', 'odp', 'txt', 'csv', 'tsv', 'md'];
       if (documentExtensions.includes(fileExtension || '')) {
@@ -862,7 +888,8 @@ export default function NoteTakingApp() {
         <header className="h-14 border-b border-border bg-card flex items-center px-4">
           {/* Left: Application name */}
           <div className="flex items-center min-w-[120px]">
-            <h1 className="text-lg font-semibold text-card-foreground">FUSION</h1>
+          <img src="/icon.ico" alt="Fusion Icon" style={{ width: 28, height: 28, marginRight: 8 }} />
+          <h1 className="text-lg font-semibold text-card-foreground">FUSION</h1>
           </div>
 
           {/* Center: Document title */}
@@ -937,7 +964,6 @@ export default function NoteTakingApp() {
             />
           )}
           {activeView === "canvas" && <DrawingCanvas selectedNote={selectedNote || null} selectedFolder={selectedFolder} />}
-          {/* Suppression de NoteEditor : tout passe par DocumentViewer (OnlyOffice) */}
           {activeView === "image_viewer" && (
             <ImageViewer
               imagePath={imageViewerPath}
@@ -951,6 +977,9 @@ export default function NoteTakingApp() {
               videoName={videoViewerName}
               videoType={videoViewerType}
             />
+          )}
+          {activeView === "audio_viewer" && currentDocumentPath && (
+            <AudioViewer src={currentDocumentPath} />
           )}
           {activeView === "document_viewer" && documentViewerPath && (
             <OnlyOfficeEditor
