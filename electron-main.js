@@ -195,9 +195,20 @@ function createWindow() {
       experimentalFeatures: true,
     },
   });
+
+  // Setup permission handler for camera and microphone access
+  const { session } = require('electron');
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    const allowedPermissions = ['media', 'mediaKeySystem', 'geolocation', 'notifications', 'midi', 'midiSysex', 'pointerLock', 'fullscreen', 'openExternal'];
+    
+    if (allowedPermissions.includes(permission)) {
+      callback(true); // Allow
+    } else {
+      callback(false); // Deny
+    }
+  });
   
   // Intercepter les requêtes pour ajouter les en-têtes CORS
-  const { session } = require('electron');
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     const responseHeaders = { ...details.responseHeaders };
     
@@ -1653,9 +1664,7 @@ ipcMain.handle('audio:openWindow', async (_event, audioPath) => {
     audioWindow.loadURL(`${baseUrl}/audio-player?audioPath=${encodedPath}`);
 
     // Open DevTools in development
-    if (isDev) {
-      audioWindow.webContents.openDevTools();
-    }
+    // Ne pas ouvrir les DevTools automatiquement
 
     console.log('[Electron] Audio window created successfully');
     return { success: true };

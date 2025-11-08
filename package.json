@@ -17,6 +17,8 @@
     "dist": "electron-builder"
   },
   "dependencies": {
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
     "@hookform/resolvers": "^3.10.0",
     "@onlyoffice/document-editor-react": "^2.1.1",
     "@prezly/slate-renderer": "^0.3.0",
@@ -82,6 +84,7 @@
     "react-pdf": "^10.1.0",
     "react-resizable-panels": "^2.1.7",
     "recharts": "2.15.4",
+    "recordrtc": "^5.6.2",
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
@@ -102,6 +105,7 @@
     "@types/node": "^22",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/recordrtc": "^5.6.15",
     "concurrently": "^9.2.1",
     "electron": "^38.1.2",
     "electron-builder": "^25.1.8",

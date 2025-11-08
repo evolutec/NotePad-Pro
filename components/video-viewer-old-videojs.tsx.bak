@@ -1,0 +1,561 @@
+"use client"
+
+import * as React from "react"
+import { useState, useEffect, useRef } from "react"
+import { Button } from "@/components/ui/button"
+import { OnlyOfficeLikeToolbar } from "./ui/onlyoffice-like-toolbar"
+import { OnlyOfficeFileMenu } from "./ui/onlyoffice-file-menu"
+import { VideoHomeToolbar } from "./video-home-toolbar"
+import { VideoPlaybackToolbar } from "./video-playback-toolbar"
+import { VideoViewToolbar } from "./video-view-toolbar"
+import { Slider } from "@/components/ui/slider"
+import {
+  Play,
+  Pause,
+  Square,
+  Volume2,
+  VolumeX,
+  Maximize2,
+  Minimize2,
+  SkipBack,
+  SkipForward
+} from "lucide-react"
+
+// Using native HTML5 video element for better WebM compatibility in Electron
+
+export interface VideoViewerProps {
+  videoPath: string
+  videoName: string
+  videoType: string
+}
+
+export function VideoViewer({ videoPath, videoName, videoType }: VideoViewerProps) {
+  const [activeTab, setActiveTab] = useState("Accueil")
+  console.log('🎥 VideoViewer: === COMPONENT RENDERED ===')
+  console.log('🎥 VideoViewer: Props received:', { videoPath, videoName, videoType })
+
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [volume, setVolume] = useState(1)
+  const [isMuted, setIsMuted] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [playbackRate, setPlaybackRate] = useState(1)
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [showControls, setShowControls] = useState(true)
+  const [showStats, setShowStats] = useState(false)
+  const [viewTheme, setViewTheme] = useState("auto")
+
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const playerRef = useRef<any>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const isInitializing = useRef(false)
+  const isCleaningUp = useRef(false) // Add cleanup flag
+  // Génère une clé unique pour le <video> selon le chemin
+  const videoKey = React.useMemo(() => `${videoPath}-${videoType}`, [videoPath, videoType])
+
+  // Initialize Video.js player
+  useEffect(() => {
+    // Empêcher les initialisations multiples simultanées
+    if (isInitializing.current) {
+      console.log('🎥 VideoViewer: Already initializing, skipping...')
+      return
+    }
+
+    console.log('🎥 VideoViewer: useEffect triggered with:', {
+      videoPath: videoPath ? videoPath.substring(0, 50) + '...' : 'null/empty',
+      hasVideoRef: !!videoRef.current,
+      hasPlayer: !!playerRef.current,
+    })
+
+    // Nettoyer le player existant avant d'en créer un nouveau
+    if (playerRef.current) {
+      console.log('🎥 VideoViewer: Disposing existing player before creating new one')
+      isCleaningUp.current = true
+      try {
+        // Check if player has isDisposed method and is not already disposed
+        if (typeof playerRef.current.isDisposed === 'function' && !playerRef.current.isDisposed()) {
+          playerRef.current.dispose()
+        } else if (typeof playerRef.current.dispose === 'function') {
+          // Fallback: just try to dispose if method exists
+          try {
+            playerRef.current.dispose()
+          } catch (disposeError) {
+            // Silently ignore dispose errors during cleanup
+            console.warn('Dispose error (ignored):', disposeError)
+          }
+        }
+      } catch (e) {
+        console.warn('Erreur lors du dispose video.js (ignorée):', e)
+      }
+      playerRef.current = null
+      isCleaningUp.current = false
+    }
+
+    if (!videoPath || !videoRef.current) {
+      console.log('🎥 VideoViewer: Missing videoPath or videoRef, skipping initialization')
+      return
+    }
+
+    isInitializing.current = true
+
+    // Petit délai pour s'assurer que le DOM est stable
+    const initTimeout = setTimeout(() => {
+      if (!videoRef.current) {
+        console.log('🎥 VideoViewer: videoRef disappeared during timeout')
+        isInitializing.current = false
+        return
+      }
+
+      console.log('🎥 VideoViewer: Initializing Video.js player for:', videoPath)
+
+      try {
+        // Create video element with proper attributes
+        const videoElement = videoRef.current
+        console.log('🎥 VideoViewer: Video element found:', !!videoElement)
+
+        // Configure Video.js options
+        const options = {
+          autoplay: false,
+          controls: true,
+          responsive: true,
+          fluid: true,
+          playbackRates: [0.5, 1, 1.25, 1.5, 2],
+          html5: {
+            vhs: {
+              overrideNative: !videojs.browser.IS_SAFARI
+            }
+          }
+        }
+
+        console.log('🎥 VideoViewer: Video.js options configured')
+
+        // Initialize Video.js player
+        const player = videojs(videoElement, options, function onPlayerReady() {
+          console.log('🎥 VideoViewer: Video.js player is ready!')
+
+          // Set up event listeners
+          this.on('loadedmetadata', () => {
+            console.log('🎥 VideoViewer: Video metadata loaded, duration:', this.duration())
+            setDuration(this.duration() || 0)
+            setIsLoading(false)
+          })
+
+          this.on('timeupdate', () => {
+            setCurrentTime(this.currentTime() || 0)
+          })
+
+          this.on('play', () => {
+            console.log('🎥 VideoViewer: Video play event')
+            setIsPlaying(true)
+          })
+
+          this.on('pause', () => {
+            console.log('🎥 VideoViewer: Video pause event')
+            setIsPlaying(false)
+          })
+
+          this.on('ended', () => {
+            console.log('🎥 VideoViewer: Video ended event')
+            setIsPlaying(false)
+          })
+
+          this.on('volumechange', () => {
+            setVolume(this.volume() || 0)
+            setIsMuted(this.muted() || false)
+          })
+
+          this.on('error', (e: any) => {
+            console.error('🎥 VideoViewer: Video.js error:', e)
+            setError('Erreur lors du chargement de la vidéo')
+            setIsLoading(false)
+          })
+
+          this.on('fullscreenchange', () => {
+            setIsFullscreen(this.isFullscreen() || false)
+          })
+        })
+
+        console.log('🎥 VideoViewer: Video.js player created, storing reference')
+        playerRef.current = player
+
+        // Load video source
+        console.log('🎥 VideoViewer: Checking Electron API availability...')
+        if (window.electronAPI?.readFile) {
+          console.log('🎥 VideoViewer: Electron API available, calling loadVideoSource')
+          loadVideoSource(player)
+        } else {
+          console.error('🎥 VideoViewer: Electron API not available!')
+          setError('API Electron non disponible pour charger la vidéo')
+          setIsLoading(false)
+        }
+
+        isInitializing.current = false
+
+      } catch (err) {
+        console.error('🎥 VideoViewer: Error initializing Video.js:', err)
+        setError('Erreur lors de l\'initialisation du lecteur vidéo')
+        setIsLoading(false)
+        isInitializing.current = false
+      }
+    }, 100)
+
+    return () => {
+      clearTimeout(initTimeout)
+      isInitializing.current = false
+      
+      // S'assure que le player est bien détruit avant tout changement de DOM
+      if (playerRef.current && !isCleaningUp.current) {
+        isCleaningUp.current = true
+        
+        // Use setTimeout to ensure Video.js cleanup happens after React's commit phase
+        setTimeout(() => {
+          try {
+            console.log('🎥 VideoViewer: Cleaning up Video.js player')
+            
+            if (playerRef.current) {
+              // Check if player has isDisposed method and is not already disposed
+              if (typeof playerRef.current.isDisposed === 'function') {
+                if (!playerRef.current.isDisposed()) {
+                  playerRef.current.dispose()
+                }
+              } else if (typeof playerRef.current.dispose === 'function') {
+                // Fallback: just try to dispose if method exists
+                try {
+                  playerRef.current.dispose()
+                } catch (disposeError) {
+                  // Silently ignore dispose errors during cleanup
+                }
+              }
+              playerRef.current = null
+            }
+          } catch (e) {
+            console.warn('Erreur lors du dispose video.js dans cleanup (ignorée):', e)
+          } finally {
+            isCleaningUp.current = false
+          }
+        }, 0)
+      }
+    }
+  }, [videoPath])
+
+  // Clean up file path to remove double extensions
+  const cleanFilePath = (path: string): string => {
+    // Remove double .mp4 extensions
+    let cleaned = path.replace(/\.mp4\.mp4$/i, '.mp4')
+    cleaned = cleaned.replace(/\.webm\.webm$/i, '.webm')
+    cleaned = cleaned.replace(/\.avi\.avi$/i, '.avi')
+    cleaned = cleaned.replace(/\.mov\.mov$/i, '.mov')
+    cleaned = cleaned.replace(/\.mkv\.mkv$/i, '.mkv')
+    return cleaned
+  }
+
+  // Load video source from Electron API
+  const loadVideoSource = async (player: any) => {
+    try {
+      setError(null)
+      setIsLoading(true)
+      console.log('🎥 VideoViewer: === STARTING VIDEO LOAD ===')
+      console.log('🎥 VideoViewer: Video path:', videoPath)
+      console.log('🎥 VideoViewer: Video type:', videoType)
+      console.log('🎥 VideoViewer: Video name:', videoName)
+      console.log('🎥 VideoViewer: Electron API available:', !!window.electronAPI?.readFile)
+
+      if (window.electronAPI?.readFile) {
+        console.log('🎥 VideoViewer: Reading video file from disk via Electron API')
+        
+        // Read the file from disk using Electron API (use original path, don't clean it)
+        const result = await window.electronAPI.readFile(videoPath)
+        
+        console.log('🎥 VideoViewer: readFile result:', { success: result.success, error: result.error, dataType: typeof result.data })
+        
+        if (result.success && result.data) {
+          console.log('🎥 VideoViewer: File read successfully')
+          console.log('🎥 VideoViewer: Data type:', typeof result.data)
+          console.log('🎥 VideoViewer: Data constructor:', (result.data as any)?.constructor?.name)
+          console.log('🎥 VideoViewer: Is Buffer-like:', result.data && typeof result.data === 'object' && 'type' in result.data && (result.data as any).type === 'Buffer')
+          
+          // Convert the data to a Blob
+          let binaryData: ArrayBuffer
+          
+          // Check if it's a Node.js Buffer object serialized as JSON
+          if (result.data && typeof result.data === 'object' && 'type' in result.data && (result.data as any).type === 'Buffer' && 'data' in result.data) {
+            // It's a serialized Buffer from Node.js
+            console.log('🎥 VideoViewer: Converting Node.js Buffer to ArrayBuffer')
+            const bufferData = result.data as { type: 'Buffer', data: number[] }
+            const uint8Array = new Uint8Array(bufferData.data)
+            binaryData = uint8Array.buffer
+          } else if (typeof result.data === 'string') {
+            // If it's base64 string, convert to binary
+            console.log('🎥 VideoViewer: Converting base64 string to ArrayBuffer')
+            const binaryString = atob(result.data)
+            const bytes = new Uint8Array(binaryString.length)
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i)
+            }
+            binaryData = bytes.buffer
+          } else if (result.data && typeof result.data === 'object' && 'buffer' in result.data) {
+            // Handle Uint8Array-like objects
+            console.log('🎥 VideoViewer: Converting Uint8Array to ArrayBuffer')
+            const uint8Array = result.data as Uint8Array
+            binaryData = uint8Array.buffer.slice(uint8Array.byteOffset, uint8Array.byteOffset + uint8Array.byteLength) as ArrayBuffer
+          } else {
+            // Assume it's already an ArrayBuffer or compatible
+            console.log('🎥 VideoViewer: Using data as-is (assuming ArrayBuffer)')
+            binaryData = result.data as ArrayBuffer
+          }
+          
+          console.log('🎥 VideoViewer: Binary data size:', binaryData.byteLength, 'bytes')
+          
+          // Get MIME type
+          const mimeType = getVideoMimeType(videoType)
+          console.log('🎥 VideoViewer: MIME type:', mimeType)
+          
+          // Create blob from binary data
+          const blob = new Blob([binaryData], { type: mimeType })
+          console.log('🎥 VideoViewer: Blob created, size:', blob.size, 'type:', blob.type)
+          
+          // Create blob URL
+          const blobUrl = URL.createObjectURL(blob)
+          console.log('🎥 VideoViewer: Blob URL created:', blobUrl)
+          
+          // Set source - no need for codec specification, let Video.js handle it
+          player.src({
+            src: blobUrl,
+            type: mimeType
+          })
+          
+          console.log('🎥 VideoViewer: Video source set with blob URL')
+          setIsLoading(false)
+        } else {
+          console.error('🎥 VideoViewer: Failed to read file:', result.error)
+          setError(result.error || "Erreur lors de la lecture du fichier vidéo")
+          setIsLoading(false)
+        }
+      } else {
+        console.error('🎥 VideoViewer: Electron API not available - cannot load local videos')
+        setError("API Electron non disponible. Lancez l'application avec 'npm run electron'")
+        setIsLoading(false)
+      }
+    } catch (err) {
+      console.error('VideoViewer: Error loading video source:', err)
+      setError("Erreur lors du chargement de la vidéo")
+      setIsLoading(false)
+    }
+  }
+
+  const getVideoMimeType = (type: string): string => {
+    const mimeTypes: { [key: string]: string } = {
+      'mp4': 'video/mp4',
+      'webm': 'video/webm',
+      'ogg': 'video/ogg',
+      'avi': 'video/x-msvideo',
+      'mov': 'video/quicktime',
+      'mkv': 'video/x-matroska',
+      'wmv': 'video/x-ms-wmv',
+      'flv': 'video/x-flv',
+      '3gp': 'video/3gpp'
+    }
+    return mimeTypes[type.toLowerCase()] || 'video/mp4'
+  }
+
+  const handlePlayPause = () => {
+    if (playerRef.current) {
+      if (isPlaying) {
+        playerRef.current.pause()
+      } else {
+        playerRef.current.play()
+      }
+    }
+  }
+
+  const handleStop = () => {
+    if (playerRef.current) {
+      playerRef.current.pause()
+      playerRef.current.currentTime(0)
+      setIsPlaying(false)
+    }
+  }
+
+  const handleSeek = (value: number[]) => {
+    if (playerRef.current) {
+      playerRef.current.currentTime(value[0])
+    }
+  }
+
+  const handleVolumeChange = (value: number[]) => {
+    if (playerRef.current) {
+      const newVolume = value[0]
+      playerRef.current.volume(newVolume)
+      setVolume(newVolume)
+      if (newVolume > 0 && isMuted) {
+        playerRef.current.muted(false)
+      }
+    }
+  }
+
+  const handleMuteToggle = () => {
+    if (playerRef.current) {
+      const newMuted = !isMuted
+      playerRef.current.muted(newMuted)
+      setIsMuted(newMuted)
+    }
+  }
+
+  const handleFullscreenToggle = () => {
+    if (playerRef.current) {
+      if (isFullscreen) {
+        playerRef.current.exitFullscreen()
+      } else {
+        playerRef.current.requestFullscreen()
+      }
+    }
+  }
+
+  const handlePlaybackRateChange = (rate: number) => {
+    if (playerRef.current) {
+      playerRef.current.playbackRate(rate)
+      setPlaybackRate(rate)
+    }
+  }
+
+  const handleSkipBackward = () => {
+    if (playerRef.current) {
+      const newTime = Math.max(0, currentTime - 10)
+      playerRef.current.currentTime(newTime)
+    }
+  }
+
+  const handleSkipForward = () => {
+    if (playerRef.current) {
+      const newTime = Math.min(duration, currentTime + 10)
+      playerRef.current.currentTime(newTime)
+    }
+  }
+
+  const formatTime = (time: number): string => {
+    const minutes = Math.floor(time / 60)
+    const seconds = Math.floor(time % 60)
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  }
+
+  console.log('🎥 VideoViewer: Rendering video viewer')
+
+  return (
+    <div className="w-full h-full flex flex-col bg-black relative">
+      <OnlyOfficeLikeToolbar
+        tabs={[
+          { label: "Fichier" },
+          { label: "Accueil" },
+          { label: "Lecture" },
+          { label: "Affichage" },
+        ]}
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          setActiveTab(tab);
+        }}
+      />
+
+      {/* File Menu */}
+      {activeTab === "Fichier" && (
+        <OnlyOfficeFileMenu
+          onClose={() => setActiveTab("Accueil")}
+          type="video"
+          onExport={(format) => {
+            console.log('Exporting video as:', format)
+            // TODO: Implement video export
+          }}
+        />
+      )}
+
+      {/* Conditional Toolbars */}
+      {activeTab === "Accueil" && (
+        <VideoHomeToolbar
+          isPlaying={isPlaying}
+          isMuted={isMuted}
+          volume={volume}
+          onPlayPause={handlePlayPause}
+          onStop={handleStop}
+          onSkipBackward={handleSkipBackward}
+          onSkipForward={handleSkipForward}
+          onMuteToggle={handleMuteToggle}
+          onFullscreenToggle={handleFullscreenToggle}
+        />
+      )}
+
+      {activeTab === "Lecture" && (
+        <VideoPlaybackToolbar
+          playbackRate={playbackRate}
+          onPlaybackRateChange={handlePlaybackRateChange}
+        />
+      )}
+
+      {activeTab === "Affichage" && (
+        <VideoViewToolbar
+          isFullscreen={isFullscreen}
+          onFullscreenToggle={handleFullscreenToggle}
+          showControls={showControls}
+          onControlsToggle={() => setShowControls(!showControls)}
+          showStats={showStats}
+          onStatsToggle={() => setShowStats(!showStats)}
+          theme={viewTheme}
+          onThemeChange={setViewTheme}
+        />
+      )}
+
+      <div className="flex-1 bg-black">
+        <div className="flex items-center justify-center h-full w-full bg-black">
+          {error ? (
+            <div className="flex items-center justify-center h-full text-white">
+              <div className="text-center">
+                <div className="text-4xl mb-4">⚠️</div>
+                <p className="text-lg font-semibold">Erreur de chargement</p>
+                <p className="text-sm text-gray-300 mt-2">
+                  {error || "Impossible de charger la vidéo"}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div
+              ref={containerRef}
+              className="w-full h-full flex items-center justify-center"
+            >
+              {isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
+                  <div className="text-center text-white">
+                    <div className="text-4xl mb-4 animate-spin">⏳</div>
+                    <p className="text-lg">Chargement de la vidéo...</p>
+                  </div>
+                </div>
+              )}
+              <div 
+                data-vjs-player
+                style={{ width: '100%', height: '100%' }}
+              >
+                <video
+                  key={videoKey}
+                  ref={videoRef}
+                  className="video-js vjs-default-skin vjs-big-play-centered"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    maxWidth: '100%',
+                    maxHeight: '100%'
+                  }}
+                  onError={() => {
+                    console.error('Video element error')
+                    setError("Impossible de charger la vidéo")
+                    setIsLoading(false)
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default VideoViewer

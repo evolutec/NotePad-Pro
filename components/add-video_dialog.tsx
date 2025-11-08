@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Video as VideoIcon, Camera, Square, Upload, Image, Mic, FolderOpen, Folder, Home } from "lucide-react";
 import { GenericModal, ModalTab, ModalField, ModalButton } from "@/components/ui/generic-modal";
 import { FolderSelectionModal, type FolderNode } from "@/components/ui/folder-selection-modal";
+import RecordRTC, { RecordRTCPromisesHandler } from 'recordrtc';
 
 export interface VideoMeta {
   id: string;
@@ -25,12 +26,56 @@ export interface AddVideoDialogProps {
 }
 
 export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated, onRefreshTree }: AddVideoDialogProps) {
+  // Reset all fields when modal opens
+  useEffect(() => {
+    if (open) {
+      setActiveTab('upload');
+      setVideoName("");
+      setVideoType("mp4");
+      setTags([]);
+      setCurrentTag("");
+      setSelectedFile(null);
+      // Don't reset cameras/microphones IDs - let device enumeration handle them
+      // setCameras([]);
+      // setMicrophones([]);
+      // setSelectedCameraId(undefined);
+      // setSelectedMicrophoneId(undefined);
+      setStream(null);
+      setIsRecording(false);
+      setRecordingTime(0);
+      setRecorder(null);
+      setCreationError(null);
+      setCreationSuccess(null);
+      setCurrentVideoFile(null);
+      setParentId(undefined);
+      setExistingFolders([]);
+      setShowFolderModal(false);
+    }
+    
+    // Cleanup timer on unmount or close
+    return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+    };
+  }, [open]);
+  // ...hooks et logique...
+
+  // ...hooks et logique...
+
+  // (Définition des boutons déplacée tout en bas, juste avant le return)
   // State management
   const [activeTab, setActiveTab] = useState<'upload' | 'record'>('upload');
 
+  // Pour forcer le useEffect caméra lors du changement d'onglet
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId as 'upload' | 'record');
+  };
+
   // Upload tab state
   const [videoName, setVideoName] = useState("");
-  const [videoType, setVideoType] = useState<string>("mp4");
+  const [videoType, setVideoType] = useState<string>("mp4"); // Changed to mp4 as target format
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -43,8 +88,7 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
+  const [recorder, setRecorder] = useState<RecordRTCPromisesHandler | null>(null);
   const [creationError, setCreationError] = useState<string | null>(null);
   const [creationSuccess, setCreationSuccess] = useState<string | null>(null);
   const [currentVideoFile, setCurrentVideoFile] = useState<string | null>(null);
@@ -56,6 +100,7 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
   const videoPreviewRef = useRef<HTMLCanvasElement>(null);
   const hiddenVideoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Device enumeration
   useEffect(() => {
@@ -211,12 +256,18 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
     let video: HTMLVideoElement | null = null;
     let isMounted = true;
 
-    if (activeTab === 'record' && open) {
-      console.log('[DEBUG] Test accès caméra...');
+    const cleanupStream = () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        setStream(null);
+      }
+    };
+
+    // Only start camera when on record tab, modal open, and camera is selected
+    if (activeTab === 'record' && open && selectedCameraId) {
+      cleanupStream(); // Stoppe l'ancien stream avant d'en créer un nouveau
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        console.log('[DEBUG] navigator.mediaDevices ou getUserMedia non disponible');
         setCreationError("La caméra n'est pas disponible sur ce système.");
-        // ...canvas fallback...
         const canvas = videoPreviewRef.current;
         if (canvas) {
           const ctx = canvas.getContext('2d');
@@ -232,13 +283,11 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
         }
         return;
       }
-      console.log('[DEBUG] getUserMedia disponible, tentative d\'accès au flux vidéo...');
-      const videoConstraints: MediaStreamConstraints = selectedCameraId
-        ? { video: { deviceId: { exact: selectedCameraId } } }
-        : { video: true };
+      const videoConstraints: MediaStreamConstraints = {
+        video: { deviceId: { exact: selectedCameraId } }
+      };
       navigator.mediaDevices.getUserMedia(videoConstraints)
         .then(mediaStream => {
-          console.log('[DEBUG] Flux vidéo obtenu:', mediaStream);
           setStream(mediaStream);
           const canvas = videoPreviewRef.current;
           if (canvas) {
@@ -249,7 +298,6 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
             video.muted = true;
             video.playsInline = true;
             video.onloadedmetadata = () => {
-              console.log('[DEBUG] Métadonnées vidéo chargées, démarrage du rendu...');
               video?.play();
               const draw = () => {
                 if (!isMounted || activeTab !== 'record') return;
@@ -257,14 +305,12 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
                   if (ctx) {
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    // Rectangle de debug vert
                     ctx.save();
                     ctx.strokeStyle = '#00ff00';
                     ctx.lineWidth = 3;
                     ctx.strokeRect(10, 10, canvas.width-20, canvas.height-20);
                     ctx.restore();
                   }
-                  console.log('[DEBUG] Frame vidéo dessinée sur le canvas');
                 } else {
                   if (ctx) {
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -275,7 +321,6 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
                     ctx.textAlign = 'center';
                     ctx.fillText('Chargement du flux vidéo...', canvas.width / 2, canvas.height / 2);
                   }
-                  console.log('[DEBUG] Aucun flux vidéo à dessiner');
                 }
                 animationFrameId = requestAnimationFrame(draw);
               };
@@ -284,9 +329,7 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
           }
         })
         .catch((err) => {
-          console.log('[DEBUG] Erreur accès caméra:', err);
           setCreationError("Impossible d'accéder à la caméra.");
-          // Affiche un message dans le canvas
           const canvas = videoPreviewRef.current;
           if (canvas) {
             const ctx = canvas.getContext('2d');
@@ -302,14 +345,10 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
           }
         });
     }
-    // Nettoyage du stream et arrêt du rendu à la fermeture
     return () => {
       isMounted = false;
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        setStream(null);
-      }
+      cleanupStream();
       video = null;
     };
   }, [activeTab, open, selectedCameraId]);
@@ -348,9 +387,12 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
         finalParentPath = parentFolder?.path || parentId;
       }
 
-      // Create file name with timestamp
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const fileName = `${videoName.trim()}_${timestamp}.${videoType}`;
+      // Crée le nom de fichier sans double extension
+      let baseName = videoName.trim();
+      if (baseName.toLowerCase().endsWith(`.${videoType}`)) {
+        baseName = baseName.slice(0, -(videoType.length + 1));
+      }
+      const fileName = `${baseName}.${videoType}`;
 
       // Create video file using Electron API
       if (window.electronAPI?.videoCreate) {
@@ -413,18 +455,23 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
           return;
         }
 
-        // Create file name for photo
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const photoName = `${videoName.trim()}_${timestamp}.png`;
+        // Convert blob to buffer
+        const arrayBuffer = await blob.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        // Use only the title provided, no timestamp
+        // Remove any existing extension to avoid duplication
+        let cleanPhotoName = videoName.trim();
+        cleanPhotoName = cleanPhotoName.replace(/\.(png|jpg|jpeg|gif|webp)$/i, '');
 
         // Create photo file using Electron API
         if (window.electronAPI?.imageCreate) {
           const result = await window.electronAPI.imageCreate({
-            name: photoName,
-            type: 'png',
+            name: cleanPhotoName,  // Just the name, no extension
+            type: 'png',           // Extension will be added by Electron
             parentPath: finalParentPath,
             tags: tags,
-            content: blob,
+            content: buffer,
             isBinary: true,
           });
 
@@ -448,7 +495,7 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
     }
   };
 
-  // Start/Stop recording functionality
+  // Start/Stop recording functionality with RecordRTC
   const toggleRecording = async () => {
     if (!stream || !videoName.trim()) {
       setCreationError("Veuillez entrer un nom pour la vidéo et vous assurer que la caméra est active.");
@@ -457,146 +504,114 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
 
     if (isRecording) {
       // Stop recording
-      if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-        setIsRecording(false);
-
-        // Get final parent path from parentId
-        let finalParentPath = parentPath;
-        if (parentId) {
-          const parentFolder = existingFolders.find(f => f.id === parentId || f.path === parentId);
-          finalParentPath = parentFolder?.path || parentId;
-        }
-
-        // Save the recorded video
-        mediaRecorder.ondataavailable = async (event) => {
-          if (event.data && event.data.size > 0) {
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const videoFileName = `${videoName.trim()}_${timestamp}.webm`;
-
-            if (window.electronAPI?.videoCreate) {
-              const result = await window.electronAPI.videoCreate({
-                name: videoFileName,
-                type: 'webm',
-                parentPath: finalParentPath,
-                tags: tags,
-                content: event.data,
-                isBinary: true,
-              });
-
-              if (result.success) {
-                setCreationSuccess("Vidéo enregistrée avec succès !");
-                setCurrentVideoFile(result.path || null);
-                // Trigger tree refresh
-                if (onRefreshTree) {
-                  onRefreshTree();
-                }
-                setTimeout(() => {
-                  setCreationSuccess(null);
-                }, 2000);
-              } else {
-                setCreationError(result.error || "Erreur lors de la sauvegarde de la vidéo.");
-              }
-            }
+      if (recorder) {
+        try {
+          console.log('🛑 Arrêt de l\'enregistrement...');
+          
+          // Clear timer first
+          if (recordingTimerRef.current) {
+            clearInterval(recordingTimerRef.current);
+            recordingTimerRef.current = null;
           }
-        };
-      }
-    } else {
-      // Start recording
-      try {
-        // Get final parent path from parentId
-        let finalParentPath = parentPath;
-        if (parentId) {
-          const parentFolder = existingFolders.find(f => f.id === parentId || f.path === parentId);
-          finalParentPath = parentFolder?.path || parentId;
-        }
+          
+          setIsRecording(false);
 
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const videoFileName = `${videoName.trim()}_${timestamp}.webm`;
+          // Stop the recorder
+          await recorder.stopRecording();
 
-        // Create initial video file
-        if (window.electronAPI?.videoCreate) {
-          const result = await window.electronAPI.videoCreate({
-            name: videoFileName,
-            type: 'webm',
-            parentPath: finalParentPath,
-            tags: tags,
-            content: '',
-            isBinary: true,
-          });
+          // Get the blob
+          const blob = await recorder.getBlob();
+          console.log('✅ Blob obtenu:', blob.size, 'bytes, type:', blob.type);
 
-              if (result.success) {
-                setCurrentVideoFile(result.path || null);
-              }
-        }
-
-        // Start MediaRecorder
-        const recorder = new MediaRecorder(stream, {
-          mimeType: 'video/webm;codecs=vp9,opus'
-        });
-
-        recorder.ondataavailable = (event) => {
-          if (event.data && event.data.size > 0) {
-            setRecordedChunks(prev => [...prev, event.data]);
+          if (!blob || blob.size === 0) {
+            throw new Error('Fichier enregistré vide');
           }
-        };
 
-        recorder.onstop = async () => {
-          // Get final parent path from parentId
+          // Get final parent path
           let finalParentPath = parentPath;
           if (parentId) {
             const parentFolder = existingFolders.find(f => f.id === parentId || f.path === parentId);
             finalParentPath = parentFolder?.path || parentId;
           }
 
-          // Combine all chunks and save
-          if (recordedChunks.length > 0) {
-            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+          // Convert to Buffer
+          const arrayBuffer = await blob.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
 
-            if (window.electronAPI?.videoCreate && currentVideoFile) {
-              const result = await window.electronAPI.videoCreate({
-                name: videoFileName,
-                type: 'webm',
-                parentPath: finalParentPath,
-                tags: tags,
-                content: blob,
-                isBinary: true,
-              });
+          // Clean video name
+          let cleanVideoName = videoName.trim() || 'video';
+          cleanVideoName = cleanVideoName.replace(/\.(mp4|webm|avi|mov|mkv)$/i, '');
 
-              if (result.success) {
-                console.log('✅ Video created successfully:', result.path);
+          // Determine type from blob
+          const fileType = blob.type.includes('mp4') ? 'mp4' : 'webm';
 
-                setCreationSuccess("Vidéo enregistrée avec succès !");
-                setTimeout(() => {
-                  setCreationSuccess(null);
-                }, 2000);
-              } else {
-                setCreationError(result.error || "Erreur lors de la sauvegarde de la vidéo.");
+          // Save file
+          if (window.electronAPI?.videoCreate) {
+            console.log('💾 Sauvegarde:', cleanVideoName + '.' + fileType);
+            const result = await window.electronAPI.videoCreate({
+              name: cleanVideoName,
+              type: fileType,
+              parentPath: finalParentPath,
+              tags: tags,
+              content: buffer,
+              isBinary: true,
+            });
+
+            if (result.success) {
+              console.log('✅ Vidéo sauvegardée:', result.path);
+              setCreationSuccess(`Vidéo enregistrée avec succès en ${fileType.toUpperCase()} !`);
+              setCurrentVideoFile(result.path || null);
+
+              // Refresh tree
+              if (onRefreshTree) {
+                onRefreshTree();
               }
+
+              setTimeout(() => {
+                setCreationSuccess(null);
+              }, 3000);
+            } else {
+              throw new Error(result.error || "Erreur lors de la sauvegarde");
             }
           }
-        };
 
-        setMediaRecorder(recorder);
-        setRecordedChunks([]);
-        recorder.start(1000); // Collect data every second
+          // Cleanup
+          recorder.destroy();
+          setRecorder(null);
+          setRecordingTime(0);
+
+        } catch (error: any) {
+          console.error('❌ Erreur d\'arrêt:', error);
+          setCreationError(`Erreur: ${error.message}`);
+        }
+      }
+    } else {
+      // Start recording
+      try {
+        console.log('🎥 Démarrage enregistrement avec RecordRTC...');
+
+        // Create RecordRTC instance
+        const recorderInstance = new RecordRTCPromisesHandler(stream, {
+          type: 'video',
+          mimeType: 'video/webm;codecs=vp8', // WebM with VP8 (most compatible)
+          videoBitsPerSecond: 2500000, // 2.5 Mbps
+        });
+
+        await recorderInstance.startRecording();
+        console.log('🔴 Enregistrement démarré');
+
+        setRecorder(recorderInstance);
         setIsRecording(true);
+        setRecordingTime(0);
 
-        // Start recording timer
-        const timer = setInterval(() => {
-          setRecordingTime(prev => {
-            if (recorder && recorder.state === 'recording') {
-              return prev + 1;
-            } else {
-              clearInterval(timer);
-              return prev;
-            }
-          });
+        // Timer - save to ref so we can clear it
+        recordingTimerRef.current = setInterval(() => {
+          setRecordingTime(prev => prev + 1);
         }, 1000);
 
-      } catch (error) {
-        console.error('Error starting recording:', error);
-        setCreationError("Erreur lors du démarrage de l'enregistrement.");
+      } catch (error: any) {
+        console.error('❌ Erreur de démarrage:', error);
+        setCreationError(`Erreur de démarrage: ${error.message}`);
       }
     }
   };
@@ -790,50 +805,7 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-3 p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 rounded-xl border">
-            <Button
-              variant="outline"
-              className="flex-1 h-12 text-base font-semibold transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={!stream}
-              onClick={takePhoto}
-            >
-              <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/30 mr-3">
-                <Image className="h-5 w-5" />
-              </div>
-              <div className="text-left">
-                <div className="font-semibold">Prendre une photo</div>
-                <div className="text-xs opacity-75">Capture instantanée</div>
-              </div>
-            </Button>
-            <Button
-              disabled={!stream || isRecording}
-              className="flex-1 h-12 text-base font-semibold transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
-              onClick={toggleRecording}
-            >
-              {isRecording ? (
-                <>
-                  <div className="p-2 rounded-full bg-red-100 mr-3">
-                    <Square className="h-5 w-5" />
-                  </div>
-                  <div className="text-left">
-                    <div className="font-semibold">Arrêter</div>
-                    <div className="text-xs opacity-90">{Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}</div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="p-2 rounded-full bg-gray-100 mr-3">
-                    <Camera className="h-5 w-5" />
-                  </div>
-                  <div className="text-left">
-                    <div className="font-semibold">Enregistrer</div>
-                    <div className="text-xs opacity-90">Démarrer la vidéo</div>
-                  </div>
-                </>
-              )}
-            </Button>
-          </div>
+
 
           <div className="space-y-2">
             <Label>Étiquettes</Label>
@@ -862,15 +834,37 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
     }
   ];
 
-  // Define buttons for the GenericModal
-  const buttons: ModalButton[] = [
-    {
-      label: 'Importer la vidéo',
-      variant: 'default',
-      onClick: importVideo,
-      disabled: !videoName.trim() || !selectedFile
-    }
-  ];
+
+
+  // Définir dynamiquement les boutons du footer selon l'onglet actif (juste avant le return)
+  let buttons: ModalButton[] = [];
+  if (activeTab === 'upload') {
+    buttons = [
+      {
+        label: 'Importer la vidéo',
+        variant: 'default',
+        onClick: importVideo,
+        disabled: !videoName.trim() || !selectedFile
+      }
+    ];
+  } else if (activeTab === 'record') {
+    buttons = [
+      {
+        label: 'Prendre une photo',
+        variant: 'outline',
+        onClick: takePhoto,
+        disabled: !stream,
+        icon: <Image className="h-5 w-5" />
+      },
+      {
+        label: isRecording ? `Arrêter (${Math.floor(recordingTime / 60)}:${(recordingTime % 60).toString().padStart(2, '0')})` : 'Enregistrer',
+        variant: 'default',
+        onClick: toggleRecording,
+        disabled: !stream,
+        icon: isRecording ? <Square className="h-5 w-5" /> : <Camera className="h-5 w-5" />
+      }
+    ];
+  }
 
   return (
     <>
@@ -884,6 +878,7 @@ export function AddVideoDialog({ open, onOpenChange, parentPath, onVideoCreated,
         fileType="video"
         size="xl"
         tabs={tabs}
+        onTabChange={handleTabChange}
         buttons={buttons}
         showCancelButton={true}
         cancelLabel="Annuler"
