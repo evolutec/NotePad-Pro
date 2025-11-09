@@ -9,34 +9,86 @@ let mainWindow;
 let fileServer;
 let nextServer; // Serveur pour les fichiers Next.js
 
+// Helper function to get the config file path
+// In development: config.json in project root
+// In production: config.json in userData folder (writable location)
+function getConfigPath() {
+  return app.isPackaged 
+    ? path.join(app.getPath('userData'), 'config.json')
+    : path.join(__dirname, 'config.json');
+}
+
 // Create a simple HTTP server to serve Next.js static files in production
 function createNextServer() {
   const isDev = !app.isPackaged;
 
   if (isDev) {
     console.log('[Next Server] Dev mode - using Next.js dev server on port 3000');
+    // En mode dev, attendre que Next.js soit prêt
+    return new Promise((resolve) => {
+      const checkServer = () => {
+        http.get('http://localhost:3000', (res) => {
+          if (res.statusCode === 200 || res.statusCode === 404) {
+            console.log('[Next Server] Dev server is ready');
+            resolve();
+          } else {
+            setTimeout(checkServer, 500);
+          }
+        }).on('error', () => {
+          setTimeout(checkServer, 500);
+        });
+      };
+      // Attendre 2 secondes avant de commencer à vérifier
+      setTimeout(checkServer, 2000);
+    });
+  }
+
+  // En production, servir les fichiers statiques exportés
+  console.log('[Next Server] Production mode - serving static files from out/');
+  
+  const outDir = path.join(__dirname, 'out');
+  
+  if (!fs.existsSync(outDir)) {
+    console.error('[Next Server] Out directory not found at:', outDir);
     return Promise.resolve();
   }
 
-  // En production, créer un serveur HTTP pour servir les fichiers statiques
-  return new Promise((resolve, reject) => {
-    try {
-      nextServer = http.createServer((req, res) => {
-    // When packaged, files in asarUnpack are in app.asar.unpacked folder
-    const outDir = app.isPackaged 
-      ? path.join(process.resourcesPath, 'app.asar.unpacked', 'out')
-      : path.join(__dirname, 'out');
+  const server = http.createServer((req, res) => {
+    let filePath = url.parse(req.url).pathname;
     
-    let filePath = path.join(outDir, req.url === '/' ? 'index.html' : req.url);
-    
-    // Gérer les fichiers dans _next
-    if (req.url.startsWith('/_next/')) {
-      filePath = path.join(outDir, req.url);
+    // Default to index.html
+    if (filePath === '/') {
+      filePath = '/index.html';
     }
     
-    console.log('[Next Server] Request:', req.url, '-> File:', filePath);
+    // Remove leading slash
+    const fullPath = path.join(outDir, filePath);
     
-    // Déterminer le type de contenu
+    // Check if file exists
+    if (!fs.existsSync(fullPath)) {
+      // Try with .html extension
+      const htmlPath = path.join(outDir, filePath + '.html');
+      if (fs.existsSync(htmlPath)) {
+        serveFile(htmlPath, res);
+        return;
+      }
+      
+      // Serve 404
+      const notFoundPath = path.join(outDir, '404.html');
+      if (fs.existsSync(notFoundPath)) {
+        res.writeHead(404, { 'Content-Type': 'text/html' });
+        fs.createReadStream(notFoundPath).pipe(res);
+      } else {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('404 Not Found');
+      }
+      return;
+    }
+    
+    serveFile(fullPath, res);
+  });
+
+  function serveFile(filePath, res) {
     const ext = path.extname(filePath).toLowerCase();
     const contentTypes = {
       '.html': 'text/html',
@@ -45,45 +97,33 @@ function createNextServer() {
       '.json': 'application/json',
       '.png': 'image/png',
       '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
       '.gif': 'image/gif',
       '.svg': 'image/svg+xml',
       '.ico': 'image/x-icon',
       '.woff': 'font/woff',
       '.woff2': 'font/woff2',
       '.ttf': 'font/ttf',
+      '.eot': 'application/vnd.ms-fontobject',
+      '.otf': 'font/otf',
+      '.webp': 'image/webp',
     };
     
     const contentType = contentTypes[ext] || 'application/octet-stream';
+    const stat = fs.statSync(filePath);
     
-        fs.readFile(filePath, (err, data) => {
-          if (err) {
-            console.error('[Next Server] File not found:', filePath);
-            res.writeHead(404, { 'Content-Type': 'text/plain' });
-            res.end('Not found');
-            return;
-          }
+    res.writeHead(200, {
+      'Content-Type': contentType,
+      'Content-Length': stat.size,
+    });
+    
+    fs.createReadStream(filePath).pipe(res);
+  }
 
-          res.writeHead(200, {
-            'Content-Type': contentType,
-            'Cache-Control': 'no-cache'
-          });
-          res.end(data);
-        });
-      });
-
-      nextServer.once('error', (err) => {
-        console.error('[Next Server] Error starting server:', err);
-        reject(err);
-      });
-
-      nextServer.listen(3000, '127.0.0.1', () => {
-        console.log('[Next Server] Production server listening on http://127.0.0.1:3000');
-        resolve();
-      });
-    } catch (err) {
-      reject(err);
-    }
+  return new Promise((resolve) => {
+    server.listen(3000, () => {
+      console.log('[Next Server] Static server listening on http://localhost:3000');
+      resolve();
+    });
   });
 }
 
@@ -91,6 +131,103 @@ function createNextServer() {
 function createFileServer() {
   fileServer = http.createServer((req, res) => {
     const parsedUrl = url.parse(req.url, true);
+    const pathname = parsedUrl.pathname;
+    
+    // Test endpoint to verify callback accessibility
+    if (pathname === '/callback-test' && req.method === 'GET') {
+      console.log('[File Server] Callback test endpoint accessed');
+      res.writeHead(200, { 
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      });
+      res.end(JSON.stringify({ 
+        success: true, 
+        message: 'Callback endpoint is accessible',
+        timestamp: new Date().toISOString()
+      }));
+      return;
+    }
+    
+    // Handle OnlyOffice callback for saving documents
+    if (pathname === '/callback' && req.method === 'POST') {
+      console.log('[File Server] ==========================================');
+      console.log('[File Server] OnlyOffice callback received from:', req.headers['x-forwarded-for'] || req.socket.remoteAddress);
+      console.log('[File Server] Headers:', req.headers);
+      console.log('[File Server] ==========================================');
+      
+      let body = '';
+      req.on('data', chunk => {
+        body += chunk.toString();
+      });
+      
+      req.on('end', async () => {
+        try {
+          const callbackData = JSON.parse(body);
+          console.log('[File Server] Callback data:', JSON.stringify(callbackData, null, 2));
+          
+          const filePath = parsedUrl.query.file;
+          console.log('[File Server] Target file:', filePath);
+          
+          // Status codes:
+          // 1 - document is being edited
+          // 2 - document is ready for saving
+          // 3 - document saving error has occurred
+          // 4 - document is closed with no changes
+          // 6 - document is being edited, but the current document state is saved
+          // 7 - error has occurred while force saving the document
+          
+          if (callbackData.status === 2 || callbackData.status === 6) {
+            // Document is ready for saving
+            const downloadUrl = callbackData.url;
+            console.log('[File Server] Downloading updated document from:', downloadUrl);
+            
+            // Choisir le bon protocole en fonction de l'URL
+            const protocol = downloadUrl.startsWith('https://') ? require('https') : require('http');
+            
+            protocol.get(downloadUrl, (downloadRes) => {
+              if (downloadRes.statusCode === 200) {
+                const fileStream = fs.createWriteStream(filePath);
+                downloadRes.pipe(fileStream);
+                
+                fileStream.on('finish', () => {
+                  fileStream.close();
+                  console.log('[File Server] ✅ Document saved successfully:', filePath);
+                  
+                  // Send success response to OnlyOffice
+                  res.writeHead(200, { 'Content-Type': 'application/json' });
+                  res.end(JSON.stringify({ error: 0 }));
+                });
+                
+                fileStream.on('error', (err) => {
+                  console.error('[File Server] ❌ Error writing file:', err);
+                  res.writeHead(500, { 'Content-Type': 'application/json' });
+                  res.end(JSON.stringify({ error: 1 }));
+                });
+              } else {
+                console.error('[File Server] Error downloading document, status:', downloadRes.statusCode);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 1 }));
+              }
+            }).on('error', (err) => {
+              console.error('[File Server] ❌ Error downloading document:', err);
+              res.writeHead(500, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 1 }));
+            });
+          } else {
+            // For other statuses, just acknowledge
+            console.log('[File Server] Callback status:', callbackData.status);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 0 }));
+          }
+        } catch (err) {
+          console.error('[File Server] Error processing callback:', err);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 1 }));
+        }
+      });
+      
+      return;
+    }
     
     // Get file path from query parameter
     const filePath = parsedUrl.query.file;
@@ -129,7 +266,7 @@ function createFileServer() {
     
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     
     if (req.method === 'OPTIONS') {
@@ -144,7 +281,7 @@ function createFileServer() {
         'Content-Type': contentType,
         'Content-Length': stat.size,
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
         'Cache-Control': 'no-cache',
       });
@@ -256,10 +393,22 @@ ipcMain.handle('dialog:openFolder', async () => {
 // Handler pour sauvegarder la configuration
 ipcMain.handle('config:save', async (_event, settings) => {
   try {
-    const configPath = path.join(__dirname, 'config.json');
+    const configPath = getConfigPath();
+    console.log('[config:save] Saving config to:', configPath);
+    
+    // Créer le dossier rootPath s'il n'existe pas
+    if (settings.files && settings.files.rootPath) {
+      if (!fs.existsSync(settings.files.rootPath)) {
+        fs.mkdirSync(settings.files.rootPath, { recursive: true });
+        console.log('[config:save] Created rootPath directory:', settings.files.rootPath);
+      }
+    }
+    
     fs.writeFileSync(configPath, JSON.stringify(settings, null, 2), 'utf-8');
+    console.log('[config:save] Configuration saved successfully');
     return true;
   } catch (err) {
+    console.error('[config:save] Error:', err);
     return false;
   }
 });
@@ -267,14 +416,20 @@ ipcMain.handle('config:save', async (_event, settings) => {
 // Handler pour charger la configuration
 ipcMain.handle('config:load', async () => {
   try {
-    const configPath = path.join(__dirname, 'config.json');
+    const configPath = getConfigPath();
+    console.log('[config:load] Loading config from:', configPath);
+    
     if (fs.existsSync(configPath)) {
       const data = fs.readFileSync(configPath, 'utf-8');
       return JSON.parse(data);
     } else {
+      // Retourner null pour indiquer qu'il n'y a pas de configuration
+      // L'application affichera le modal de premier lancement
+      console.log('[config:load] No config file found, returning null for first-run setup');
       return null;
     }
   } catch (err) {
+    console.error('[config:load] Error:', err);
     return null;
   }
 });
@@ -296,7 +451,7 @@ ipcMain.handle('folder:delete', async (_event, folderPath) => {
 // Handler pour créer un dossier dans le chemin rootPath
 ipcMain.handle('folder:create', async (_event, folderName) => {
   try {
-    const configPath = path.join(__dirname, 'config.json');
+    const configPath = getConfigPath();
     if (!fs.existsSync(configPath)) {
       console.log('[folder:create] Config not found:', configPath);
       return { success: false, error: 'Config not found' };
@@ -552,7 +707,7 @@ ipcMain.handle('folders:load', async () => {
 // Handler pour scanner le filesystem et reconstruire l'arborescence réelle
 ipcMain.handle('foldersScan', async () => {
   try {
-    const configPath = path.join(__dirname, 'config.json');
+    const configPath = getConfigPath();
     if (!fs.existsSync(configPath)) return [];
     const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     const rootPath = config.files?.rootPath || config.rootPath;
@@ -630,7 +785,7 @@ console.log('Registering note:create handler');
 ipcMain.handle('note:create', async (_event, noteData) => {
   console.log('note:create handler called with:', noteData);
   try {
-    const configPath = path.join(__dirname, 'config.json');
+    const configPath = getConfigPath();
     if (!fs.existsSync(configPath)) {
       console.log('note:create handler error: Config not found');
       return { success: false, error: 'Config not found' };
@@ -698,7 +853,7 @@ console.log('Registering draw:create handler');
 ipcMain.handle('draw:create', async (_event, drawData) => {
   console.log('draw:create handler called with:', drawData);
   try {
-    const configPath = path.join(__dirname, 'config.json');
+    const configPath = getConfigPath();
     if (!fs.existsSync(configPath)) {
       console.log('draw:create handler error: Config not found');
       return { success: false, error: 'Config not found' };
@@ -733,7 +888,7 @@ console.log('Registering document:create handler');
 ipcMain.handle('document:create', async (_event, documentData) => {
   console.log('document:create handler called with:', documentData);
   try {
-    const configPath = path.join(__dirname, 'config.json');
+    const configPath = getConfigPath();
     if (!fs.existsSync(configPath)) {
       console.log('document:create handler error: Config not found');
       return { success: false, error: 'Config not found' };
@@ -798,7 +953,7 @@ console.log('Registering audio:create handler');
 ipcMain.handle('audio:create', async (_event, audioData) => {
   console.log('audio:create handler called with:', { ...audioData, content: audioData.content ? `[Binary data: ${audioData.content.byteLength || audioData.content.size || 0} bytes]` : 'none' });
   try {
-    const configPath = path.join(__dirname, 'config.json');
+    const configPath = getConfigPath();
     if (!fs.existsSync(configPath)) {
       console.log('audio:create handler error: Config not found');
       return { success: false, error: 'Config not found' };
@@ -870,7 +1025,7 @@ console.log('Registering code:create handler');
 ipcMain.handle('code:create', async (_event, codeData) => {
   console.log('code:create handler called with:', codeData);
   try {
-    const configPath = path.join(__dirname, 'config.json');
+    const configPath = getConfigPath();
     if (!fs.existsSync(configPath)) {
       console.log('code:create handler error: Config not found');
       return { success: false, error: 'Config not found' };
@@ -905,7 +1060,7 @@ console.log('Registering image:create handler');
 ipcMain.handle('image:create', async (_event, imageData) => {
   console.log('image:create handler called with:', imageData);
   try {
-    const configPath = path.join(__dirname, 'config.json');
+    const configPath = getConfigPath();
     if (!fs.existsSync(configPath)) {
       console.log('image:create handler error: Config not found');
       return { success: false, error: 'Config not found' };
@@ -974,7 +1129,7 @@ console.log('Registering video:create handler');
 ipcMain.handle('video:create', async (_event, videoData) => {
   console.log('video:create handler called with:', videoData);
   try {
-    const configPath = path.join(__dirname, 'config.json');
+    const configPath = getConfigPath();
     if (!fs.existsSync(configPath)) {
       console.log('video:create handler error: Config not found');
       return { success: false, error: 'Config not found' };
@@ -1040,6 +1195,26 @@ ipcMain.handle('video:create', async (_event, videoData) => {
 
 // Handler for camera access and video recording in Electron desktop app
 console.log('Registering camera access handlers for Electron desktop app');
+
+// Handler pour sauvegarder un document OnlyOffice
+ipcMain.handle('save-document', async (_event, { filePath, content, title }) => {
+  console.log('[OnlyOffice IPC] 💾 Saving document:', filePath);
+  
+  try {
+    // Décoder le contenu base64
+    const buffer = Buffer.from(content, 'base64');
+    
+    // Écrire le fichier
+    fs.writeFileSync(filePath, buffer);
+    
+    console.log('[OnlyOffice IPC] ✅ Document saved successfully:', filePath, 'Size:', buffer.length);
+    
+    return { success: true };
+  } catch (error) {
+    console.error('[OnlyOffice IPC] ❌ Error saving document:', error);
+    return { success: false, error: error.message };
+  }
+});
 
 // Get available camera devices using Electron APIs
 ipcMain.handle('camera:getDevices', async () => {

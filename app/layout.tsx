@@ -8,23 +8,34 @@ import { ThemeProvider } from "@/components/theme-provider"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "NotePad Pro - Application de prise de notes",
+  title: "Fusion- Application de prise de notes",
   description: "Application de prise de notes manuscrites avec OCR pour Windows 11",
   manifest: "/manifest.json",
-  themeColor: "#0891b2",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "NotePad Pro",
+    title: "Fusion",
   },
   other: {
     "mobile-web-app-capable": "yes",
-    "application-name": "NotePad Pro",
+    "application-name": "Fusion",
     "msapplication-TileColor": "#0891b2",
     "msapplication-config": "/browserconfig.xml",
   },
     generator: 'v0.app'
+}
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#0891b2',
+}
+
+// Prevent SSR/SSG issues with navigator object
+if (typeof window !== 'undefined') {
+  // Client-side code only
 }
 
 export default function RootLayout({
@@ -50,7 +61,7 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              if ('serviceWorker' in navigator) {
+              if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
                   navigator.serviceWorker.register('/sw.js')
                     .then(function(registration) {

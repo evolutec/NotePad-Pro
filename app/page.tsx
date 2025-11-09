@@ -3,14 +3,15 @@
 import { OnlyOfficeEditor } from "@/components/onlyoffice-editor"
 
 import React, { useState, useEffect, useCallback } from "react"
+import dynamic from "next/dynamic"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { ModernSidebar } from "@/components/ui/sidebar-modern"
 import DrawingCanvas from "@/components/drawing-canvas"
 // import { NoteEditor } from "@/components/note-editor"
 import { FileManager } from "@/components/file-manager"
 import { SettingsDialog } from "@/components/settings-dialog"
+import { FirstRunSetup } from "@/components/first-run-setup"
 import { toast } from "@/components/ui/use-toast"
-import dynamic from 'next/dynamic';
 import { Button } from "@/components/ui/button"
 import { Settings, X, ExternalLink } from "lucide-react"
 import type { EnhancedFolderNode } from "@/components/ui/FolderTree-modern"
@@ -18,9 +19,7 @@ import { AddFolderDialog } from "@/components/add-folder_dialog"
 import { AddNoteDialog } from "@/components/add-note_dialog"
 import { AddDrawDialog } from "@/components/add-draw_dialog"
 import { AddPdfDocumentDialog } from "@/components/add-pdf-document_dialog"
-import { AddAudioDialog } from "@/components/add-audio_dialog"
 import { AddImageDialog } from "@/components/add-image_dialog"
-import { AddVideoDialog } from "@/components/add-video_dialog"
 import { AddCodeDialog } from "@/components/add-code_dialog"
 import { AddDocumentDialog } from "@/components/add-document_dialog"
 // import { DocumentViewer } from "@/components/document-viewer" // supprimé
@@ -30,8 +29,12 @@ import { VideoViewer } from "@/components/video-viewer"
 import { LandingPage } from "@/components/landing-page"
 import { AudioViewer } from "@/components/audio-viewer"
 
+// Charger dynamiquement les composants qui utilisent RecordRTC et navigator.mediaDevices
+const AddAudioDialog = dynamic(() => import("@/components/add-audio_dialog").then(m => ({ default: m.AddAudioDialog })), { ssr: false })
+const AddVideoDialog = dynamic(() => import("@/components/add-video_dialog").then(m => ({ default: m.AddVideoDialog })), { ssr: false })
 
 export default function NoteTakingApp() {
+  const [showFirstRunSetup, setShowFirstRunSetup] = useState(false)
   const [activeView, setActiveView] = useState<"canvas" | "editor" | "files" | "pdf_viewer" | "image_viewer" | "video_viewer" | "document_viewer" | "audio_viewer" | "landing">("landing")
   const [sidebarOpen, setSidebarOpen] = useState(false) // Start with collapsed sidebar for landing page
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true) // Track sidebar collapse state - collapsed by default
@@ -309,32 +312,71 @@ export default function NoteTakingApp() {
     // Only run on client side
     if (typeof window === 'undefined') return;
 
-    const initializeFolderTree = async () => {
+    const checkConfigAndInitialize = async () => {
       try {
         // Check if we're in Electron mode
         const isElectronMode = !!(window.electronAPI || window.require);
 
-        if (isElectronMode && window.electronAPI?.foldersScan) {
-          console.log('Initializing folder tree from config.json...');
+        if (isElectronMode && window.electronAPI?.loadSettings) {
+          console.log('Checking for existing configuration...');
+          
+          // Load configuration
+          const config = await window.electronAPI.loadSettings();
+          
+          if (!config || !config.files || !config.files.rootPath) {
+            console.log('No configuration found, showing first-run setup');
+            setShowFirstRunSetup(true);
+            return;
+          }
+          
+          console.log('Configuration loaded successfully:', config);
+          
+          // Configuration exists, initialize folder tree
+          if (window.electronAPI?.foldersScan) {
+            console.log('Initializing folder tree from config.json...');
 
-          // Scan folders to get the tree structure
-          const result = await window.electronAPI.foldersScan();
-          if (result && result.length > 0) {
-            console.log('Folder tree initialized successfully:', result[0]);
-            setFolderTree(result[0]);
-          } else {
-            console.warn('No folder tree data received from foldersScan');
+            // Scan folders to get the tree structure
+            const result = await window.electronAPI.foldersScan();
+            if (result && result.length > 0) {
+              console.log('Folder tree initialized successfully:', result[0]);
+              setFolderTree(result[0]);
+            } else {
+              console.warn('No folder tree data received from foldersScan');
+            }
           }
         } else {
-          console.warn('Electron API not available or foldersScan method missing. Cannot initialize folder tree.');
+          console.warn('Electron API not available. Cannot check configuration.');
         }
       } catch (error) {
-        console.error('Error initializing folder tree:', error);
+        console.error('Error checking configuration:', error);
       }
     };
 
-    initializeFolderTree();
+    checkConfigAndInitialize();
   }, []);
+
+  const handleFirstRunComplete = async (rootPath: string) => {
+    console.log('First-run setup completed with rootPath:', rootPath);
+    setShowFirstRunSetup(false);
+    
+    // Refresh folder tree after setup
+    try {
+      if (window.electronAPI?.foldersScan) {
+        const result = await window.electronAPI.foldersScan();
+        if (result && result.length > 0) {
+          console.log('Folder tree refreshed after first-run setup');
+          setFolderTree(result[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing folder tree after setup:', error);
+    }
+    
+    toast({
+      title: "Configuration terminée",
+      description: "Votre espace de travail est prêt !",
+    });
+  };
 
   // Listen for file move events and refresh UI immediately
   useEffect(() => {
@@ -1212,6 +1254,13 @@ export default function NoteTakingApp() {
           await refreshTreeAndOpenFile(docPath, 'document');
         }}
       />
+      
+      {/* First Run Setup Modal */}
+      {showFirstRunSetup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+          <FirstRunSetup onComplete={handleFirstRunComplete} />
+        </div>
+      )}
     </div>
   )
 }

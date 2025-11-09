@@ -1,5 +1,5 @@
 # ======================================================================
-# Script de Lancement - NotePad-Pro
+# Script de Lancement - Fusion
 # ======================================================================
 # Ce script vérifie que Docker et OnlyOffice sont configurés
 # avant de lancer l'application
@@ -128,10 +128,10 @@ function Launch-App {
     $scriptDir = Split-Path -Parent $PSCommandPath
     $installDir = Split-Path -Parent (Split-Path -Parent $scriptDir)
     
-    $exePath = Join-Path $installDir "NotePad-Pro.exe"
+    $exePath = Join-Path $installDir "Fusion.exe"
     
     if (Test-Path $exePath) {
-        Write-ColorOutput "Lancement de NotePad-Pro..." "Green"
+        Write-ColorOutput "Lancement de Fusion..." "Green"
         Start-Process $exePath
         return $true
     } else {
@@ -146,7 +146,7 @@ function Launch-App {
 
 if (-not $Silent) {
     Write-ColorOutput "═══════════════════════════════════════" "Cyan"
-    Write-ColorOutput "  Lancement de NotePad-Pro" "Yellow"
+    Write-ColorOutput "  Lancement de Fusion" "Yellow"
     Write-ColorOutput "═══════════════════════════════════════" "Cyan"
     Write-Host ""
 }
@@ -216,7 +216,7 @@ $launched = Launch-App
 if ($launched) {
     if (-not $Silent) {
         Write-Host ""
-        Write-ColorOutput "✓ NotePad-Pro a été lancé avec succès!" "Green"
+        Write-ColorOutput "✓ Fusion a été lancé avec succès!" "Green"
         Start-Sleep -Seconds 2
     }
 } else {

@@ -90,20 +90,20 @@ export function OnlyOfficeEditor({
         const docType = getDocumentType();
 
         // Créer une clé simple et unique sans caractères problématiques
-        const documentKey = `doc-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+        const docKey = `doc-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
         console.log('[OnlyOffice] Creating editor');
         console.log('[OnlyOffice] Editor ID:', editorId);
         console.log('[OnlyOffice] File URL:', fileUrl);
         console.log('[OnlyOffice] File Type:', ext);
         console.log('[OnlyOffice] Document Type:', docType);
-        console.log('[OnlyOffice] Document Key:', documentKey);
+        console.log('[OnlyOffice] Document Key:', docKey);
 
         // Configuration OnlyOffice
         const config = {
           document: {
             fileType: ext,
-            key: documentKey, // Clé simple sans caractères spéciaux
+            key: docKey, // Clé simple sans caractères spéciaux
             title: fileName,
             url: fileUrl,
             permissions: {
@@ -120,21 +120,19 @@ export function OnlyOfficeEditor({
             mode: mode,
             lang: 'fr-FR',
             customization: {
-              autosave: false, // Désactiver complètement l'autosave
-              comments: false, // Masquer les commentaires
+              autosave: true, // Activer l'autosave
+              comments: mode === 'edit', // Autoriser les commentaires en mode édition
               help: false, // Masquer l'aide
-              hideRightMenu: true, // Masquer le menu de droite
-              compactToolbar: true, // Toolbar compacte
-              toolbarNoTabs: true, // Pas d'onglets dans la toolbar
-              forcesave: false,
+              hideRightMenu: false, // Afficher le menu de droite en mode édition
+              compactToolbar: false, // Toolbar normale
+              toolbarNoTabs: false, // Afficher les onglets
+              forcesave: true, // Forcer la sauvegarde
               feedback: false, // Désactiver le feedback
               goback: false, // Désactiver le bouton retour
               chat: false, // Désactiver le chat
-              leftMenu: false, // Masquer le menu de gauche
-              rightMenu: false, // Masquer le menu de droite
-              toolbar: false, // MASQUER COMPLÈTEMENT LA TOOLBAR
-              statusBar: false, // Masquer la barre de statut
-              autosaveTimeout: 86400000, // Très longue durée pour autosave (si non désactivable)
+              toolbar: mode === 'edit', // Afficher la toolbar en mode édition uniquement
+              statusBar: true, // Afficher la barre de statut
+              autosaveTimeout: 30000, // Autosave toutes les 30 secondes
               logo: {
                 image: '', // Pas de logo
                 visible: false
@@ -148,11 +146,22 @@ export function OnlyOfficeEditor({
               id: 'user-local',
               name: 'Utilisateur local',
             },
+            // Utiliser l'IP locale au lieu de host.docker.internal pour une meilleure compatibilité
+            callbackUrl: `http://172.27.192.1:38274/callback?file=${encodeURIComponent(filePath)}`,
           },
           events: {
             onDocumentReady: () => {
               console.log('[OnlyOffice] ✅ Document is ready!');
               setIsLoading(false);
+            },
+            onDocumentStateChange: (event: any) => {
+              console.log('[OnlyOffice] 📝 Document state changed:', event);
+            },
+            onRequestSaveAs: (event: any) => {
+              console.log('[OnlyOffice] 💾 Save As requested:', event);
+            },
+            onRequestRestore: (event: any) => {
+              console.log('[OnlyOffice] 🔄 Restore requested:', event);
             },
             onError: (event: any) => {
               console.error('[OnlyOffice] ❌ Error event:', event);
@@ -253,6 +262,7 @@ export function OnlyOfficeEditor({
 
   return (
     <div className="h-full w-full flex flex-col bg-background">
+      
       {/* Editor Container */}
       <div className="flex-1 relative overflow-hidden bg-gray-100 dark:bg-gray-900">
         {error ? (

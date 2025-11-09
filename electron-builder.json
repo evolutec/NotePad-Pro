@@ -6,21 +6,16 @@
     "buildResources": "build"
   },
   "files": [
-    "**/*",
-    "!**/*.ts",
-    "!*.map",
-    "!node_modules/**/*",
-    "node_modules/next/**/*",
-    "node_modules/react/**/*",
-    "node_modules/react-dom/**/*",
+    "electron-main.js",
+    "preload.js",
+    "package.json",
     "out/**/*",
+    "public/icon.ico",
+    "!node_modules/**/*",
     "!dist/**/*",
-    "!.next/**/*",
     "!Test/**/*",
-    "!installer/**/*"
-  ],
-  "asarUnpack": [
-    "out/**/*"
+    "!installer/**/*",
+    "!.next/**/*"
   ],
   "extraResources": [
     {
@@ -35,15 +30,15 @@
     }
   ],
   "win": {
-  "icon": "public/icon.ico",
-  "target": [
-    {
-      "target": "nsis",
-      "arch": ["x64"]
-    }
-  ],
-  "artifactName": "${productName}-Setup-${version}.${ext}"
-},
+    "icon": "public/icon.ico",
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      }
+    ],
+    "artifactName": "${productName}-Setup-${version}.${ext}"
+  },
   "nsis": {
     "oneClick": false,
     "perMachine": true,
@@ -53,7 +48,8 @@
     "createStartMenuShortcut": true,
     "shortcutName": "Fusion",
     "include": "build/installer.nsh",
-    "warningsAsErrors": false
+    "warningsAsErrors": false,
+    "runAfterFinish": true
   },
   "publish": null
 }
