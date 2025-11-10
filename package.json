@@ -12,6 +12,8 @@
     "start": "next start",
     "electron": "concurrently \"next dev\" \"electron .\\electron-main.js\"",
     "electron:build": "next build && electron-builder build --win --publish never",
+    "build:electron": "next build && electron-builder build --win --publish never",
+    "build:installer": "powershell -ExecutionPolicy Bypass -File ./Build-Installer.ps1",
     "electron:build:dir": "next build && electron-builder build --win --dir",
     "pack": "electron-builder --dir",
     "dist": "electron-builder"

@@ -211,8 +211,8 @@ export const OfficePowerPointEditor: React.FC<OfficePowerPointEditorProps> = ({
       const pptx = await createPresentation();
       
       // Set presentation properties
-      pptx.author = 'NotePad Pro';
-      pptx.company = 'NotePad Pro';
+      pptx.author = 'Fusion';
+      pptx.company = 'Fusion';
       pptx.title = presentationTitle;
 
       // Add each slide
@@ -327,7 +327,7 @@ export const OfficePowerPointEditor: React.FC<OfficePowerPointEditorProps> = ({
       
       // Create new PowerPoint presentation
       const pptx = await createPresentation();
-      pptx.author = 'NotePad Pro';
+      pptx.author = 'Fusion';
       pptx.title = presentationTitle;
 
       // Add each slide

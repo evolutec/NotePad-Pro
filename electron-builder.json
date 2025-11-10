@@ -1,5 +1,5 @@
 {
-  "appId": "fusion.app",
+  "appId": "com.fusion.app",
   "productName": "Fusion",
   "directories": {
     "output": "dist",
@@ -11,6 +11,8 @@
     "package.json",
     "out/**/*",
     "public/icon.ico",
+    "public/icon-512.png",
+    "public/favicon.ico",
     "!node_modules/**/*",
     "!dist/**/*",
     "!Test/**/*",
@@ -26,7 +28,12 @@
     {
       "from": "installer/docker",
       "to": "installer/docker",
-      "filter": ["**/*.json"]
+      "filter": ["**/*"]
+    },
+    {
+      "from": "public",
+      "to": "icons",
+      "filter": ["*.ico", "*.png"]
     }
   ],
   "win": {
@@ -37,7 +44,8 @@
         "arch": ["x64"]
       }
     ],
-    "artifactName": "${productName}-Setup-${version}.${ext}"
+    "artifactName": "${productName}-Setup-${version}.${ext}",
+    "requestedExecutionLevel": "requireAdministrator"
   },
   "nsis": {
     "oneClick": false,
@@ -46,10 +54,15 @@
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
+    "installerIcon": "public/icon.ico",
+    "uninstallerIcon": "public/icon.ico",
+    "installerHeaderIcon": "public/icon.ico",
     "shortcutName": "Fusion",
     "include": "build/installer.nsh",
     "warningsAsErrors": false,
-    "runAfterFinish": true
+    "runAfterFinish": false,
+    "deleteAppDataOnUninstall": false,
+    "menuCategory": true
   },
   "publish": null
 }
