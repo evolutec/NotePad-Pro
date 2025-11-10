@@ -42,10 +42,6 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, C
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FolderSelectionModal, type FolderNode } from '@/components/ui/folder-selection-modal';
 
-// CSS import - side-effect import for styles
-// @ts-ignore - Suppress TypeScript error for CSS import
-import './tree-styles.css';
-
 // Custom PDF icon component
 const FileIconPdf = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -45,9 +45,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AddExcelDialog } from '@/components/add-excel_dialog';
 import { AddPowerpointDialog } from '@/components/add-powerpoint_dialog';
 import { AddPdfDocumentDialog } from '@/components/add-pdf-document_dialog';
-// CSS import - side-effect import for styles
-// @ts-ignore - Suppress TypeScript error for CSS import
-import './tree-styles.css';
 
 interface ModernSidebarProps {
   tree: EnhancedFolderNode | null;

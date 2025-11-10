@@ -1,5 +1,3 @@
-
-"use client"
 import { OnlyOfficeEditor } from "@/components/onlyoffice-editor"
 
 import React, { useState, useEffect, useCallback } from "react"
@@ -7,7 +5,6 @@ import dynamic from "next/dynamic"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { ModernSidebar } from "@/components/ui/sidebar-modern"
 import DrawingCanvas from "@/components/drawing-canvas"
-// import { NoteEditor } from "@/components/note-editor"
 import { FileManager } from "@/components/file-manager"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { FirstRunSetup } from "@/components/first-run-setup"
@@ -22,7 +19,6 @@ import { AddPdfDocumentDialog } from "@/components/add-pdf-document_dialog"
 import { AddImageDialog } from "@/components/add-image_dialog"
 import { AddCodeDialog } from "@/components/add-code_dialog"
 import { AddDocumentDialog } from "@/components/add-document_dialog"
-// import { DocumentViewer } from "@/components/document-viewer" // supprimé
 import { RenameDialog } from "@/components/rename-dialog"
 import { ImageViewer } from "@/components/image-viewer"
 import { VideoViewer } from "@/components/video-viewer"
@@ -36,8 +32,8 @@ const AddVideoDialog = dynamic(() => import("@/components/add-video_dialog").the
 export default function NoteTakingApp() {
   const [showFirstRunSetup, setShowFirstRunSetup] = useState(false)
   const [activeView, setActiveView] = useState<"canvas" | "editor" | "files" | "pdf_viewer" | "image_viewer" | "video_viewer" | "document_viewer" | "audio_viewer" | "landing">("landing")
-  const [sidebarOpen, setSidebarOpen] = useState(false) // Start with collapsed sidebar for landing page
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true) // Track sidebar collapse state - collapsed by default
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(256)
   const [isResizing, setIsResizing] = useState(false)
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null)
@@ -83,7 +79,6 @@ export default function NoteTakingApp() {
           console.log(`Raw data type:`, typeof result.data);
           console.log(`Raw data length:`, result.data?.length || 'undefined');
 
-          // Convert Uint8Array to string if needed
           let jsonString: string;
           if (result.data && result.data.constructor && result.data.constructor.name === 'Uint8Array') {
             console.log('Converting Uint8Array to string...');
@@ -119,7 +114,6 @@ export default function NoteTakingApp() {
     console.log('cleanupFolderFromJson called with folderId:', folderId);
 
     try {
-      // Read current folders.json
       console.log('Reading folders.json...');
       const folders = await readJsonFile('folders.json');
       console.log('Current folders in JSON:', folders.length, 'folders');
@@ -127,7 +121,6 @@ export default function NoteTakingApp() {
         console.log(`  ${index}: ID=${f.id}, Name=${f.name}, Path=${f.path}`);
       });
 
-      // Find the folder to delete
       const folderToDelete = folders.find((f: any) => f.id === folderId);
       console.log('Folder to delete:', folderToDelete);
 
@@ -137,12 +130,10 @@ export default function NoteTakingApp() {
         return;
       }
 
-      // Filter out the folder
       console.log('Filtering out folder...');
       const filteredFolders = folders.filter((f: any) => f.id !== folderId);
       console.log('Folders after filtering:', filteredFolders.length, 'folders');
 
-      // Write back to file
       console.log('Writing updated folders.json...');
       const writeResult = await (window.electronAPI as any).writeFile('folders.json', JSON.stringify(filteredFolders, null, 2));
       console.log('Write result:', writeResult);
@@ -164,7 +155,6 @@ export default function NoteTakingApp() {
     console.log('cleanupFolderFromJsonByPath called with folderPath:', folderPath);
 
     try {
-      // Read current folders.json
       console.log('Reading folders.json...');
       const folders = await readJsonFile('folders.json');
       console.log('Current folders in JSON:', folders.length, 'folders');
@@ -172,7 +162,6 @@ export default function NoteTakingApp() {
         console.log(`  ${index}: ID=${f.id}, Name=${f.name}, Path=${f.path}`);
       });
 
-      // Find the folder to delete by path
       const folderToDelete = folders.find((f: any) => f.path === folderPath);
       console.log('Folder to delete by path:', folderToDelete);
 
@@ -182,12 +171,10 @@ export default function NoteTakingApp() {
         return;
       }
 
-      // Filter out the folder
       console.log('Filtering out folder by path...');
       const filteredFolders = folders.filter((f: any) => f.path !== folderPath);
       console.log('Folders after filtering:', filteredFolders.length, 'folders');
 
-      // Write back to file
       console.log('Writing updated folders.json...');
       const writeResult = await (window.electronAPI as any).writeFile('folders.json', JSON.stringify(filteredFolders, null, 2));
       console.log('Write result:', writeResult);
@@ -206,7 +193,6 @@ export default function NoteTakingApp() {
 
   const cleanupNoteFromJson = async (noteId: string): Promise<void> => {
     try {
-      // Remove from notes.json
       const notes = await readJsonFile('notes.json');
       const filteredNotes = notes.filter((n: any) => n.id !== noteId);
       const writeResult = await (window.electronAPI as any).writeFile('notes.json', JSON.stringify(filteredNotes, null, 2));
@@ -220,7 +206,6 @@ export default function NoteTakingApp() {
 
   const cleanupDrawFromJson = async (drawId: string): Promise<void> => {
     try {
-      // Remove from draws.json
       const draws = await readJsonFile('draws.json');
       const filteredDraws = draws.filter((d: any) => d.id !== drawId);
       const writeResult = await (window.electronAPI as any).writeFile('draws.json', JSON.stringify(filteredDraws, null, 2));
@@ -234,7 +219,6 @@ export default function NoteTakingApp() {
 
   const cleanupPdfFromJson = async (pdfId: string): Promise<void> => {
     try {
-      // Remove from pdfs.json
       const pdfs = await readJsonFile('pdfs.json');
       const filteredPdfs = pdfs.filter((p: any) => p.id !== pdfId);
       const writeResult = await (window.electronAPI as any).writeFile('pdfs.json', JSON.stringify(filteredPdfs, null, 2));
@@ -246,11 +230,9 @@ export default function NoteTakingApp() {
     }
   };
 
-  // Helper function to refresh folder tree and optionally select/open a file
   const refreshTreeAndOpenFile = useCallback(async (filePath?: string, fileType?: string) => {
     console.log('refreshTreeAndOpenFile called with:', filePath, fileType);
     
-    // Refresh the folder tree
     if (window.electronAPI?.foldersScan) {
       const result = await window.electronAPI.foldersScan();
       if (result && result.length > 0) {
@@ -260,11 +242,9 @@ export default function NoteTakingApp() {
       }
     }
 
-    // If a file path is provided, select and open it
     if (filePath) {
       setSelectedNote(filePath);
       
-      // Determine the view type based on file extension
       const ext = filePath.split('.').pop()?.toLowerCase() || '';
       const fileName = filePath.split('\\').pop() || filePath.split('/').pop() || '';
       const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
@@ -299,7 +279,6 @@ export default function NoteTakingApp() {
         setCurrentDocumentTitle(fileNameWithoutExt);
         setCurrentDocumentPath(filePath);
       } else {
-        // Default to files view
         setActiveView("files");
       }
       
@@ -307,20 +286,16 @@ export default function NoteTakingApp() {
     }
   }, []);
 
-  // Initialize folder tree from config.json on component mount
   useEffect(() => {
-    // Only run on client side
     if (typeof window === 'undefined') return;
 
     const checkConfigAndInitialize = async () => {
       try {
-        // Check if we're in Electron mode
         const isElectronMode = !!(window.electronAPI || window.require);
 
         if (isElectronMode && window.electronAPI?.loadSettings) {
           console.log('Checking for existing configuration...');
           
-          // Load configuration
           const config = await window.electronAPI.loadSettings();
           
           if (!config || !config.files || !config.files.rootPath) {
@@ -331,11 +306,9 @@ export default function NoteTakingApp() {
           
           console.log('Configuration loaded successfully:', config);
           
-          // Configuration exists, initialize folder tree
           if (window.electronAPI?.foldersScan) {
             console.log('Initializing folder tree from config.json...');
 
-            // Scan folders to get the tree structure
             const result = await window.electronAPI.foldersScan();
             if (result && result.length > 0) {
               console.log('Folder tree initialized successfully:', result[0]);
@@ -359,7 +332,6 @@ export default function NoteTakingApp() {
     console.log('First-run setup completed with rootPath:', rootPath);
     setShowFirstRunSetup(false);
     
-    // Refresh folder tree after setup
     try {
       if (window.electronAPI?.foldersScan) {
         const result = await window.electronAPI.foldersScan();
@@ -378,15 +350,12 @@ export default function NoteTakingApp() {
     });
   };
 
-  // Listen for file move events and refresh UI immediately
   useEffect(() => {
     const handleFileMoved = (event: CustomEvent) => {
       console.log('📱 File moved event received in main page:', event.detail);
 
-      // Force immediate refresh of all components
       setTreeVersion(prev => prev + 1);
 
-      // Refresh folder tree from main process
       if (window.electronAPI?.foldersScan) {
         window.electronAPI.foldersScan().then(result => {
           if (result && result.length > 0) {
@@ -404,7 +373,6 @@ export default function NoteTakingApp() {
       console.log('📱 Folder tree refresh event received');
       setTreeVersion(prev => prev + 1);
 
-      // Also refresh the actual tree data
       if (window.electronAPI?.foldersScan) {
         window.electronAPI.foldersScan().then(result => {
           if (result && result.length > 0) {
@@ -432,26 +400,21 @@ export default function NoteTakingApp() {
     }
   }, []);
 
-  // Sélection dossier : switch auto sur fichiers
   function handleFolderSelect(path: string) {
     setSelectedFolder(path)
     setActiveView("files")
   }
 
-  // Sélection note : switch auto sur éditeur ou canvas selon le type
   const handleNoteSelect = useCallback(async (notePath: string) => {
-    // Only run on client side
     if (typeof window === 'undefined') return;
 
     console.log('handleNoteSelect called with:', notePath);
     console.log('Full path:', notePath);
 
-    // Extract file extension more reliably
     const pathParts = notePath.split('.');
     const fileExtension = pathParts.length > 1 ? pathParts.pop()?.toLowerCase() : '';
     console.log('Detected file extension:', fileExtension);
 
-    // Check for video files first (most specific)
     const videoExtensions = ['mp4', 'webm', 'ogg', 'avi', 'mov', 'mkv', 'wmv', 'flv', '3gp'];
     if (videoExtensions.includes(fileExtension || '')) {
       console.log('Video file detected, loading video viewer...');
@@ -459,7 +422,6 @@ export default function NoteTakingApp() {
       const fileName = notePath.split('\\').pop() || notePath.split('/').pop() || 'Video';
       const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
       
-      // Set video viewer FIRST to prevent any other logic from overriding
       setActiveView('video_viewer');
       setVideoViewerPath(notePath);
       setVideoViewerName(fileName);
@@ -478,10 +440,8 @@ export default function NoteTakingApp() {
       const fileName = notePath.split('\\').pop() || notePath.split('/').pop() || 'document.pdf';
       const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
       
-      // Set selected note for sidebar highlighting
       setSelectedNote(notePath);
       
-      // Use document viewer for PDFs (displays in iframe via HTTP server)
       setActiveView('document_viewer');
       setDocumentViewerPath(notePath);
       setDocumentViewerName(fileName);
@@ -503,7 +463,6 @@ export default function NoteTakingApp() {
       setCurrentDocumentTitle(fileNameWithoutExt);
       setCurrentDocumentPath(notePath);
     } else {
-      // Check for audio files
       const audioExtensions = ['mp3', 'wav', 'wave', 'ogg', 'oga', 'opus', 'flac', 'aac', 'm4a', 'm4b', 'm4p', 'wma', 'webm', 'aiff', 'aif', 'ape', 'mka', 'wv', 'tta', 'tak', 'mp2', 'mp1', 'mpa', 'ac3', 'dts', 'amr', '3gp', 'ra', 'ram'];
       if (audioExtensions.includes(fileExtension || '')) {
         console.log('Audio file detected, loading audio viewer...');
@@ -524,18 +483,15 @@ export default function NoteTakingApp() {
         return;
       }
       
-      // Check for document files that should use the document viewer
-  const documentExtensions = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'rtf', 'odt', 'ods', 'odp', 'txt', 'csv', 'tsv', 'md'];
+      const documentExtensions = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'rtf', 'odt', 'ods', 'odp', 'txt', 'csv', 'tsv', 'md'];
       if (documentExtensions.includes(fileExtension || '')) {
         console.log('Document file detected, loading document viewer...');
 
         const fileName = notePath.split('\\').pop() || notePath.split('/').pop() || 'Document';
         const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
         
-        // Set selected note for sidebar highlighting
         setSelectedNote(notePath);
         
-        // Set document viewer
         setActiveView('document_viewer');
         setDocumentViewerPath(notePath);
         setDocumentViewerName(fileName);
@@ -559,21 +515,19 @@ export default function NoteTakingApp() {
       }
     }
   }, []);
+  
   return (
     <div className="flex h-screen bg-background">
-      {/* Sidebar moderne, responsive - Hidden on landing page */}
       {activeView !== "landing" && (
         <ModernSidebar
-          key={`sidebar-${treeVersion}`} // Force re-render when tree version changes
+          key={`sidebar-${treeVersion}`}
           onFolderSelect={handleFolderSelect}
           onNoteSelect={handleNoteSelect}
           onImageSelect={async (path, name, type) => {
-            // Only run on client side
             if (typeof window === 'undefined') return;
             console.log('Image selected from sidebar:', path, name, type);
             const fileNameWithoutExt = name.replace(/\.[^/.]+$/, '');
             
-            // Set selectedNote for sidebar highlighting
             setSelectedNote(path);
             
             setActiveView('image_viewer');
@@ -584,12 +538,10 @@ export default function NoteTakingApp() {
             setCurrentDocumentPath(path);
           }}
           onVideoSelect={(path, name, type) => {
-            // Only run on client side
             if (typeof window === 'undefined') return;
             console.log('Video selected from sidebar:', path, name, type);
             const fileNameWithoutExt = name.replace(/\.[^/.]+$/, '');
             
-            // Set selectedNote for sidebar highlighting
             setSelectedNote(path);
             
             setActiveView('video_viewer');
@@ -610,13 +562,11 @@ export default function NoteTakingApp() {
             console.log('Delete:', node.path, 'type:', node.type, 'id:', node.id, 'name:', node.name);
 
             try {
-              // Check if Electron API is available
               if (!window.electronAPI?.fileDelete) {
                 console.error('Electron API fileDelete not available');
                 return;
               }
 
-              // Determine the path to delete
               const deletePath = node.path || node.id;
               if (!deletePath) {
                 console.error('No path available for deletion');
@@ -625,13 +575,11 @@ export default function NoteTakingApp() {
 
               console.log('Attempting to delete:', deletePath);
 
-              // Call Electron API to delete the file/folder
               const result = await window.electronAPI.fileDelete(deletePath);
 
               if (result.success) {
                 console.log(`Successfully deleted: ${deletePath}`);
 
-                // Clean up metadata from JSON files based on item type
                 console.log('=== CLEANUP CONDITIONS DEBUG ===');
                 console.log('node.type:', node.type);
                 console.log('node.id:', node.id);
@@ -642,11 +590,9 @@ export default function NoteTakingApp() {
 
                 if (node.type === 'folder') {
                   console.log('✅ Folder cleanup condition met, calling cleanupFolderFromJson');
-                  // Clean up folder from folders.json - use path to find the folder since node.id might be undefined
                   await cleanupFolderFromJsonByPath(node.path);
                 } else if (node.id) {
                   console.log('✅ File cleanup condition met, determining file type');
-                  // Clean up file from appropriate JSON file based on extension
                   const fileExtension = node.name.split('.').pop()?.toLowerCase();
                   console.log('File extension:', fileExtension);
                   if (fileExtension === 'pdf') {
@@ -661,15 +607,12 @@ export default function NoteTakingApp() {
                   console.log('node.type:', node.type, 'node.id:', node.id);
                 }
 
-                // Force complete refresh from root path after delete (same as working delete method)
                 try {
                   console.log('🔄 Forcing complete refresh from root path after delete...');
 
-                  // Clear current tree first to force complete reload
                   setFolderTree(null);
                   setTreeVersion(prev => prev + 1);
 
-                  // Small delay to ensure state is cleared
                   await new Promise(resolve => setTimeout(resolve, 50));
 
                   if (window.electronAPI?.foldersScan) {
@@ -682,13 +625,11 @@ export default function NoteTakingApp() {
                       const newTree = scanResult[0];
                       console.log('🌳 Fresh tree structure after delete:', newTree?.name, newTree?.children?.length || 0, 'items');
 
-                      // Set the fresh tree data
                       setFolderTree(newTree);
-                      setTreeVersion(prev => prev + 1); // Force re-render
+                      setTreeVersion(prev => prev + 1);
                       console.log('✅ Fresh folder tree loaded successfully after delete');
                       console.log('🔄 Tree version incremented to:', treeVersion + 2);
 
-                      // Multiple forced updates to ensure navigation works
                       setTimeout(() => {
                         console.log('🔄 Triggering navigation refresh after delete...');
                         setTreeVersion(prev => prev + 1);
@@ -702,32 +643,26 @@ export default function NoteTakingApp() {
                     } else {
                       console.warn('⚠️ No fresh folder tree data received from foldersScan after delete');
                       console.warn('📋 Scan result:', scanResult);
-                      // Restore previous tree if scan fails
                       setFolderTree(folderTree);
                     }
                   } else {
                     console.warn('⚠️ Electron API foldersScan not available for refresh after delete');
                     console.warn('🔌 Available APIs:', Object.keys(window.electronAPI || {}));
-                    // Restore previous tree if API not available
                     setFolderTree(folderTree);
                   }
                 } catch (refreshError) {
                   console.error('❌ Error during complete refresh after delete:', refreshError);
                   console.error('🔍 Error details:', refreshError instanceof Error ? refreshError.message : refreshError, refreshError instanceof Error ? refreshError.stack : '');
-                  // Restore previous tree on error
                   setFolderTree(folderTree);
                 }
 
-                // Get parent folder path
                 const parentPath = deletePath.substring(0, deletePath.lastIndexOf('\\'));
                 console.log('Parent path after delete:', parentPath);
 
-                // Select parent folder and switch to files view to show parent content
                 if (parentPath) {
                   setSelectedFolder(parentPath);
-                  setSelectedNote(parentPath); // Highlight parent in sidebar
+                  setSelectedNote(parentPath);
                 } else {
-                  // If no parent (root level), select root
                   if (folderTree?.path) {
                     setSelectedFolder(folderTree.path);
                     setSelectedNote(folderTree.path);
@@ -747,13 +682,11 @@ export default function NoteTakingApp() {
             console.log('Available Electron APIs:', Object.keys(window.electronAPI || {}));
 
             try {
-              // Check if Electron API is available
               if (!window.electronAPI) {
                 console.error('Electron API not available at all');
                 return;
               }
 
-              // Check what rename methods are available
               if (window.electronAPI.fileRename) {
                 console.log('fileRename method available');
               } else if ((window.electronAPI as any).renameFile) {
@@ -766,8 +699,6 @@ export default function NoteTakingApp() {
                 return;
               }
 
-              // Set the node for the rename dialog
-              // Extract just the filename from the path for the dialog
               const lastSeparatorIndex = Math.max(node.path.lastIndexOf('\\'), node.path.lastIndexOf('/'));
               const fileName = lastSeparatorIndex >= 0 ? node.path.substring(lastSeparatorIndex + 1) : node.path;
 
@@ -779,8 +710,8 @@ export default function NoteTakingApp() {
 
               const renameNodeForDialog = {
                 ...node,
-                name: fileName, // Use just the filename, not the full path
-                originalPath: node.path // Keep the original path for reference
+                name: fileName,
+                originalPath: node.path
               };
 
               console.log('RenameNodeForDialog.name:', renameNodeForDialog.name);
@@ -800,13 +731,11 @@ export default function NoteTakingApp() {
             console.log('Duplicate:', node.path);
 
             try {
-              // Check if Electron API is available
               if (!window.electronAPI?.noteLoad) {
                 console.error('Electron API not available for note loading');
                 return;
               }
 
-              // Load original note content
               const loadResult = await window.electronAPI.noteLoad(node.path);
               if (!loadResult.success || !loadResult.data) {
                 console.error('Failed to load note content:', loadResult.error);
@@ -816,18 +745,15 @@ export default function NoteTakingApp() {
               const originalContent = loadResult.data.content;
               const originalTitle = loadResult.data.title;
 
-              // Generate new name
               const baseName = node.name.replace(/\.(md|txt)$/i, '');
               const ext = node.name.match(/\.(md|txt)$/i)?.[0] || '.md';
               let counter = 1;
               let newName = `${baseName}_copie${ext}`;
 
-              // Check if name exists and find unique name
               const parentDir = node.path.substring(0, node.path.lastIndexOf('\\'));
               const checkPath = `${parentDir}\\${newName}`;
 
               if (window.electronAPI?.fileRename) {
-                // Use fileRename to check if path exists (it will fail if exists)
                 let exists = true;
                 while (exists) {
                   const testResult = await window.electronAPI.fileRename(checkPath, newName);
@@ -840,7 +766,6 @@ export default function NoteTakingApp() {
                 }
               }
 
-              // Create duplicate note
               const parentPath = node.path.substring(0, node.path.lastIndexOf('\\'));
               if (window.electronAPI?.noteCreate) {
                 const createResult = await window.electronAPI.noteCreate({
@@ -851,7 +776,6 @@ export default function NoteTakingApp() {
                 });
 
                 if (createResult.success) {
-                  // Write the duplicated content
                   if (window.electronAPI?.noteSave) {
                     const saveResult = await window.electronAPI.noteSave({
                       path: createResult.path,
@@ -859,7 +783,6 @@ export default function NoteTakingApp() {
                     });
 
                     if (saveResult.success) {
-                      // Add to notes.json
                       if (window.electronAPI?.notesLoad && window.electronAPI?.notesSave) {
                         const notes = await window.electronAPI.notesLoad();
                         const newNoteMeta = {
@@ -877,7 +800,6 @@ export default function NoteTakingApp() {
 
                       console.log('Note duplicated successfully:', createResult.path);
 
-                      // Reload folder tree
                       if (window.electronAPI?.foldersScan) {
                         const result = await window.electronAPI.foldersScan();
                         if (result && result.length > 0) {
@@ -903,9 +825,9 @@ export default function NoteTakingApp() {
           onNewFile={async (parentPath, type) => {
             console.log('New file:', parentPath, type)
             if (type === 'document') {
-              setIsAddDocumentOpen(true) // This opens the PDF dialog
+              setIsAddDocumentOpen(true)
             } else if (type === 'generic') {
-              setIsAddGenericDocumentOpen(true) // This opens the generic document dialog
+              setIsAddGenericDocumentOpen(true)
             } else if (type === 'note') {
               setIsAddNoteOpen(true)
             } else if (type === 'audio') {
@@ -924,17 +846,13 @@ export default function NoteTakingApp() {
           }}
         />
       )}
-      {/* Main Content flexible */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Unified toolbar for ALL viewers */}
         <header className="h-14 border-b border-border bg-card flex items-center px-4">
-          {/* Left: Application name */}
           <div className="flex items-center min-w-[120px]">
           <img src="/icon.ico" alt="Fusion Icon" style={{ width: 28, height: 28, marginRight: 8 }} />
           <h1 className="text-lg font-semibold text-card-foreground">FUSION</h1>
           </div>
 
-          {/* Center: Document title */}
           <div className="flex-1 flex items-center justify-center px-4">
             {currentDocumentTitle && (
               <h2 className="text-base font-medium text-foreground truncate max-w-[600px]">
@@ -943,7 +861,6 @@ export default function NoteTakingApp() {
             )}
           </div>
 
-          {/* Right: Action buttons (icons only) */}
           <div className="flex items-center gap-1 min-w-[120px] justify-end">
             {currentDocumentPath && activeView !== "landing" && activeView !== "files" && (
               <>
@@ -986,7 +903,6 @@ export default function NoteTakingApp() {
           {activeView === "landing" && (
             <LandingPage
               onNavigateToFiles={() => {
-                // Set selectedFolder to root folder and switch to files view
                 if (folderTree) {
                   setSelectedFolder(folderTree.path);
                 }
@@ -997,12 +913,10 @@ export default function NoteTakingApp() {
                 setActiveView("editor");
               }}
               onCreateNew={(type) => {
-                // Handle creating new files from landing page
                 console.log('Creating new file of type:', type);
-                // You can add logic here to open the appropriate dialog
               }}
               folderTree={folderTree}
-              recentFiles={[]} // You can populate this with actual recent files
+              recentFiles={[]}
             />
           )}
           {activeView === "canvas" && <DrawingCanvas selectedNote={selectedNote || null} selectedFolder={selectedFolder} />}
@@ -1029,7 +943,6 @@ export default function NoteTakingApp() {
               fileName={documentViewerName}
               fileType={(() => {
                 const ext = documentViewerName.split('.').pop()?.toLowerCase();
-                // Pour .md, forcer docx pour OnlyOffice
                 if (ext === 'md') return 'docx';
                 return ext;
               })()}
@@ -1038,7 +951,7 @@ export default function NoteTakingApp() {
           )}
           {activeView === "files" && (
             <FileManager
-              key={`filemanager-${treeVersion}`} // Force re-render when tree version changes
+              key={`filemanager-${treeVersion}`}
               selectedFolder={selectedFolder}
               folderTree={folderTree}
               onFolderSelect={handleFolderSelect}
@@ -1069,7 +982,6 @@ export default function NoteTakingApp() {
           )}
         </main>
       </div>
-      {/* Dialogs */}
       <AddFolderDialog
         open={isAddFolderOpen}
         onOpenChange={setIsAddFolderOpen}
@@ -1077,7 +989,6 @@ export default function NoteTakingApp() {
         onFolderAdded={async (newFolder) => {
           console.log('Folder added:', newFolder);
           await refreshTreeAndOpenFile();
-          // Select the new folder in files view
           if (newFolder.path) {
             setSelectedFolder(newFolder.path);
             setActiveView('files');
@@ -1090,7 +1001,6 @@ export default function NoteTakingApp() {
         parentPath={selectedFolder || ''}
         onNoteCreated={async (newNote) => {
           console.log('Note created:', newNote);
-          // Refresh tree and auto-open the note
           const notePath = newNote.parentPath ? `${newNote.parentPath}\\${newNote.name}` : newNote.name;
           await refreshTreeAndOpenFile(notePath, 'note');
         }}
@@ -1111,7 +1021,6 @@ export default function NoteTakingApp() {
           console.log('Current activeView before rename:', activeView);
 
           try {
-            // Check if Electron API is available
             if (!window.electronAPI?.fileRename) {
               console.error('Electron API fileRename not available');
               return;
@@ -1120,45 +1029,35 @@ export default function NoteTakingApp() {
             const oldPath = renameNode.path;
             console.log('Original path:', oldPath);
 
-            // Call Electron API to rename the file/folder
-            // The API expects (oldPath, newName) where newName is just the filename
             const result = await window.electronAPI.fileRename(oldPath, newName);
 
             if (result.success) {
               console.log(`Successfully renamed: ${oldPath} -> ${result.newPath || newName}`);
 
-              // Extract the parent directory from old path to construct new path
               const parentDir = oldPath.substring(0, oldPath.lastIndexOf('\\'));
               const correctNewPath = `${parentDir}\\${newName}`;
               console.log('Correct new path:', correctNewPath);
 
-              // Refresh the folder tree
               if (window.electronAPI?.foldersScan) {
                 const scanResult = await window.electronAPI.foldersScan();
                 if (scanResult && scanResult.length > 0) {
                   const newTree = scanResult[0];
                   console.log('Fresh tree loaded after rename');
 
-                  // Update tree and force re-render
                   setFolderTree(newTree);
                   setTreeVersion(prev => prev + 1);
 
-                  // CRITICAL: After rename, switch to files view and show parent folder content
                   console.log('Switching to files view after rename, old activeView:', activeView);
 
-                  // Extract parent directory of the renamed item
                   const parentDir = oldPath.substring(0, oldPath.lastIndexOf('\\'));
                   console.log('Parent directory of renamed item:', parentDir);
 
-                  // Set selectedFolder to the parent directory to show its contents
                   setSelectedFolder(parentDir);
                   console.log('Set selectedFolder to parent directory:', parentDir);
 
-                  // Switch to files view to show the file manager with parent folder content
                   setActiveView("files");
                   console.log('Switched activeView to files after rename');
 
-                  // Update selections if they match the renamed item
                   if (selectedNote === oldPath) {
                     setSelectedNote(correctNewPath);
                     console.log('Updated selected note path after rename');
@@ -1255,7 +1154,6 @@ export default function NoteTakingApp() {
         }}
       />
       
-      {/* First Run Setup Modal */}
       {showFirstRunSetup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
           <FirstRunSetup onComplete={handleFirstRunComplete} />

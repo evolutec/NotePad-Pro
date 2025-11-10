@@ -1,6 +1,6 @@
 # 🚀 Installateur OnlyOffice pour NotePad-Pro
 
-Cet installateur automatise complètement le déploiement d'OnlyOffice Document Server pour votre application Electron NotePad-Pro.
+Cet installateur automatise complètement le déploiement d'OnlyOffice Document Server pour votre application Electron Fusion
 
 ## 📋 Ce que fait cet installateur
 

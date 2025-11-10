@@ -1,7 +1,7 @@
 # Script de lancement rapide
 # Double-cliquez sur ce fichier pour lancer l'installation
 
-Write-Host "Lancement de l'installateur OnlyOffice pour NotePad-Pro..." -ForegroundColor Cyan
+Write-Host "Lancement de l'installateur OnlyOffice pour Fusion.." -ForegroundColor Cyan
 Write-Host ""
 
 # Obtenir le répertoire du script
