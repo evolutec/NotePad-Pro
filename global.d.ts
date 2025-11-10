@@ -1,5 +1,6 @@
 declare global {
   interface ElectronAPI {
+    getPathForFile?: (file: File) => string | null;
     deleteFolder: (path: string) => Promise<{ success: boolean; error?: string }>;
     foldersSave: (folders: any[]) => Promise<void>;
     selectFolder?: () => Promise<{ filePaths?: string[]; canceled?: boolean } | string>;
@@ -41,10 +42,11 @@ declare global {
 
     // Native file system APIs for more reliable file operations
     fsExists?: (filePath: string) => Promise<{ success: boolean; exists: boolean; error?: string }>;
-    fsMove?: (oldPath: string, newPath: string) => Promise<{ success: boolean; newPath?: string; error?: string }>;
+    fsMove?: (oldPath: string, newPath: string, options?: { replace?: boolean; newFileName?: string }) => Promise<{ success: boolean; newPath?: string; conflict?: boolean; existingFileName?: string; targetPath?: string; error?: string }>;
     fsReaddir?: (dirPath: string) => Promise<{ success: boolean; items: string[]; error?: string }>;
     fsUnlink?: (filePath: string) => Promise<{ success: boolean; error?: string }>;
     fsMkdir?: (dirPath: string) => Promise<{ success: boolean; path?: string; error?: string }>;
+    copyExternalFile?: (sourcePath: string, targetFolder: string, options?: { replace?: boolean; newFileName?: string }) => Promise<{ success: boolean; targetPath?: string; conflict?: boolean; existingFileName?: string; error?: string }>;
 
     // NTFS Alternate Data Streams for folder metadata
     folderSetMetadata?: (folderPath: string, metadata: any) => Promise<{ success: boolean; metadata?: any; error?: string }>;

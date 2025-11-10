@@ -13,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Archive, Copy, Download, Edit, Eye, File, FileCode, FileText, FileWarning, Folder, FolderOpen, Grid, ImageIcon, Link, List, MoreHorizontal, Move, Music, NotebookText, Palette, Plus, Scissors, Search, SearchX, Share, Trash, Upload, UploadCloud, Video, FilePlus, ChevronLeft, ChevronRight, Home, FileImage, FileVideo, FileAudio, Sheet, Presentation } from "lucide-react"
+import { FileConflictDialog } from "./file-conflict-dialog"
 
 // Custom PDF icon component
 const FileIconPdf = ({ className }: { className?: string }) => (
@@ -106,7 +107,8 @@ const FileCard = React.memo(({
   handleFileClick, 
   handleDeleteFile,
   setRenameFileState,
-  uploadProgress 
+  uploadProgress,
+  setFileConflict
 }: {
   file: FileItem;
   viewMode: string;
@@ -114,6 +116,14 @@ const FileCard = React.memo(({
   handleDeleteFile: (file: FileItem) => void;
   setRenameFileState: (state: { file: FileItem; isOpen: boolean } | null) => void;
   uploadProgress: Record<string, number>;
+  setFileConflict: (state: { 
+    fileName: string; 
+    sourcePath: string; 
+    targetFolder: string;
+    isMove: boolean;
+    oldPath?: string;
+    newPath?: string;
+  } | null) => void;
 }) => {
   const [isDragOver, setIsDragOver] = React.useState(false);
   
@@ -192,6 +202,17 @@ const FileCard = React.memo(({
               // Trigger refresh via DOM event
               window.dispatchEvent(new Event('folderTreeRefresh'));
               window.dispatchEvent(new Event('recentFilesRefresh'));
+            } else if (result.conflict) {
+              // File conflict detected, show dialog
+              console.log('⚠️ File conflict detected:', result.existingFileName);
+              setFileConflict({
+                fileName: result.existingFileName || fileName || '',
+                sourcePath: '',
+                targetFolder: '',
+                isMove: true,
+                oldPath: sourcePath,
+                newPath: newPath
+              });
             } else {
               console.error('❌ Move failed:', result.error);
             }
@@ -294,6 +315,16 @@ export function FileManager({
 
   // État pour le dialogue de renommage
   const [renameFileState, setRenameFileState] = useState<{ file: FileItem; isOpen: boolean } | null>(null);
+
+  // État pour le dialogue de conflit de fichier
+  const [fileConflict, setFileConflict] = useState<{ 
+    fileName: string; 
+    sourcePath: string; 
+    targetFolder: string;
+    isMove: boolean;
+    oldPath?: string;
+    newPath?: string;
+  } | null>(null);
 
   const [selectedFileContent, setSelectedFileContent] = useState<string | null>(null);
   const [selectedFileForView, setSelectedFileForView] = useState<FileItem | null>(null);
@@ -755,6 +786,121 @@ export function FileManager({
 
   return (
     <Card className="flex flex-col h-full">
+      <div 
+        className="flex flex-col h-full w-full"
+        onDragOver={(e: React.DragEvent) => {
+          // Check if this is an external file drag (not from our app)
+          const hasFiles = e.dataTransfer.types.includes('Files');
+          const hasJson = e.dataTransfer.types.includes('application/json');
+          
+          // If it has Files but no JSON data, it's likely external
+          if (hasFiles && !hasJson) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🔵 Possible external file dragOver detected');
+          }
+        }}
+        onDrop={async (e: React.DragEvent) => {
+          console.log('🟢 Drop event triggered!');
+          console.log('Data types:', e.dataTransfer.types);
+          console.log('Files count:', e.dataTransfer.files.length);
+          
+          // Try to get JSON data first (internal drag)
+          let jsonData = null;
+          try {
+            const jsonStr = e.dataTransfer.getData('application/json');
+            if (jsonStr) {
+              jsonData = JSON.parse(jsonStr);
+              console.log('📋 JSON data found - this is an internal drag:', jsonData);
+            }
+          } catch (err) {
+            // No JSON data or parse error
+          }
+          
+          // If we have JSON data, it's an internal drag - let FileCard handle it
+          if (jsonData) {
+            console.log('ℹ️ Internal drag detected - not handling here');
+            return; // Don't prevent default, let it bubble to FileCard
+          }
+          
+          // Check if this is an external file drop (Files but no JSON data)
+          const hasFiles = e.dataTransfer.types.includes('Files');
+          
+          if (hasFiles && e.dataTransfer.files.length > 0) {
+            // Use Electron's webUtils.getPathForFile to get the real file path
+            const firstFile = e.dataTransfer.files[0];
+            let filePath: string | null = null;
+            
+            if (typeof window !== 'undefined' && window.electronAPI?.getPathForFile) {
+              try {
+                filePath = window.electronAPI.getPathForFile(firstFile);
+                console.log('📋 File path from webUtils:', filePath);
+              } catch (error) {
+                console.error('❌ Error getting file path:', error);
+              }
+            }
+            
+            // If no path, it's not a real external file
+            if (!filePath) {
+              console.log('ℹ️ No file path found - this is likely an internal browser drag, ignoring');
+              return;
+            }
+            
+            // This is a real external file drop from Windows Explorer
+            e.preventDefault();
+            e.stopPropagation();
+            
+            console.log('📦 External files dropped from Windows:', e.dataTransfer.files.length);
+            
+            // Process each dropped file
+            for (let i = 0; i < e.dataTransfer.files.length; i++) {
+              const file = e.dataTransfer.files[i];
+              console.log('📄 Processing file:', file.name, 'Type:', file.type, 'Size:', file.size);
+              
+              const filePathStr = window.electronAPI?.getPathForFile ? window.electronAPI.getPathForFile(file) : null;
+              if (!filePathStr) {
+                console.error('❌ Could not get path for file:', file.name);
+                continue;
+              }
+              
+              console.log('📂 File path:', filePathStr);
+              console.log('📂 Target folder:', selectedFolder || folderTree?.path);
+              
+              // Import the file into the current folder
+              if (typeof window !== 'undefined' && window.electronAPI?.copyExternalFile) {
+                try {
+                  const result = await window.electronAPI.copyExternalFile(
+                    filePathStr, // Source path (Electron provides this via file.path)
+                    selectedFolder || folderTree?.path || '' // Target folder
+                  );
+                  
+                  if (result.success) {
+                    console.log('✅ File imported successfully:', result.targetPath);
+                    // Refresh the file list
+                    window.dispatchEvent(new Event('folderTreeRefresh'));
+                    window.dispatchEvent(new Event('recentFilesRefresh'));
+                  } else if (result.conflict) {
+                    // File conflict detected, show dialog
+                    console.log('⚠️ File conflict detected:', result.existingFileName);
+                    setFileConflict({
+                      fileName: result.existingFileName || file.name,
+                      sourcePath: filePathStr,
+                      targetFolder: selectedFolder || folderTree?.path || '',
+                      isMove: false
+                    });
+                  } else {
+                    console.error('❌ Import failed:', result.error);
+                  }
+                } catch (error) {
+                  console.error('❌ Import error:', error);
+                }
+              } else {
+                console.error('❌ copyExternalFile API not available');
+              }
+            }
+          }
+        }}
+      >
       <style jsx>{`
         .folder {
           width: 120px;
@@ -960,6 +1106,7 @@ export function FileManager({
                 handleDeleteFile={handleDeleteFile}
                 setRenameFileState={setRenameFileState}
                 uploadProgress={uploadProgress}
+                setFileConflict={setFileConflict}
               />
             ))}
           </div>
@@ -975,6 +1122,88 @@ export function FileManager({
           onRename={handleRenameFile}
         />
       )}
+      {fileConflict && (
+        <FileConflictDialog
+          open={true}
+          fileName={fileConflict.fileName}
+          onReplace={async () => {
+            if (fileConflict.isMove && fileConflict.oldPath && fileConflict.newPath) {
+              // Internal move with replace
+              if (window.electronAPI?.fsMove) {
+                const result = await window.electronAPI.fsMove(
+                  fileConflict.oldPath, 
+                  fileConflict.newPath, 
+                  { replace: true }
+                );
+                if (result?.success) {
+                  console.log('✅ File replaced and moved successfully');
+                  window.dispatchEvent(new Event('folderTreeRefresh'));
+                  window.dispatchEvent(new Event('recentFilesRefresh'));
+                } else {
+                  console.error('❌ Replace move failed:', result?.error);
+                }
+              }
+            } else {
+              // External copy with replace
+              if (window.electronAPI?.copyExternalFile) {
+                const result = await window.electronAPI.copyExternalFile(
+                  fileConflict.sourcePath, 
+                  fileConflict.targetFolder, 
+                  { replace: true }
+                );
+                if (result?.success) {
+                  console.log('✅ File replaced successfully');
+                  window.dispatchEvent(new Event('folderTreeRefresh'));
+                  window.dispatchEvent(new Event('recentFilesRefresh'));
+                } else {
+                  console.error('❌ Replace failed:', result?.error);
+                }
+              }
+            }
+            setFileConflict(null);
+          }}
+          onRename={async (newFileName) => {
+            if (fileConflict.isMove && fileConflict.oldPath && fileConflict.newPath) {
+              // Internal move with rename
+              if (window.electronAPI?.fsMove) {
+                const result = await window.electronAPI.fsMove(
+                  fileConflict.oldPath, 
+                  fileConflict.newPath, 
+                  { newFileName }
+                );
+                if (result?.success) {
+                  console.log('✅ File renamed and moved successfully');
+                  window.dispatchEvent(new Event('folderTreeRefresh'));
+                  window.dispatchEvent(new Event('recentFilesRefresh'));
+                } else {
+                  console.error('❌ Rename move failed:', result?.error);
+                }
+              }
+            } else {
+              // External copy with rename
+              if (window.electronAPI?.copyExternalFile) {
+                const result = await window.electronAPI.copyExternalFile(
+                  fileConflict.sourcePath, 
+                  fileConflict.targetFolder, 
+                  { newFileName }
+                );
+                if (result?.success) {
+                  console.log('✅ File imported with new name successfully');
+                  window.dispatchEvent(new Event('folderTreeRefresh'));
+                  window.dispatchEvent(new Event('recentFilesRefresh'));
+                } else {
+                  console.error('❌ Rename import failed:', result?.error);
+                }
+              }
+            }
+            setFileConflict(null);
+          }}
+          onCancel={() => {
+            setFileConflict(null);
+          }}
+        />
+      )}
+      </div>
     </Card>
   );
 }

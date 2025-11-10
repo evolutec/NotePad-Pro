@@ -1712,11 +1712,12 @@ ipcMain.handle('fs:exists', async (_event, filePath) => {
 });
 
 // Handler pour déplacer un fichier (copy + delete) using native fs functions
-ipcMain.handle('fs:move', async (_event, oldPath, newPath) => {
+ipcMain.handle('fs:move', async (_event, oldPath, newPath, options = {}) => {
   try {
     console.log('=== NATIVE FS MOVE OPERATION ===');
     console.log('Source path:', oldPath);
     console.log('Destination path:', newPath);
+    console.log('Options:', options);
 
     // Use native fs functions directly
     if (!fs.existsSync(oldPath)) {
@@ -1735,8 +1736,27 @@ ipcMain.handle('fs:move', async (_event, oldPath, newPath) => {
 
     // Check if destination already exists using native fs
     if (fs.existsSync(newPath)) {
-      console.log('Destination already exists:', newPath);
-      return { success: false, error: 'Destination already exists' };
+      // If replace option is true, delete the existing file/folder first
+      if (options.replace === true) {
+        console.log('Replacing existing file/folder');
+        const destStats = fs.statSync(newPath);
+        if (destStats.isDirectory()) {
+          fs.rmSync(newPath, { recursive: true, force: true });
+        } else {
+          fs.unlinkSync(newPath);
+        }
+      } else {
+        // Return conflict error
+        console.log('Destination already exists:', newPath);
+        const fileName = path.basename(newPath);
+        return { 
+          success: false, 
+          error: 'Destination already exists',
+          conflict: true,
+          existingFileName: fileName,
+          targetPath: newPath
+        };
+      }
     }
 
     // Check if source is a directory
@@ -1797,6 +1817,56 @@ ipcMain.handle('fs:move', async (_event, oldPath, newPath) => {
   } catch (err) {
     console.error('=== NATIVE FS MOVE ERROR ===');
     console.error('Error during move:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+// Handler pour copier des fichiers externes dans l'application (drag & drop externe)
+ipcMain.handle('fs:copyExternalFile', async (_event, sourcePath, targetFolder, options = {}) => {
+  console.log('=== EXTERNAL FILE COPY OPERATION ===');
+  console.log('Source path:', sourcePath);
+  console.log('Target folder:', targetFolder);
+  console.log('Options:', options);
+  
+  try {
+    if (!fs.existsSync(sourcePath)) {
+      return { success: false, error: 'Source file not found' };
+    }
+    
+    if (!fs.existsSync(targetFolder)) {
+      return { success: false, error: 'Target folder not found' };
+    }
+    
+    // Get file name from source path (or use custom name from options)
+    const fileName = options.newFileName || path.basename(sourcePath);
+    const targetPath = path.join(targetFolder, fileName);
+    
+    console.log('Target path:', targetPath);
+    
+    // Check if target already exists
+    if (fs.existsSync(targetPath)) {
+      // If replace option is true, delete the existing file first
+      if (options.replace === true) {
+        console.log('Replacing existing file');
+        fs.unlinkSync(targetPath);
+      } else {
+        // Return conflict error so UI can handle it
+        return { 
+          success: false, 
+          error: 'File already exists',
+          conflict: true,
+          existingFileName: fileName,
+          targetPath: targetPath
+        };
+      }
+    }
+    
+    // Copy the file
+    fs.copyFileSync(sourcePath, targetPath);
+    console.log('File copied successfully');
+    return { success: true, targetPath };
+  } catch (err) {
+    console.error('Copy error:', err);
     return { success: false, error: err.message };
   }
 });

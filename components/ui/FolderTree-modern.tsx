@@ -41,6 +41,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from '@/components/ui/context-menu';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FolderSelectionModal, type FolderNode } from '@/components/ui/folder-selection-modal';
+import { FileConflictDialog } from '@/components/file-conflict-dialog';
 
 // Custom PDF icon component
 const FileIconPdf = ({ className }: { className?: string }) => (
@@ -230,6 +231,7 @@ const TreeItem = React.memo(({
   onMove,
   onNewFolder,
   onNewFile,
+  setFileConflict
 }: {
   node: EnhancedFolderNode;
   depth?: number;
@@ -245,6 +247,14 @@ const TreeItem = React.memo(({
   onMove: () => void;
   onNewFolder: () => void;
   onNewFile: () => void;
+  setFileConflict: (state: { 
+    fileName: string; 
+    sourcePath: string; 
+    targetFolder: string;
+    isMove: boolean;
+    oldPath?: string;
+    newPath?: string;
+  } | null) => void;
 }) => {
   const fileType = getFileType(node);
   const isNoteFile = fileType === 'note' || fileType === 'draw';
@@ -328,43 +338,148 @@ const TreeItem = React.memo(({
             
             if (node.type !== 'folder') return;
             
+            console.log('🟢 Sidebar drop detected');
+            console.log('Data types:', e.dataTransfer.types);
+            console.log('Files count:', e.dataTransfer.files.length);
+            
+            // Try to get JSON data first (internal drag)
+            let jsonData = null;
             try {
               const dragDataStr = e.dataTransfer.getData('application/json');
-              if (!dragDataStr) return;
-              
-              const dragData = JSON.parse(dragDataStr);
-              const sourcePath = dragData.sourcePath;
-              const targetPath = node.path;
-              
-              console.log('🟢 Drop detected on folder:', targetPath);
-              console.log('📁 Source:', sourcePath);
-              console.log('📁 Target:', targetPath);
-              
-              // Don't allow dropping on self or parent
-              if (sourcePath === targetPath || targetPath.startsWith(sourcePath)) {
-                console.log('❌ Cannot drop on self or child folder');
-                return;
+              if (dragDataStr) {
+                jsonData = JSON.parse(dragDataStr);
+                console.log('📋 JSON data found - internal drag:', jsonData);
               }
+            } catch (err) {
+              // No JSON data
+            }
+            
+            // Check if this is an external file drop
+            if (!jsonData && e.dataTransfer.files.length > 0) {
+              const firstFile = e.dataTransfer.files[0];
               
-              // Move the file/folder using Electron API
-              if (typeof window !== 'undefined' && window.electronAPI?.fsMove) {
-                const fileName = sourcePath.split('\\').pop() || sourcePath.split('/').pop();
-                const newPath = `${targetPath}\\${fileName}`;
-                
-                console.log('🚀 Moving file:', sourcePath, '→', newPath);
-                const result = await window.electronAPI.fsMove(sourcePath, newPath);
-                
-                if (result.success) {
-                  console.log('✅ File moved successfully');
-                  // Trigger refresh via DOM event
-                  window.dispatchEvent(new Event('folderTreeRefresh'));
-                  window.dispatchEvent(new Event('recentFilesRefresh'));
-                } else {
-                  console.error('❌ Move failed:', result.error);
+              console.log('📋 First file:', firstFile.name);
+              console.log('📋 File type:', firstFile.type);
+              console.log('📋 File size:', firstFile.size);
+              
+              // Use Electron's webUtils.getPathForFile to get the real file path
+              let filePath: string | null = null;
+              
+              if (typeof window !== 'undefined' && window.electronAPI?.getPathForFile) {
+                try {
+                  filePath = window.electronAPI.getPathForFile(firstFile);
+                  console.log('📋 File path from webUtils:', filePath);
+                } catch (error) {
+                  console.error('❌ Error getting file path:', error);
                 }
               }
-            } catch (error) {
-              console.error('❌ Drop error:', error);
+              
+              // If we have a path, it's an external file from the filesystem
+              if (filePath && filePath.length > 0) {
+                console.log('📦 External files dropped in sidebar:', e.dataTransfer.files.length);
+                
+                // Process each dropped file
+                for (let i = 0; i < e.dataTransfer.files.length; i++) {
+                  const file = e.dataTransfer.files[i];
+                  console.log('📄 Processing file:', file.name);
+                  
+                  // Get path for this file
+                  const filePathStr = window.electronAPI?.getPathForFile ? window.electronAPI.getPathForFile(file) : null;
+                  if (!filePathStr) {
+                    console.error('❌ Could not get path for file:', file.name);
+                    continue;
+                  }
+                  
+                  const targetFolder = node.path;
+                  
+                  console.log('📂 Source:', filePathStr);
+                  console.log('📂 Target folder:', targetFolder);
+                  
+                  // Import the file into the target folder
+                  if (typeof window !== 'undefined' && window.electronAPI?.copyExternalFile) {
+                    try {
+                      const result = await window.electronAPI.copyExternalFile(
+                        filePathStr,
+                        targetFolder
+                      );
+                      
+                      if (result.success) {
+                        console.log('✅ File imported successfully:', result.targetPath);
+                        // Refresh the file list
+                        window.dispatchEvent(new Event('folderTreeRefresh'));
+                        window.dispatchEvent(new Event('recentFilesRefresh'));
+                      } else if (result.conflict) {
+                        // File conflict detected, show dialog
+                        console.log('⚠️ File conflict detected:', result.existingFileName);
+                        setFileConflict({
+                          fileName: result.existingFileName || file.name,
+                          sourcePath: filePathStr,
+                          targetFolder: targetFolder,
+                          isMove: false
+                        });
+                      } else {
+                        console.error('❌ Import failed:', result.error);
+                      }
+                    } catch (error) {
+                      console.error('❌ Import error:', error);
+                    }
+                  } else {
+                    console.error('❌ copyExternalFile API not available');
+                  }
+                }
+                return; // Exit early, don't process as internal drag
+              } else {
+                console.log('⚠️ No file path found - this is an internal drag, not external');
+              }
+            }
+            
+            // Handle internal drag (move file/folder within app)
+            if (jsonData) {
+              try {
+                const sourcePath = jsonData.sourcePath;
+                const targetPath = node.path;
+                
+                console.log('🟢 Internal drop on folder:', targetPath);
+                console.log('📁 Source:', sourcePath);
+                console.log('📁 Target:', targetPath);
+                
+                // Don't allow dropping on self or parent
+                if (sourcePath === targetPath || targetPath.startsWith(sourcePath)) {
+                  console.log('❌ Cannot drop on self or child folder');
+                  return;
+                }
+                
+                // Move the file/folder using Electron API
+                if (typeof window !== 'undefined' && window.electronAPI?.fsMove) {
+                  const fileName = sourcePath.split('\\').pop() || sourcePath.split('/').pop();
+                  const newPath = `${targetPath}\\${fileName}`;
+                  
+                  console.log('🚀 Moving file:', sourcePath, '→', newPath);
+                  const result = await window.electronAPI.fsMove(sourcePath, newPath);
+                  
+                  if (result.success) {
+                    console.log('✅ File moved successfully');
+                    // Trigger refresh via DOM event
+                    window.dispatchEvent(new Event('folderTreeRefresh'));
+                    window.dispatchEvent(new Event('recentFilesRefresh'));
+                  } else if (result.conflict) {
+                    // File conflict detected, show dialog
+                    console.log('⚠️ File conflict detected:', result.existingFileName);
+                    setFileConflict({
+                      fileName: result.existingFileName || fileName || '',
+                      sourcePath: '',
+                      targetFolder: '',
+                      isMove: true,
+                      oldPath: sourcePath,
+                      newPath: newPath
+                    });
+                  } else {
+                    console.error('❌ Move failed:', result.error);
+                  }
+                }
+              } catch (error) {
+                console.error('❌ Drop error:', error);
+              }
             }
           }}
           onClick={(e) => {
@@ -567,6 +682,16 @@ export function ModernFolderTree({
   // Move functionality state
   const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
   const [nodeToMove, setNodeToMove] = useState<EnhancedFolderNode | null>(null);
+
+  // File conflict state
+  const [fileConflict, setFileConflict] = useState<{ 
+    fileName: string; 
+    sourcePath: string; 
+    targetFolder: string;
+    isMove: boolean;
+    oldPath?: string;
+    newPath?: string;
+  } | null>(null);
 
   // Update tree version when tree changes (but don't clear expanded paths)
   React.useEffect(() => {
@@ -910,6 +1035,7 @@ export function ModernFolderTree({
           onMove={() => handleMove(node)}
           onNewFolder={() => onNewFolder?.(node.path)}
           onNewFile={() => onNewFile?.(node.path)}
+          setFileConflict={setFileConflict}
         />
         
         <AnimatePresence>
@@ -956,6 +1082,89 @@ export function ModernFolderTree({
         description={`Déplacer "${nodeToMove?.name}" vers le dossier choisi`}
         showSearch={false}
       />
+
+      {/* File Conflict Dialog */}
+      {fileConflict && (
+        <FileConflictDialog
+          open={true}
+          fileName={fileConflict.fileName}
+          onReplace={async () => {
+            if (fileConflict.isMove && fileConflict.oldPath && fileConflict.newPath) {
+              // Internal move with replace
+              if (window.electronAPI?.fsMove) {
+                const result = await window.electronAPI.fsMove(
+                  fileConflict.oldPath, 
+                  fileConflict.newPath, 
+                  { replace: true }
+                );
+                if (result?.success) {
+                  console.log('✅ File replaced and moved successfully');
+                  window.dispatchEvent(new Event('folderTreeRefresh'));
+                  window.dispatchEvent(new Event('recentFilesRefresh'));
+                } else {
+                  console.error('❌ Replace move failed:', result?.error);
+                }
+              }
+            } else {
+              // External copy with replace
+              if (window.electronAPI?.copyExternalFile) {
+                const result = await window.electronAPI.copyExternalFile(
+                  fileConflict.sourcePath, 
+                  fileConflict.targetFolder, 
+                  { replace: true }
+                );
+                if (result?.success) {
+                  console.log('✅ File replaced successfully');
+                  window.dispatchEvent(new Event('folderTreeRefresh'));
+                  window.dispatchEvent(new Event('recentFilesRefresh'));
+                } else {
+                  console.error('❌ Replace failed:', result?.error);
+                }
+              }
+            }
+            setFileConflict(null);
+          }}
+          onRename={async (newFileName) => {
+            if (fileConflict.isMove && fileConflict.oldPath && fileConflict.newPath) {
+              // Internal move with rename
+              if (window.electronAPI?.fsMove) {
+                const result = await window.electronAPI.fsMove(
+                  fileConflict.oldPath, 
+                  fileConflict.newPath, 
+                  { newFileName }
+                );
+                if (result?.success) {
+                  console.log('✅ File renamed and moved successfully');
+                  window.dispatchEvent(new Event('folderTreeRefresh'));
+                  window.dispatchEvent(new Event('recentFilesRefresh'));
+                } else {
+                  console.error('❌ Rename move failed:', result?.error);
+                }
+              }
+            } else {
+              // External copy with rename
+              if (window.electronAPI?.copyExternalFile) {
+                const result = await window.electronAPI.copyExternalFile(
+                  fileConflict.sourcePath, 
+                  fileConflict.targetFolder, 
+                  { newFileName }
+                );
+                if (result?.success) {
+                  console.log('✅ File imported with new name successfully');
+                  window.dispatchEvent(new Event('folderTreeRefresh'));
+                  window.dispatchEvent(new Event('recentFilesRefresh'));
+                } else {
+                  console.error('❌ Rename import failed:', result?.error);
+                }
+              }
+            }
+            setFileConflict(null);
+          }}
+          onCancel={() => {
+            setFileConflict(null);
+          }}
+        />
+      )}
     </TooltipProvider>
   );
 }

@@ -1,6 +1,17 @@
 const { contextBridge, ipcRenderer } = require('electron');
+const { webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  // Get file path from File object (for drag & drop)
+  getPathForFile: (file) => {
+    try {
+      return webUtils.getPathForFile(file);
+    } catch (error) {
+      console.error('Error getting file path:', error);
+      return null;
+    }
+  },
+  
   selectFolder: () => ipcRenderer.invoke('dialog:openFolder'),
   onFolderSelected: (callback) => ipcRenderer.on('dialog:selectedFolder', (_event, folderPath) => callback(folderPath)),
   saveSettings: (settings) => ipcRenderer.invoke('config:save', settings),
@@ -102,9 +113,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return ipcRenderer.invoke('fs:exists', filePath);
   },
 
-  fsMove: (oldPath, newPath) => {
-    console.log('Preload: Moving file from', oldPath, 'to', newPath);
-    return ipcRenderer.invoke('fs:move', oldPath, newPath);
+  fsMove: (oldPath, newPath, options) => {
+    console.log('Preload: Moving file from', oldPath, 'to', newPath, 'with options:', options);
+    return ipcRenderer.invoke('fs:move', oldPath, newPath, options);
   },
 
   fsReaddir: (dirPath) => {
@@ -120,6 +131,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   fsMkdir: (dirPath) => {
     console.log('Preload: Creating directory:', dirPath);
     return ipcRenderer.invoke('fs:mkdir', dirPath);
+  },
+
+  copyExternalFile: (sourcePath, targetFolder, options) => {
+    console.log('Preload: Copying external file from', sourcePath, 'to', targetFolder, 'with options:', options);
+    return ipcRenderer.invoke('fs:copyExternalFile', sourcePath, targetFolder, options);
   },
 
   // NTFS Alternate Data Streams for folder metadata
