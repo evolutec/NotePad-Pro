@@ -248,6 +248,7 @@ const TreeItem = React.memo(({
 }) => {
   const fileType = getFileType(node);
   const isNoteFile = fileType === 'note' || fileType === 'draw';
+  const [isDragOver, setIsDragOver] = useState(false);
   
   const getInitials = (name: string) => {
     return name
@@ -281,22 +282,90 @@ const TreeItem = React.memo(({
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2, delay: depth * 0.05 }}
+        <div
+          draggable
           className={cn(
             "group relative flex items-center gap-2 py-2 px-3 rounded-lg cursor-pointer transition-all duration-200",
             "hover:bg-accent hover:shadow-sm",
             isSelected && "bg-primary/10 ring-2 ring-primary/20 shadow-sm",
             isNoteSelected && "bg-blue-50 dark:bg-blue-950 ring-2 ring-blue-200 dark:ring-blue-800 shadow-sm",
-            "border border-transparent hover:border-border/50"
+            "border border-transparent hover:border-border/50",
+            isDragOver && node.type === 'folder' && "bg-primary/20 ring-2 ring-primary"
           )}
           style={{
             marginLeft: depth * 16,
             pointerEvents: 'auto',
             zIndex: 10,
             position: 'relative'
+          }}
+          onDragStart={(e: React.DragEvent) => {
+            e.stopPropagation();
+            const dragData = {
+              sourcePath: node.path,
+              sourceNode: node,
+              sourceType: 'sidebar'
+            };
+            e.dataTransfer.setData('application/json', JSON.stringify(dragData));
+            e.dataTransfer.effectAllowed = 'move';
+            console.log('🔵 Drag started from sidebar:', node.path);
+          }}
+          onDragOver={(e: React.DragEvent) => {
+            if (node.type === 'folder') {
+              e.preventDefault();
+              e.stopPropagation();
+              e.dataTransfer.dropEffect = 'move';
+              setIsDragOver(true);
+            }
+          }}
+          onDragLeave={(e: React.DragEvent) => {
+            e.stopPropagation();
+            setIsDragOver(false);
+          }}
+          onDrop={async (e: React.DragEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDragOver(false);
+            
+            if (node.type !== 'folder') return;
+            
+            try {
+              const dragDataStr = e.dataTransfer.getData('application/json');
+              if (!dragDataStr) return;
+              
+              const dragData = JSON.parse(dragDataStr);
+              const sourcePath = dragData.sourcePath;
+              const targetPath = node.path;
+              
+              console.log('🟢 Drop detected on folder:', targetPath);
+              console.log('📁 Source:', sourcePath);
+              console.log('📁 Target:', targetPath);
+              
+              // Don't allow dropping on self or parent
+              if (sourcePath === targetPath || targetPath.startsWith(sourcePath)) {
+                console.log('❌ Cannot drop on self or child folder');
+                return;
+              }
+              
+              // Move the file/folder using Electron API
+              if (typeof window !== 'undefined' && window.electronAPI?.fsMove) {
+                const fileName = sourcePath.split('\\').pop() || sourcePath.split('/').pop();
+                const newPath = `${targetPath}\\${fileName}`;
+                
+                console.log('🚀 Moving file:', sourcePath, '→', newPath);
+                const result = await window.electronAPI.fsMove(sourcePath, newPath);
+                
+                if (result.success) {
+                  console.log('✅ File moved successfully');
+                  // Trigger refresh via DOM event
+                  window.dispatchEvent(new Event('folderTreeRefresh'));
+                  window.dispatchEvent(new Event('recentFilesRefresh'));
+                } else {
+                  console.error('❌ Move failed:', result.error);
+                }
+              }
+            } catch (error) {
+              console.error('❌ Drop error:', error);
+            }
           }}
           onClick={(e) => {
             console.log('=== TREEITEM CLICK DETECTED ===');
@@ -443,7 +512,7 @@ const TreeItem = React.memo(({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        </motion.div>
+        </div>
       </ContextMenuTrigger>
       
       <ContextMenuContent>

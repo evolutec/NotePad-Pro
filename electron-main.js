@@ -1735,26 +1735,68 @@ ipcMain.handle('fs:move', async (_event, oldPath, newPath) => {
 
     // Check if destination already exists using native fs
     if (fs.existsSync(newPath)) {
-      console.log('Destination file already exists:', newPath);
-      return { success: false, error: 'Destination file already exists' };
+      console.log('Destination already exists:', newPath);
+      return { success: false, error: 'Destination already exists' };
     }
 
-    // Step 1: Copy the file to destination using native fs
-    console.log('Copying file using fs.copyFileSync...');
-    fs.copyFileSync(oldPath, newPath);
-    console.log('File copied successfully');
+    // Check if source is a directory
+    const stats = fs.statSync(oldPath);
+    
+    if (stats.isDirectory()) {
+      console.log('Source is a directory, using recursive copy...');
+      
+      // Recursive function to copy directory
+      function copyDirectoryRecursive(source, destination) {
+        // Create destination directory
+        if (!fs.existsSync(destination)) {
+          fs.mkdirSync(destination, { recursive: true });
+        }
+        
+        // Read all items in source directory
+        const items = fs.readdirSync(source);
+        
+        for (const item of items) {
+          const sourcePath = path.join(source, item);
+          const destPath = path.join(destination, item);
+          const itemStats = fs.statSync(sourcePath);
+          
+          if (itemStats.isDirectory()) {
+            // Recursively copy subdirectory
+            copyDirectoryRecursive(sourcePath, destPath);
+          } else {
+            // Copy file
+            fs.copyFileSync(sourcePath, destPath);
+          }
+        }
+      }
+      
+      // Copy directory recursively
+      copyDirectoryRecursive(oldPath, newPath);
+      console.log('Directory copied successfully');
+      
+      // Delete original directory recursively
+      console.log('Deleting original directory using fs.rmSync...');
+      fs.rmSync(oldPath, { recursive: true, force: true });
+      console.log('Original directory deleted successfully');
+      
+    } else {
+      // Step 1: Copy the file to destination using native fs
+      console.log('Copying file using fs.copyFileSync...');
+      fs.copyFileSync(oldPath, newPath);
+      console.log('File copied successfully');
 
-    // Step 2: Delete the original file using native fs
-    console.log('Deleting original file using fs.unlinkSync...');
-    fs.unlinkSync(oldPath);
-    console.log('Original file deleted successfully');
+      // Step 2: Delete the original file using native fs
+      console.log('Deleting original file using fs.unlinkSync...');
+      fs.unlinkSync(oldPath);
+      console.log('Original file deleted successfully');
+    }
 
     console.log('=== NATIVE FS MOVE COMPLETED ===');
-    console.log('File moved successfully from', oldPath, 'to', newPath);
+    console.log('Successfully moved from', oldPath, 'to', newPath);
     return { success: true, newPath };
   } catch (err) {
     console.error('=== NATIVE FS MOVE ERROR ===');
-    console.error('Error during file move:', err);
+    console.error('Error during move:', err);
     return { success: false, error: err.message };
   }
 });

@@ -321,12 +321,12 @@ export function ModernSidebar({
 
   return (
     <aside className={cn(
-      "h-full flex flex-col bg-card border-r border-border transition-all duration-300",
+      "h-screen flex flex-col bg-card border-r border-border transition-all duration-300 overflow-hidden",
       isCollapsed ? "w-12 min-w-[3rem]" : "w-80 min-w-[20rem] max-w-[30rem]",
       className
     )}>
       {/* Header */}
-      <div className="p-4 border-b border-border/50">
+      <div className="p-4 border-b border-border/50 flex-shrink-0">
         <div className="flex items-center justify-end mb-4">
           <Button
             variant="ghost"
@@ -679,7 +679,7 @@ export function ModernSidebar({
 
         {/* Search - Hidden when collapsed */}
         {!isCollapsed && (
-          <div className="relative mt-4">
+          <div className="relative mt-4 flex-shrink-0">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Rechercher des fichiers..."
@@ -726,7 +726,7 @@ export function ModernSidebar({
       {!isCollapsed && (
         <>
           {/* Tabs */}
-          <div className="border-b border-border/50">
+          <div className="border-b border-border/50 flex-shrink-0">
             <Tabs value={activeView} onValueChange={(value) => setActiveView(value as any)}>
               <TabsList className="w-full justify-start rounded-none bg-transparent p-0 h-10">
                 <TabsTrigger value="files" className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary">
@@ -746,8 +746,9 @@ export function ModernSidebar({
           </div>
 
           {/* Content */}
-          <ScrollArea className="flex-1">
-            <div className="p-4">
+          <div className="flex-1 overflow-hidden">
+            <ScrollArea className="h-full">
+              <div className="p-4">
               {activeView === 'files' && (
                 <div>
                   {!tree ? (
@@ -1003,9 +1004,10 @@ export function ModernSidebar({
               )}
             </div>
           </ScrollArea>
+          </div>
 
           {/* Footer */}
-          <div className="p-4 border-t border-border/50">
+          <div className="p-4 border-t border-border/50 flex-shrink-0">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>Storage</span>
               <Badge variant="outline" className="text-xs">

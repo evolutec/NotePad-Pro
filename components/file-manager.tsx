@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import React from "react"
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
@@ -98,6 +98,185 @@ const getFileIconAndColor = (fileName: string) => {
   // Par défaut
   return { Icon: File, color: "text-gray-600", type: 'other' }
 }
+
+// FileCard component to handle individual file drag & drop with hooks
+const FileCard = React.memo(({ 
+  file, 
+  viewMode, 
+  handleFileClick, 
+  handleDeleteFile,
+  setRenameFileState,
+  uploadProgress 
+}: {
+  file: FileItem;
+  viewMode: string;
+  handleFileClick: (file: FileItem) => void;
+  handleDeleteFile: (file: FileItem) => void;
+  setRenameFileState: (state: { file: FileItem; isOpen: boolean } | null) => void;
+  uploadProgress: Record<string, number>;
+}) => {
+  const [isDragOver, setIsDragOver] = React.useState(false);
+  
+  return (
+    <div
+      key={file.id}
+      draggable
+      className={cn(
+        "relative group cursor-pointer transition-all duration-200 hover:shadow-md",
+        file.isDirectory ? "hover:scale-105" : "",
+        isDragOver && file.isDirectory && "ring-2 ring-primary bg-primary/10"
+      )}
+      style={{
+        pointerEvents: 'auto',
+        zIndex: 10,
+        position: 'relative'
+      }}
+      onDragStart={(e: React.DragEvent) => {
+        e.stopPropagation();
+        const dragData = {
+          sourcePath: file.id,
+          sourceNode: file,
+          sourceType: 'filemanager'
+        };
+        e.dataTransfer.setData('application/json', JSON.stringify(dragData));
+        e.dataTransfer.effectAllowed = 'move';
+        console.log('🔵 Drag started from filemanager:', file.id);
+      }}
+      onDragOver={(e: React.DragEvent) => {
+        if (file.isDirectory) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.dataTransfer.dropEffect = 'move';
+          setIsDragOver(true);
+        }
+      }}
+      onDragLeave={(e: React.DragEvent) => {
+        e.stopPropagation();
+        setIsDragOver(false);
+      }}
+      onDrop={async (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragOver(false);
+        
+        if (!file.isDirectory) return;
+        
+        try {
+          const dragDataStr = e.dataTransfer.getData('application/json');
+          if (!dragDataStr) return;
+          
+          const dragData = JSON.parse(dragDataStr);
+          const sourcePath = dragData.sourcePath;
+          const targetPath = file.id;
+          
+          console.log('🟢 Drop detected on folder:', targetPath);
+          console.log('📁 Source:', sourcePath);
+          console.log('📁 Target:', targetPath);
+          
+          // Don't allow dropping on self or parent
+          if (sourcePath === targetPath || targetPath.startsWith(sourcePath)) {
+            console.log('❌ Cannot drop on self or child folder');
+            return;
+          }
+          
+          // Move the file/folder using Electron API
+          if (typeof window !== 'undefined' && window.electronAPI?.fsMove) {
+            const fileName = sourcePath.split('\\').pop() || sourcePath.split('/').pop();
+            const newPath = `${targetPath}\\${fileName}`;
+            
+            console.log('🚀 Moving file:', sourcePath, '→', newPath);
+            const result = await window.electronAPI.fsMove(sourcePath, newPath);
+            
+            if (result.success) {
+              console.log('✅ File moved successfully');
+              // Trigger refresh via DOM event
+              window.dispatchEvent(new Event('folderTreeRefresh'));
+              window.dispatchEvent(new Event('recentFilesRefresh'));
+            } else {
+              console.error('❌ Move failed:', result.error);
+            }
+          }
+        } catch (error) {
+          console.error('❌ Drop error:', error);
+        }
+      }}
+      onClick={(e) => {
+        console.log('=== FILEMANAGER CARD CLICK DETECTED ===');
+        console.log('Event:', e);
+        console.log('File:', file.name, file.id);
+        handleFileClick(file);
+      }}
+      onMouseDown={(e) => {
+        console.log('=== FILEMANAGER CARD MOUSEDOWN ===');
+        e.stopPropagation();
+      }}
+    >
+      {file.isDirectory ? (
+        /* Folder with icon */
+        <div className="relative flex flex-col items-center p-4">
+          <Folder className="w-20 h-20 text-orange-500" />
+          <span className="text-xs font-medium text-center truncate max-w-full px-1 mt-2">
+            {file.name}
+          </span>
+        </div>
+      ) : (
+        /* Regular files - Same design as sidebar */
+        <div className="flex flex-col items-center justify-center p-4">
+          {(() => {
+            const { Icon, color } = getFileIconAndColor(file.name)
+
+            return (
+              <div className="relative flex flex-col items-center justify-center gap-2">
+                <Icon className={`w-20 h-20 ${color}`} />
+                <span className="text-xs font-medium text-center truncate max-w-full px-1">
+                  {file.name}
+                </span>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* Dropdown menu for non-folder items */}
+      {!file.isDirectory && (
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="w-8 h-8">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setRenameFileState({ file, isOpen: true }); }}>
+                <Edit className="mr-2 h-4 w-4" /> Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); /* handleCopy(file) */ }}>
+                <Copy className="mr-2 h-4 w-4" /> Copy
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); /* handleMove(file) */ }}>
+                <Move className="mr-2 h-4 w-4" /> Move
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteFile(file); }}>
+                <Trash className="mr-2 h-4 w-4" /> Delete
+              </DropdownMenuItem>
+              {file.url && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); window.open(file.url, '_blank'); }}>
+                  <Eye className="mr-2 h-4 w-4" /> Open Link
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+
+      {uploadProgress[file.id] !== undefined && (
+        <Progress value={uploadProgress[file.id]} className="w-full mt-2" />
+      )}
+    </div>
+  );
+});
+
+FileCard.displayName = 'FileCard';
 
 export function FileManager({
   selectedFolder,
@@ -773,98 +952,15 @@ export function FileManager({
             )}
           >
             {filteredFiles.map((file) => (
-              <div
+              <FileCard
                 key={file.id}
-                className={cn(
-                  "relative group cursor-pointer transition-all duration-200 hover:shadow-md",
-                  file.isDirectory
-                    ? "hover:scale-105"
-                    : ""
-                )}
-                style={{
-                  pointerEvents: 'auto',
-                  zIndex: 10,
-                  position: 'relative'
-                }}
-                onClick={(e) => {
-                  console.log('=== FILEMANAGER CARD CLICK DETECTED ===');
-                  console.log('Event:', e);
-                  console.log('File:', file.name, file.id);
-                  handleFileClick(file);
-                }}
-                onMouseDown={(e) => {
-                  console.log('=== FILEMANAGER CARD MOUSEDOWN ===');
-                  e.stopPropagation();
-                }}
-              >
-                {file.isDirectory ? (
-                  /* Folder with CSS-based design */
-                  <div className="relative flex flex-col items-center p-4">
-                    {/* CSS Folder shape */}
-                    <div className="folder">
-                      <div className="folder-tab"></div>
-                      {/* Folder name inside the folder */}
-                      <div className="folder-content">
-                        <div className="folder-name">
-                          {file.name}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* Regular files - Same design as sidebar */
-                  <div className="flex flex-col items-center justify-center p-4">
-                    {(() => {
-                      const { Icon, color } = getFileIconAndColor(file.name)
-
-                      return (
-                        <div className="relative flex flex-col items-center justify-center gap-2">
-                          <Icon className={`w-20 h-20 ${color}`} />
-                          <span className="text-xs font-medium text-center truncate max-w-full px-1">
-                            {file.name}
-                          </span>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-
-                {/* Dropdown menu for non-folder items */}
-                {!file.isDirectory && (
-                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="w-8 h-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setRenameFileState({ file, isOpen: true }); }}>
-                          <Edit className="mr-2 h-4 w-4" /> Rename
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); /* handleCopy(file) */ }}>
-                          <Copy className="mr-2 h-4 w-4" /> Copy
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); /* handleMove(file) */ }}>
-                          <Move className="mr-2 h-4 w-4" /> Move
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteFile(file); }}>
-                          <Trash className="mr-2 h-4 w-4" /> Delete
-                        </DropdownMenuItem>
-                        {file.url && (
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); window.open(file.url, '_blank'); }}>
-                            <Eye className="mr-2 h-4 w-4" /> Open Link
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                )}
-
-                {uploadProgress[file.id] !== undefined && (
-                  <Progress value={uploadProgress[file.id]} className="w-full mt-2" />
-                )}
-              </div>
+                file={file}
+                viewMode={viewMode}
+                handleFileClick={handleFileClick}
+                handleDeleteFile={handleDeleteFile}
+                setRenameFileState={setRenameFileState}
+                uploadProgress={uploadProgress}
+              />
             ))}
           </div>
         )}
