@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Archive, Copy, Download, Edit, Eye, File, FileCode, FileText, FileWarning, Folder, FolderOpen, Grid, ImageIcon, Link, List, MoreHorizontal, Move, Music, NotebookText, Palette, Plus, Scissors, Search, SearchX, Share, Trash, Upload, UploadCloud, Video, FilePlus, ChevronLeft, ChevronRight, Home, FileImage, FileVideo, FileAudio, Sheet, Presentation } from "lucide-react"
+import { Archive, Copy, Download, Edit, Eye, File, FileCode, FileText, FileWarning, Folder, FolderOpen, ImageIcon, Link, MoreHorizontal, Move, Music, NotebookText, Palette, Plus, Scissors, Search, SearchX, Share, Trash, Upload, UploadCloud, Video, FilePlus, ChevronLeft, ChevronRight, Home, FileImage, FileVideo, FileAudio, Sheet, Presentation, List, LayoutGrid } from "lucide-react"
 import { FileConflictDialog } from "./file-conflict-dialog"
 
 // Custom PDF icon component
@@ -40,6 +40,9 @@ interface FileManagerProps {
   onVideoSelect?: (videoPath: string, videoName: string, videoType: string) => void
   onDocumentSelect?: (documentPath: string, documentName: string, documentType: string) => void
   selectedNote?: string | null; // Add selectedNote prop
+  searchQuery?: string;
+  onSearchQueryChange?: (query: string) => void;
+  viewMode?: "grid" | "list";
 }
 
 type FileType = "image" | "document" | "draw" | "audio" | "video" | "archive" | "link" | "other" | "code" | "note" | "folder" | "pdf"
@@ -55,6 +58,17 @@ interface FileItem {
   thumbnail?: string
   description?: string
   isDirectory?: boolean
+  owner?: string
+  permissions?: string
+  attributes?: {
+    isReadable?: boolean
+    isWritable?: boolean
+    isExecutable?: boolean
+    isHidden?: boolean
+    isSystem?: boolean
+  }
+  modifiedAt?: Date
+  createdAt?: Date
 }
 
 const FILE_TYPES: {
@@ -100,25 +114,162 @@ const getFileIconAndColor = (fileName: string) => {
   return { Icon: File, color: "text-gray-600", type: 'other' }
 }
 
-// FileCard component to handle individual file drag & drop with hooks
-const FileCard = React.memo(({ 
+// FileListRow component for list view
+const FileListRow = React.memo(({
   file, 
-  viewMode, 
   handleFileClick, 
+  handleDeleteFile,
+  setRenameFileState,
+  setFileConflict
+}: {
+  file: FileItem;
+  handleFileClick: (file: FileItem) => void;
+  handleDeleteFile: (file: FileItem) => void;
+  setRenameFileState: (state: { file: FileItem; isOpen: boolean } | null) => void;
+  setFileConflict: (state: { 
+    fileName: string; 
+    sourcePath: string; 
+    targetFolder: string;
+    isMove: boolean;
+    oldPath?: string;
+    newPath?: string;
+  } | null) => void;
+}) => {
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const formatDate = (date: Date | undefined): string => {
+    if (!date) return '';
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const { Icon, color } = getFileIconAndColor(file.name);
+
+  return (
+    <div
+      className="flex items-center gap-4 p-3 hover:bg-muted/50 cursor-pointer border-b border-border/50 group"
+      onClick={() => handleFileClick(file)}
+    >
+      {/* Icon */}
+      <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center">
+        <Icon className={`w-6 h-6 ${color}`} />
+      </div>
+
+      {/* Name */}
+      <div className="flex-1 min-w-0">
+        <div className="font-medium text-sm truncate">{file.name}</div>
+        {file.description && (
+          <div className="text-xs text-muted-foreground truncate">{file.description}</div>
+        )}
+      </div>
+
+      {/* Size */}
+      <div className="flex-shrink-0 w-20 text-right text-sm text-muted-foreground">
+        {file.isDirectory ? '--' : formatFileSize(file.size)}
+      </div>
+
+      {/* Modified Date */}
+      <div className="flex-shrink-0 w-40 text-sm text-muted-foreground">
+        {formatDate(file.modifiedAt || file.uploadDate)}
+      </div>
+
+      {/* Owner */}
+      <div className="flex-shrink-0 w-24 text-sm text-muted-foreground">
+        {file.owner || '--'}
+      </div>
+
+      {/* Permissions */}
+      <div className="flex-shrink-0 w-16 text-sm text-muted-foreground font-mono">
+        {file.permissions || '--'}
+      </div>
+
+      {/* Actions */}
+      {!file.isDirectory && (
+        <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="w-8 h-8"
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem 
+                onSelect={(e) => { 
+                  e.preventDefault();
+                  e.stopPropagation();
+                  /* handleCopy(file) */ 
+                }}
+              >
+                <Copy className="mr-2 h-4 w-4" /> Copy
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onSelect={(e) => { 
+                  e.preventDefault();
+                  e.stopPropagation();
+                  /* handleMove(file) */ 
+                }}
+              >
+                <Move className="mr-2 h-4 w-4" /> Move
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onSelect={(e) => { 
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleDeleteFile(file); 
+                }}
+              >
+                <Trash className="mr-2 h-4 w-4" /> Delete
+              </DropdownMenuItem>
+              {file.url && (
+                <DropdownMenuItem 
+                  onSelect={(e) => { 
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.open(file.url, '_blank'); 
+                  }}
+                >
+                  <Eye className="mr-2 h-4 w-4" /> Open Link
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+    </div>
+  );
+});
+
+FileListRow.displayName = 'FileListRow';
+
+// FileCard component to handle individual file drag & drop with hooks
+const FileCard = React.memo(({
+  file,
+  handleFileClick,
   handleDeleteFile,
   setRenameFileState,
   uploadProgress,
   setFileConflict
 }: {
   file: FileItem;
-  viewMode: string;
   handleFileClick: (file: FileItem) => void;
   handleDeleteFile: (file: FileItem) => void;
   setRenameFileState: (state: { file: FileItem; isOpen: boolean } | null) => void;
-  uploadProgress: Record<string, number>;
-  setFileConflict: (state: { 
-    fileName: string; 
-    sourcePath: string; 
+  uploadProgress: { [key: string]: number };
+  setFileConflict: (state: {
+    fileName: string;
+    sourcePath: string;
     targetFolder: string;
     isMove: boolean;
     oldPath?: string;
@@ -263,25 +414,63 @@ const FileCard = React.memo(({
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="w-8 h-8">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="w-8 h-8"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  console.log('Kebab menu clicked for file:', file.name);
+                }}
+              >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setRenameFileState({ file, isOpen: true }); }}>
+              {/* <DropdownMenuItem 
+                onSelect={(e) => { 
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setRenameFileState({ file, isOpen: true }); 
+                }}
+              >
                 <Edit className="mr-2 h-4 w-4" /> Rename
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); /* handleCopy(file) */ }}>
+              </DropdownMenuItem> */}
+              <DropdownMenuItem 
+                onSelect={(e) => { 
+                  e.preventDefault();
+                  e.stopPropagation();
+                  /* handleCopy(file) */ 
+                }}
+              >
                 <Copy className="mr-2 h-4 w-4" /> Copy
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); /* handleMove(file) */ }}>
+              <DropdownMenuItem 
+                onSelect={(e) => { 
+                  e.preventDefault();
+                  e.stopPropagation();
+                  /* handleMove(file) */ 
+                }}
+              >
                 <Move className="mr-2 h-4 w-4" /> Move
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteFile(file); }}>
+              <DropdownMenuItem 
+                onSelect={(e) => { 
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleDeleteFile(file); 
+                }}
+              >
                 <Trash className="mr-2 h-4 w-4" /> Delete
               </DropdownMenuItem>
               {file.url && (
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); window.open(file.url, '_blank'); }}>
+                <DropdownMenuItem 
+                  onSelect={(e) => { 
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.open(file.url, '_blank'); 
+                  }}
+                >
                   <Eye className="mr-2 h-4 w-4" /> Open Link
                 </DropdownMenuItem>
               )}
@@ -308,6 +497,9 @@ export function FileManager({
   onVideoSelect,
   onDocumentSelect,
   selectedNote, // Add selectedNote here
+  searchQuery: externalSearchQuery = "",
+  onSearchQueryChange,
+  viewMode: externalViewMode = "grid",
 }: FileManagerProps) {
   console.log("FileManager: Component re-rendered with selectedNote", selectedNote);
   // Buffer pour copier/couper/coller
@@ -420,8 +612,68 @@ export function FileManager({
 
   // Actions kebab menu pour fichiers
   const handleRenameFile = async (newName: string) => {
-    console.log(`Renaming file to ${newName}`);
-    // Implement actual rename logic
+    if (!renameFileState) return;
+
+    console.log('=== FILEMANAGER RENAME DEBUG START ===');
+    console.log('Renaming file:', renameFileState.file.name, 'to:', newName);
+    console.log('File path:', renameFileState.file.id);
+
+    try {
+      if (!window.electronAPI?.fileRename) {
+        console.error('Electron API fileRename not available');
+        return;
+      }
+
+      const oldPath = renameFileState.file.id;
+      console.log('Original path:', oldPath);
+
+      const result = await window.electronAPI.fileRename(oldPath, newName);
+
+      if (result.success) {
+        console.log(`Successfully renamed: ${oldPath} -> ${result.newPath || newName}`);
+
+        // Calculate the new path
+        const parentDir = oldPath.substring(0, oldPath.lastIndexOf('\\'));
+        const newPath = `${parentDir}\\${newName}`;
+
+        // Dispatch detailed rename event with old and new paths
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('fileRenamed', {
+            detail: {
+              oldPath: oldPath,
+              newPath: newPath,
+              fileType: renameFileState.file.type,
+              timestamp: Date.now()
+            }
+          }));
+
+          // Also dispatch the standard refresh events
+          window.dispatchEvent(new CustomEvent('folderTreeRefresh', {
+            detail: { timestamp: Date.now() }
+          }));
+
+          window.dispatchEvent(new CustomEvent('fileManagerRefresh', {
+            detail: { timestamp: Date.now() }
+          }));
+
+          window.dispatchEvent(new CustomEvent('recentFilesRefresh', {
+            detail: { timestamp: Date.now() }
+          }));
+        }
+
+        console.log('✅ File rename operation completed successfully - UI should refresh immediately');
+
+      } else {
+        console.error(`❌ Failed to rename ${oldPath}:`, result.error);
+        alert(`Erreur lors du renommage: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error during rename:', error);
+      alert(`Erreur lors du renommage: ${error instanceof Error ? error.message : error}`);
+    }
+
+    // Close the rename dialog
+    setRenameFileState(null);
   };
 
   const handleDeleteFile = async (file: FileItem) => {
@@ -456,7 +708,6 @@ export function FileManager({
   };
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const linkInputRef = useRef<HTMLInputElement>(null);
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
@@ -584,13 +835,26 @@ export function FileManager({
     console.log('FileManager: Looking for selectedFolder:', selectedFolder);
     console.log('FileManager: folderTree:', folderTree);
 
-    // Function to find folder in tree structure
+    // Function to find folder in tree structure with path normalization
     const findFolderInTree = (tree: any, targetPath: string): any => {
-      console.log('FileManager: Checking tree node:', tree.path, 'against target:', targetPath);
-      if (tree.path === targetPath) {
+      // Normalize paths for comparison (convert backslashes to forward slashes)
+      const normalizePath = (path: string) => path.replace(/\\/g, '/');
+      const normalizedTreePath = normalizePath(tree.path || '');
+      const normalizedTargetPath = normalizePath(targetPath);
+
+      console.log('FileManager: Checking tree node:', normalizedTreePath, 'against target:', normalizedTargetPath);
+
+      if (normalizedTreePath === normalizedTargetPath) {
         console.log('FileManager: Found matching folder:', tree.path);
         return tree;
       }
+
+      // Also try exact string match as fallback
+      if (tree.path === targetPath) {
+        console.log('FileManager: Found exact match:', tree.path);
+        return tree;
+      }
+
       if (tree.children) {
         for (const child of tree.children) {
           const found = findFolderInTree(child, targetPath);
@@ -617,7 +881,12 @@ export function FileManager({
           folderId: item.parent,
           thumbnail: item.thumbnail,
           description: item.description,
-          isDirectory: item.type === 'folder' || item.isDirectory || !!item.children
+          isDirectory: item.type === 'folder' || item.isDirectory || !!item.children,
+          owner: item.owner,
+          permissions: item.permissions,
+          attributes: item.attributes,
+          modifiedAt: item.modifiedAt ? new Date(item.modifiedAt) : undefined,
+          createdAt: item.createdAt ? new Date(item.createdAt) : undefined
         }));
       };
 
@@ -644,10 +913,33 @@ export function FileManager({
       };
       if (folderTree) collectPaths(folderTree);
 
-      // Fallback: if selectedFolder is not found, try to find a close match or use root
-      console.log('FileManager: Attempting fallback...');
-      if (folderTree && folderTree.children) {
-        console.log('FileManager: Using root folder as fallback');
+      // Enhanced fallback: try to find a folder that contains the selected path
+      console.log('FileManager: Attempting enhanced fallback...');
+      const findContainingFolder = (tree: any, targetPath: string): any => {
+        const normalizePath = (path: string) => path.replace(/\\/g, '/');
+        const normalizedTreePath = normalizePath(tree.path || '');
+        const normalizedTargetPath = normalizePath(targetPath);
+
+        // Check if target path starts with tree path (tree is parent of target)
+        if (normalizedTargetPath.startsWith(normalizedTreePath) && normalizedTreePath !== normalizedTargetPath) {
+          console.log('FileManager: Found parent folder:', tree.path);
+          return tree;
+        }
+
+        // Check children recursively
+        if (tree.children) {
+          for (const child of tree.children) {
+            const found = findContainingFolder(child, targetPath);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      const containingFolder = findContainingFolder(folderTree, selectedFolder);
+      if (containingFolder) {
+        console.log('FileManager: Using containing folder as fallback:', containingFolder.path);
+        // Convert tree structure to FileItem array for the containing folder
         const convertToFileItems = (items: any[]): FileItem[] => {
           return items.map(item => ({
             id: item.path || item.id || item.name,
@@ -659,7 +951,38 @@ export function FileManager({
             folderId: item.parent,
             thumbnail: item.thumbnail,
             description: item.description,
-            isDirectory: item.type === 'folder' || item.isDirectory || !!item.children
+            isDirectory: item.type === 'folder' || item.isDirectory || !!item.children,
+            owner: item.owner,
+            permissions: item.permissions,
+            attributes: item.attributes,
+            modifiedAt: item.modifiedAt ? new Date(item.modifiedAt) : undefined,
+            createdAt: item.createdAt ? new Date(item.createdAt) : undefined
+          }));
+        };
+
+        return containingFolder.children ? convertToFileItems(containingFolder.children) : [];
+      }
+
+      // Final fallback: use root folder
+      console.log('FileManager: Using root folder as final fallback');
+      if (folderTree && folderTree.children) {
+        const convertToFileItems = (items: any[]): FileItem[] => {
+          return items.map(item => ({
+            id: item.path || item.id || item.name,
+            name: item.name,
+            type: item.type === 'folder' ? 'folder' : getFileType(item.name),
+            size: item.size || 0,
+            url: item.url,
+            uploadDate: item.modifiedAt ? new Date(item.modifiedAt) : new Date(),
+            folderId: item.parent,
+            thumbnail: item.thumbnail,
+            description: item.description,
+            isDirectory: item.type === 'folder' || item.isDirectory || !!item.children,
+            owner: item.owner,
+            permissions: item.permissions,
+            attributes: item.attributes,
+            modifiedAt: item.modifiedAt ? new Date(item.modifiedAt) : undefined,
+            createdAt: item.createdAt ? new Date(item.createdAt) : undefined
           }));
         };
         return convertToFileItems(folderTree.children);
@@ -759,7 +1082,7 @@ export function FileManager({
   }, [onFolderSelect, onNoteSelect, onImageSelect, onVideoSelect]);
 
   const filteredFiles = files.filter((file) =>
-    file.name.toLowerCase().includes(searchQuery.toLowerCase())
+    file.name.toLowerCase().includes((externalSearchQuery || "").toLowerCase())
   );
 
   const formatFileSize = (bytes: number): string => {
@@ -959,7 +1282,7 @@ export function FileManager({
           -webkit-box-orient: vertical;
         }
       `}</style>
-      <div className="flex flex-col gap-2 p-4 border-b">
+      <div className="flex flex-col pt-0 pb-1 px-4 border-b">
         {/* Breadcrumb navigation */}
         <div className="flex items-center gap-2">
           <Button 
@@ -1028,40 +1351,6 @@ export function FileManager({
             })()}
           </div>
         </div>
-        
-        {/* Toolbar */}
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">File Manager</h2>
-          <div className="flex items-center space-x-2">
-          <Input
-            placeholder="Search files..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="max-w-sm"
-          />
-          <Button variant="outline" size="icon" onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}>
-            {viewMode === "grid" ? <List className="h-4 w-4" /> : <Grid className="h-4 w-4" />}
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
-                <Plus className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <AddNoteDialog onNoteCreated={() => { /* Gérer la création de note */ }} />
-              <AddPdfDocumentDialog open={false} onOpenChange={() => {}} parentPath={selectedFolder || ''} onDocumentCreated={() => { /* Gérer la création de document */ }} />
-              <AddDrawDialog open={false} onOpenChange={() => {}} parentPath={selectedFolder || ''} onDrawCreated={() => { /* Gérer la création de dessin */ }} />
-              <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                <UploadCloud className="mr-2 h-4 w-4" /> Upload File
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => linkInputRef.current?.click()}>
-                <Link className="mr-2 h-4 w-4" /> Add Link
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        </div>
       </div>
       <input
         type="file"
@@ -1090,18 +1379,43 @@ export function FileManager({
             <SearchX className="h-16 w-16 mb-4" />
             <p>Aucun fichier dans ce dossier. Faites glisser et déposez des fichiers ici, ou cliquez sur 'Ajouter' pour en créer un nouveau</p>
           </div>
+        ) : externalViewMode === "list" ? (
+          <div className="w-full">
+            {/* Table Header */}
+            <div className="flex items-center gap-4 p-3 border-b-2 border-border font-medium text-sm text-muted-foreground bg-muted/30">
+              <div className="flex-shrink-0 w-8"></div>
+              <div className="flex-1">Nom</div>
+              <div className="flex-shrink-0 w-20 text-right">Taille</div>
+              <div className="flex-shrink-0 w-40">Modifié</div>
+              <div className="flex-shrink-0 w-24">Propriétaire</div>
+              <div className="flex-shrink-0 w-16">Permissions</div>
+              <div className="flex-shrink-0 w-8"></div>
+            </div>
+            {/* Table Rows */}
+            <div className="divide-y divide-border">
+              {filteredFiles.map((file) => (
+                <FileListRow
+                  key={file.id}
+                  file={file}
+                  handleFileClick={handleFileClick}
+                  handleDeleteFile={handleDeleteFile}
+                  setRenameFileState={setRenameFileState}
+                  setFileConflict={setFileConflict}
+                />
+              ))}
+            </div>
+          </div>
         ) : (
           <div
             className={cn(
               "grid gap-4",
-              viewMode === "grid" ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-4" : "grid-cols-1"
+              "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
             )}
           >
             {filteredFiles.map((file) => (
               <FileCard
                 key={file.id}
                 file={file}
-                viewMode={viewMode}
                 handleFileClick={handleFileClick}
                 handleDeleteFile={handleDeleteFile}
                 setRenameFileState={setRenameFileState}

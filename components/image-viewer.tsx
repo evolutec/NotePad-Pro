@@ -13,9 +13,10 @@ export interface ImageViewerProps {
   imagePath: string;
   imageName: string;
   imageType: string;
+  onRename?: () => void;
 }
 
-export function ImageViewer({ imagePath, imageName, imageType }: ImageViewerProps) {
+export function ImageViewer({ imagePath, imageName, imageType, onRename }: ImageViewerProps) {
   const [imageSrc, setImageSrc] = useState<string>("");
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
@@ -218,6 +219,7 @@ export function ImageViewer({ imagePath, imageName, imageType }: ImageViewerProp
   return (
     <div className="w-full h-full flex flex-col bg-background relative">
       <OnlyOfficeLikeToolbar
+        key={`toolbar-${imagePath}`}
         tabs={[
           { label: "Fichier" },
           { label: "Accueil" },
@@ -233,18 +235,21 @@ export function ImageViewer({ imagePath, imageName, imageType }: ImageViewerProp
       {/* File Menu */}
       {activeTab === "Fichier" && (
         <OnlyOfficeFileMenu
+          key={`file-menu-${imagePath}`}
           onClose={() => setActiveTab("Accueil")}
           type="image"
           onExport={(format) => {
             console.log('Exporting image as:', format);
             // TODO: Implement image export
           }}
+          onRename={onRename}
         />
       )}
 
       {/* Conditional Toolbars */}
       {activeTab === "Accueil" && (
         <ImageHomeToolbar
+          key={`home-toolbar-${imagePath}`}
           zoom={zoom}
           rotation={rotation}
           onZoomIn={() => setZoom(prev => Math.min(prev + 0.25, 3))}
@@ -258,6 +263,7 @@ export function ImageViewer({ imagePath, imageName, imageType }: ImageViewerProp
 
       {activeTab === "Ajustements" && (
         <ImageAdjustmentToolbar
+          key={`adjustment-toolbar-${imagePath}`}
           brightness={brightness}
           contrast={contrast}
           saturation={saturation}
@@ -271,6 +277,7 @@ export function ImageViewer({ imagePath, imageName, imageType }: ImageViewerProp
 
       {activeTab === "Affichage" && (
         <ImageViewToolbar
+          key={`view-toolbar-${imagePath}`}
           zoom={zoom}
           onZoomIn={() => setZoom(prev => Math.min(prev + 0.25, 3))}
           onZoomOut={() => setZoom(prev => Math.max(prev - 0.25, 0.25))}

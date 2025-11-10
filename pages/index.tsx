@@ -10,7 +10,7 @@ import { SettingsDialog } from "@/components/settings-dialog"
 import { FirstRunSetup } from "@/components/first-run-setup"
 import { toast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
-import { Settings, X, ExternalLink } from "lucide-react"
+import { Settings, X, ExternalLink, List, LayoutGrid } from "lucide-react"
 import type { EnhancedFolderNode } from "@/components/ui/FolderTree-modern"
 import { AddFolderDialog } from "@/components/add-folder_dialog"
 import { AddNoteDialog } from "@/components/add-note_dialog"
@@ -58,12 +58,53 @@ export default function NoteTakingApp() {
   const [videoViewerPath, setVideoViewerPath] = useState("")
   const [videoViewerName, setVideoViewerName] = useState("")
   const [videoViewerType, setVideoViewerType] = useState("")
+  const [audioViewerPath, setAudioViewerPath] = useState("")
+  const [audioViewerName, setAudioViewerName] = useState("")
+  const [audioViewerType, setAudioViewerType] = useState("")
   const [documentViewerPath, setDocumentViewerPath] = useState("")
   const [documentViewerName, setDocumentViewerName] = useState("")
   const [documentViewerType, setDocumentViewerType] = useState("")
   const [currentDocumentTitle, setCurrentDocumentTitle] = useState<string>("")
   const [currentDocumentPath, setCurrentDocumentPath] = useState<string>("")
-  const isMobile = useIsMobile()
+  const [fileManagerViewMode, setFileManagerViewMode] = useState<"grid" | "list">("grid")
+  const handleAudioRename = useCallback(() => {
+    if (audioViewerPath && audioViewerName) {
+      const renameNodeForDialog = {
+        name: audioViewerName,
+        path: audioViewerPath,
+        type: 'audio',
+        isDirectory: false
+      };
+      setRenameNode(renameNodeForDialog);
+      setIsRenameOpen(true);
+    }
+  }, [audioViewerPath, audioViewerName]);
+
+  const handleVideoRename = useCallback(() => {
+    if (videoViewerPath && videoViewerName) {
+      const renameNodeForDialog = {
+        name: videoViewerName,
+        path: videoViewerPath,
+        type: 'video',
+        isDirectory: false
+      };
+      setRenameNode(renameNodeForDialog);
+      setIsRenameOpen(true);
+    }
+  }, [videoViewerPath, videoViewerName]);
+
+  const handleImageRename = useCallback(() => {
+    if (imageViewerPath && imageViewerName) {
+      const renameNodeForDialog = {
+        name: imageViewerName,
+        path: imageViewerPath,
+        type: 'image',
+        isDirectory: false
+      };
+      setRenameNode(renameNodeForDialog);
+      setIsRenameOpen(true);
+    }
+  }, [imageViewerPath, imageViewerName]);
 
   // JSON file management functions
   const readJsonFile = async (filename: string): Promise<any[]> => {
@@ -269,6 +310,9 @@ export default function NoteTakingApp() {
         setCurrentDocumentPath(filePath);
       } else if (["mp3", "wav", "ogg", "flac", "aac", "m4a"].includes(ext)) {
         setActiveView("audio_viewer");
+        setAudioViewerPath(filePath);
+        setAudioViewerName(fileName);
+        setAudioViewerType(ext);
         setCurrentDocumentTitle(fileNameWithoutExt);
         setCurrentDocumentPath(filePath);
       } else if (["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "rtf", "odt", "txt", "md"].includes(ext)) {
@@ -326,6 +370,68 @@ export default function NoteTakingApp() {
     };
 
     checkConfigAndInitialize();
+  }, []);
+
+  useEffect(() => {
+    const loadInitialConfig = async () => {
+      console.log('📱 Loading initial configuration...');
+      
+      try {
+        if (window.electronAPI?.readFile) {
+          const configResult = await window.electronAPI.readFile('config.json');
+          if (configResult.success) {
+            // Convert data to string if needed (handle Uint8Array)
+            let configString: string;
+            if (configResult.data && configResult.data.constructor && configResult.data.constructor.name === 'Uint8Array') {
+              console.log('📱 Converting Uint8Array to string...');
+              configString = new TextDecoder('utf-8').decode(configResult.data as unknown as Uint8Array);
+            } else if (typeof configResult.data === 'string') {
+              configString = configResult.data;
+            } else {
+              console.error('📱 Unexpected data type:', typeof configResult.data);
+              setShowFirstRunSetup(true);
+              return;
+            }
+
+            const config = JSON.parse(configString);
+            console.log('📱 Config loaded:', config);
+            
+            // Set selectedFolder to the root path from config
+            if (config.files?.rootPath) {
+              console.log('📱 Setting selectedFolder to root path:', config.files.rootPath);
+              setSelectedFolder(config.files.rootPath);
+            }
+            
+            // Check if first run setup is needed
+            if (!config.files?.rootPath) {
+              console.log('📱 No root path configured, showing first run setup');
+              setShowFirstRunSetup(true);
+            } else {
+              console.log('📱 Root path configured, loading folder tree');
+              // Load initial folder tree
+              if (window.electronAPI?.foldersScan) {
+                const result = await window.electronAPI.foldersScan();
+                if (result && result.length > 0) {
+                  console.log('📱 Initial folder tree loaded:', result[0]);
+                  setFolderTree(result[0]);
+                }
+              }
+            }
+          } else {
+            console.log('📱 Config file not found or error, showing first run setup');
+            setShowFirstRunSetup(true);
+          }
+        } else {
+          console.log('📱 Electron API not available, showing first run setup');
+          setShowFirstRunSetup(true);
+        }
+      } catch (error) {
+        console.error('📱 Error loading initial config:', error);
+        setShowFirstRunSetup(true);
+      }
+    };
+
+    loadInitialConfig();
   }, []);
 
   const handleFirstRunComplete = async (rootPath: string) => {
@@ -481,6 +587,9 @@ export default function NoteTakingApp() {
         
         setSelectedNote(notePath);
         setActiveView('audio_viewer');
+        setAudioViewerPath(notePath);
+        setAudioViewerName(fileName);
+        setAudioViewerType(fileExtension || 'mp3');
         setCurrentDocumentTitle(fileNameWithoutExt);
         setCurrentDocumentPath(notePath);
         
@@ -871,6 +980,24 @@ export default function NoteTakingApp() {
           </div>
 
           <div className="flex items-center gap-1 min-w-[120px] justify-end">
+            {activeView === "files" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => {
+                  const newViewMode = fileManagerViewMode === "grid" ? "list" : "grid";
+                  setFileManagerViewMode(newViewMode);
+                }}
+                title={`Switch to ${fileManagerViewMode === "grid" ? "list" : "grid"} view`}
+              >
+                {fileManagerViewMode === "grid" ? (
+                  <List className="h-4 w-4" />
+                ) : (
+                  <LayoutGrid className="h-4 w-4" />
+                )}
+              </Button>
+            )}
             {currentDocumentPath && activeView !== "landing" && activeView !== "files" && (
               <>
                 <Button 
@@ -965,23 +1092,34 @@ export default function NoteTakingApp() {
           {activeView === "canvas" && <DrawingCanvas selectedNote={selectedNote || null} selectedFolder={selectedFolder} />}
           {activeView === "image_viewer" && (
             <ImageViewer
+              key={imageViewerPath}
               imagePath={imageViewerPath}
               imageName={imageViewerName}
               imageType={imageViewerType}
+              onRename={handleImageRename}
             />
           )}
           {activeView === "video_viewer" && (
             <VideoViewer
+              key={videoViewerPath}
               videoPath={videoViewerPath}
               videoName={videoViewerName}
               videoType={videoViewerType}
+              onRename={handleVideoRename}
             />
           )}
-          {activeView === "audio_viewer" && currentDocumentPath && (
-            <AudioViewer src={currentDocumentPath} />
+          {activeView === "audio_viewer" && audioViewerPath && (
+            <AudioViewer 
+              key={audioViewerPath} 
+              src={audioViewerPath} 
+              audioName={audioViewerName}
+              audioType={audioViewerType}
+              onRename={handleAudioRename}
+            />
           )}
           {activeView === "document_viewer" && documentViewerPath && (
             <OnlyOfficeEditor
+              key={documentViewerPath}
               filePath={documentViewerPath}
               fileName={documentViewerName}
               fileType={(() => {
@@ -1021,6 +1159,7 @@ export default function NoteTakingApp() {
                 setDocumentViewerType(type);
               }}
               selectedNote={selectedNote}
+              viewMode={fileManagerViewMode}
             />
           )}
         </main>
@@ -1081,6 +1220,86 @@ export default function NoteTakingApp() {
               const correctNewPath = `${parentDir}\\${newName}`;
               console.log('Correct new path:', correctNewPath);
 
+              // Update state variables based on current view and file type
+              const fileExtension = newName.split('.').pop()?.toLowerCase() || '';
+              const newFileName = newName.replace(/\.[^/.]+$/, '');
+
+              console.log('=== STATE UPDATE DEBUG ===');
+              console.log('activeView:', activeView);
+              console.log('oldPath:', oldPath);
+              console.log('imageViewerPath:', imageViewerPath);
+              console.log('videoViewerPath:', videoViewerPath);
+              console.log('audioViewerPath:', audioViewerPath);
+              console.log('documentViewerPath:', documentViewerPath);
+              console.log('currentDocumentPath:', currentDocumentPath);
+
+              if (activeView === 'image_viewer' && imageViewerPath === oldPath) {
+                console.log('Updating image viewer state for renamed file');
+                setImageViewerPath(correctNewPath);
+                setImageViewerName(newName);
+                setImageViewerType(fileExtension);
+                setCurrentDocumentTitle(newFileName);
+                setCurrentDocumentPath(correctNewPath);
+              } else if (activeView === 'video_viewer' && videoViewerPath === oldPath) {
+                console.log('Updating video viewer state for renamed file');
+                setVideoViewerPath(correctNewPath);
+                setVideoViewerName(newName);
+                setVideoViewerType(fileExtension);
+                setCurrentDocumentTitle(newFileName);
+                setCurrentDocumentPath(correctNewPath);
+              } else if (activeView === 'audio_viewer' && audioViewerPath === oldPath) {
+                console.log('Updating audio viewer state for renamed file');
+                setAudioViewerPath(correctNewPath);
+                setAudioViewerName(newName);
+                setAudioViewerType(fileExtension);
+                setCurrentDocumentTitle(newFileName);
+                setCurrentDocumentPath(correctNewPath);
+              } else if (activeView === 'document_viewer' && documentViewerPath === oldPath) {
+                console.log('Updating document viewer state for renamed file');
+                setDocumentViewerPath(correctNewPath);
+                setDocumentViewerName(newName);
+                setDocumentViewerType(fileExtension);
+                setCurrentDocumentTitle(newFileName);
+                setCurrentDocumentPath(correctNewPath);
+              } else if (activeView === 'canvas' && currentDocumentPath === oldPath) {
+                console.log('Updating canvas state for renamed file');
+                setCurrentDocumentTitle(newFileName);
+                setCurrentDocumentPath(correctNewPath);
+              } else {
+                // Check if the renamed file is currently open in any viewer, regardless of active view
+                if (imageViewerPath === oldPath) {
+                  console.log('Updating image viewer state for renamed file (context menu rename)');
+                  setImageViewerPath(correctNewPath);
+                  setImageViewerName(newName);
+                  setImageViewerType(fileExtension);
+                  setCurrentDocumentTitle(newFileName);
+                  setCurrentDocumentPath(correctNewPath);
+                } else if (videoViewerPath === oldPath) {
+                  console.log('Updating video viewer state for renamed file (context menu rename)');
+                  setVideoViewerPath(correctNewPath);
+                  setVideoViewerName(newName);
+                  setVideoViewerType(fileExtension);
+                  setCurrentDocumentTitle(newFileName);
+                  setCurrentDocumentPath(correctNewPath);
+                } else if (audioViewerPath === oldPath) {
+                  console.log('Updating audio viewer state for renamed file (context menu rename)');
+                  setAudioViewerPath(correctNewPath);
+                  setAudioViewerName(newName);
+                  setAudioViewerType(fileExtension);
+                  setCurrentDocumentTitle(newFileName);
+                  setCurrentDocumentPath(correctNewPath);
+                } else if (documentViewerPath === oldPath) {
+                  console.log('Updating document viewer state for renamed file (context menu rename)');
+                  setDocumentViewerPath(correctNewPath);
+                  setDocumentViewerName(newName);
+                  setDocumentViewerType(fileExtension);
+                  setCurrentDocumentTitle(newFileName);
+                  setCurrentDocumentPath(correctNewPath);
+                } else {
+                  console.log('No viewer state update needed - file not currently open in any viewer');
+                }
+              }
+
               if (window.electronAPI?.foldersScan) {
                 const scanResult = await window.electronAPI.foldersScan();
                 if (scanResult && scanResult.length > 0) {
@@ -1090,23 +1309,17 @@ export default function NoteTakingApp() {
                   setFolderTree(newTree);
                   setTreeVersion(prev => prev + 1);
 
-                  console.log('Switching to files view after rename, old activeView:', activeView);
-
-                  const parentDir = oldPath.substring(0, oldPath.lastIndexOf('\\'));
-                  console.log('Parent directory of renamed item:', parentDir);
-
-                  setSelectedFolder(parentDir);
-                  console.log('Set selectedFolder to parent directory:', parentDir);
-
-                  setActiveView("files");
-                  console.log('Switched activeView to files after rename');
+                  console.log('Keeping current view after rename, activeView:', activeView);
 
                   if (selectedNote === oldPath) {
+                    console.log('Updating selectedNote from', selectedNote, 'to', correctNewPath);
                     setSelectedNote(correctNewPath);
                     console.log('Updated selected note path after rename');
+                  } else {
+                    console.log('selectedNote', selectedNote, 'does not match oldPath', oldPath, '- not updating');
                   }
 
-                  console.log('✅ Rename operation completed successfully - switched to files view with parent folder content');
+                  console.log('✅ Rename operation completed successfully - kept current view with updated paths');
                 }
               }
             } else {

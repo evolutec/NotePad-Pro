@@ -1005,16 +1005,6 @@ export function ModernSidebar({
             </div>
           </ScrollArea>
           </div>
-
-          {/* Footer */}
-          <div className="p-4 border-t border-border/50 flex-shrink-0">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Storage</span>
-              <Badge variant="outline" className="text-xs">
-                2.4 GB / 15 GB
-              </Badge>
-            </div>
-          </div>
         </>
       )}
 

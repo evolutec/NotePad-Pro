@@ -15,6 +15,7 @@ interface AudioViewerProps {
   audioType?: string
   themeColor?: string
   className?: string
+  onRename?: () => void
 }
 
 export const AudioViewer: React.FC<AudioViewerProps> = ({ 
@@ -22,8 +23,51 @@ export const AudioViewer: React.FC<AudioViewerProps> = ({
   audioName = "Audio", 
   audioType = "audio",
   themeColor = "#ec4899", 
-  className 
+  className,
+  onRename
 }) => {
+  console.log('🎵 AudioViewer: Component rendered with src:', src, 'audioName:', audioName);
+  
+  // Reset all state when src changes
+  React.useEffect(() => {
+    console.log('🎵 AudioViewer: src changed, resetting all state');
+    setActiveTab("Accueil")
+    setAudioUrl("")
+    setError("")
+    setIsLoading(true)
+    setVisualizerStyle('bars')
+    setViewTheme("auto")
+    setIsPlaying(false)
+    setCurrentTime(0)
+    setDuration(0)
+    setVolume(0.7)
+    setIsMuted(false)
+    setPlaybackRate(1)
+    setShowEqualizer(true)
+    setShowVisualizer(true)
+    setEqBands([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    
+    // Reset refs
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current)
+      blobUrlRef.current = ""
+    }
+    
+    // Reset Web Audio API
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(err => console.error('Error closing AudioContext:', err))
+      audioContextRef.current = null
+    }
+    analyserRef.current = null
+    sourceRef.current = null
+    eqFiltersRef.current = []
+    
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current)
+      animationRef.current = 0
+    }
+  }, [src])
+  
   // UI State
   const [activeTab, setActiveTab] = useState("Accueil")
   const [audioUrl, setAudioUrl] = useState<string>("")
@@ -54,9 +98,13 @@ export const AudioViewer: React.FC<AudioViewerProps> = ({
   const [eqBands, setEqBands] = useState<number[]>([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
   const eqFiltersRef = useRef<BiquadFilterNode[]>([])
 
+  // Detect if we're in a popped-out window
+  const isPoppedOut = typeof window !== 'undefined' && window.opener !== null
+
   // Load audio file
   useEffect(() => {
     let mounted = true
+    console.log('🎵 AudioViewer: Loading audio file with src:', src);
 
     const loadAudio = async () => {
       try {
@@ -101,14 +149,17 @@ export const AudioViewer: React.FC<AudioViewerProps> = ({
           blobUrlRef.current = url
 
           if (mounted) {
+            console.log('🎵 AudioViewer: Setting audioUrl to:', url);
             setAudioUrl(url)
             setIsLoading(false)
+            console.log('🎵 AudioViewer: Audio loading completed successfully');
           }
         } else {
           throw new Error('API Electron non disponible')
         }
       } catch (err: any) {
         if (mounted) {
+          console.error('🎵 AudioViewer: Error loading audio:', err.message);
           setError(err.message || 'Erreur lors du chargement de l\'audio')
           setIsLoading(false)
         }
@@ -127,11 +178,16 @@ export const AudioViewer: React.FC<AudioViewerProps> = ({
 
   // Setup Web Audio API
   useEffect(() => {
-    if (!audioRef.current || !audioUrl) return
+    if (!audioRef.current || !audioUrl) {
+      console.log('🎵 AudioViewer: Skipping Web Audio setup - audioRef or audioUrl not ready');
+      return
+    }
 
+    console.log('🎵 AudioViewer: Setting up Web Audio API for audioUrl:', audioUrl);
     const audio = audioRef.current
     
     const handleLoadedMetadata = () => {
+      console.log('🎵 AudioViewer: Audio loaded metadata, duration:', audio.duration);
       setDuration(audio.duration)
     }
 
@@ -140,15 +196,27 @@ export const AudioViewer: React.FC<AudioViewerProps> = ({
     }
 
     const handleEnded = () => {
+      console.log('🎵 AudioViewer: Audio playback ended');
       setIsPlaying(false)
+    }
+
+    const handleCanPlay = () => {
+      console.log('🎵 AudioViewer: Audio can play');
+    }
+
+    const handleError = (e: any) => {
+      console.error('🎵 AudioViewer: Audio element error:', e);
     }
 
     audio.addEventListener('loadedmetadata', handleLoadedMetadata)
     audio.addEventListener('timeupdate', handleTimeUpdate)
     audio.addEventListener('ended', handleEnded)
+    audio.addEventListener('canplay', handleCanPlay)
+    audio.addEventListener('error', handleError)
 
     try {
       if (!audioContextRef.current) {
+        console.log('🎵 AudioViewer: Creating AudioContext');
         const AudioContext = window.AudioContext || (window as any).webkitAudioContext
         audioContextRef.current = new AudioContext()
         
@@ -177,15 +245,20 @@ export const AudioViewer: React.FC<AudioViewerProps> = ({
         })
         previousNode.connect(analyserRef.current)
         analyserRef.current.connect(audioContextRef.current.destination)
+
+        console.log('🎵 AudioViewer: Web Audio API setup completed successfully');
       }
     } catch (err) {
-      console.error('Web Audio API setup failed:', err)
+      console.error('🎵 AudioViewer: Web Audio API setup failed:', err)
     }
 
     return () => {
+      console.log('🎵 AudioViewer: Cleaning up audio event listeners');
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata)
       audio.removeEventListener('timeupdate', handleTimeUpdate)
       audio.removeEventListener('ended', handleEnded)
+      audio.removeEventListener('canplay', handleCanPlay)
+      audio.removeEventListener('error', handleError)
     }
   }, [audioUrl])
 
@@ -262,40 +335,54 @@ export const AudioViewer: React.FC<AudioViewerProps> = ({
 
   // Control handlers
   const togglePlayPause = () => {
-    if (!audioRef.current) return
+    console.log('🎵 AudioViewer: togglePlayPause called, current isPlaying:', isPlaying);
+    if (!audioRef.current) {
+      console.error('🎵 AudioViewer: No audio element reference');
+      return
+    }
     
     if (audioContextRef.current?.state === 'suspended') {
+      console.log('🎵 AudioViewer: Resuming suspended AudioContext');
       audioContextRef.current.resume()
     }
 
     if (isPlaying) {
+      console.log('🎵 AudioViewer: Pausing audio');
       audioRef.current.pause()
     } else {
+      console.log('🎵 AudioViewer: Playing audio');
       audioRef.current.play()
     }
     setIsPlaying(!isPlaying)
   }
 
   const handleStop = () => {
-    if (!audioRef.current) return
+    console.log('🎵 AudioViewer: handleStop called');
+    if (!audioRef.current) {
+      console.error('🎵 AudioViewer: No audio element reference for stop');
+      return
+    }
     audioRef.current.pause()
     audioRef.current.currentTime = 0
     setIsPlaying(false)
   }
 
   const handleSkipBackward = () => {
+    console.log('🎵 AudioViewer: handleSkipBackward called');
     if (audioRef.current) {
       audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10)
     }
   }
 
   const handleSkipForward = () => {
+    console.log('🎵 AudioViewer: handleSkipForward called');
     if (audioRef.current) {
       audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 10)
     }
   }
 
   const handleMuteToggle = () => {
+    console.log('🎵 AudioViewer: handleMuteToggle called, current isMuted:', isMuted);
     if (audioRef.current) {
       audioRef.current.muted = !isMuted
       setIsMuted(!isMuted)
@@ -303,6 +390,7 @@ export const AudioViewer: React.FC<AudioViewerProps> = ({
   }
 
   const handleVolumeChange = (value: number[]) => {
+    console.log('🎵 AudioViewer: handleVolumeChange called with value:', value);
     const vol = value[0]
     if (audioRef.current) {
       audioRef.current.volume = vol
@@ -312,6 +400,7 @@ export const AudioViewer: React.FC<AudioViewerProps> = ({
   }
 
   const handleSeek = (value: number[]) => {
+    console.log('🎵 AudioViewer: handleSeek called with value:', value);
     const time = value[0]
     if (audioRef.current) {
       audioRef.current.currentTime = time
@@ -338,8 +427,16 @@ export const AudioViewer: React.FC<AudioViewerProps> = ({
   }
 
   const handleDetach = () => {
+    console.log('handleDetach called');
+    console.log('window.electronAPI:', (window as any).electronAPI);
+    console.log('openAudioWindow function:', (window as any).electronAPI?.openAudioWindow);
+    
     if (typeof window !== 'undefined' && (window as any).electronAPI?.openAudioWindow) {
+      console.log('Calling electronAPI.openAudioWindow with:', src);
       (window as any).electronAPI.openAudioWindow(src)
+    } else {
+      console.log('Electron API not available, showing alert');
+      alert('Fonctionnalité de détachement non disponible en mode navigateur. Utilisez l\'application Electron.');
     }
   }
 
@@ -354,6 +451,7 @@ export const AudioViewer: React.FC<AudioViewerProps> = ({
     <div className="relative w-full h-full flex flex-col bg-[#0f0f12]">
       {/* Toolbar */}
       <OnlyOfficeLikeToolbar
+        key={`toolbar-${src}`}
         tabs={[
           { label: "Fichier" },
           { label: "Accueil" },
@@ -367,17 +465,21 @@ export const AudioViewer: React.FC<AudioViewerProps> = ({
       {/* File Menu */}
       {activeTab === "Fichier" && (
         <OnlyOfficeFileMenu
+          key={`file-menu-${src}`}
           onClose={() => setActiveTab("Accueil")}
           type="audio"
+          isPoppedOut={isPoppedOut}
           onExport={(format) => {
             console.log('Exporting audio as:', format)
           }}
+          onRename={onRename}
         />
       )}
 
       {/* Conditional Toolbars */}
       {activeTab === "Accueil" && (
         <AudioHomeToolbar
+          key={`home-toolbar-${src}`}
           isPlaying={isPlaying}
           isMuted={isMuted}
           volume={volume}
@@ -392,6 +494,7 @@ export const AudioViewer: React.FC<AudioViewerProps> = ({
 
       {activeTab === "Égaliseur" && (
         <AudioEqualizerToolbar
+          key={`equalizer-toolbar-${src}`}
           equalizerGains={eqBands}
           onEqualizerChange={handleEqChange}
           onEqualizerReset={handleEqReset}
@@ -402,6 +505,7 @@ export const AudioViewer: React.FC<AudioViewerProps> = ({
 
       {activeTab === "Affichage" && (
         <AudioViewToolbar
+          key={`view-toolbar-${src}`}
           showVisualizer={showVisualizer}
           onToggleVisualizer={() => setShowVisualizer(!showVisualizer)}
           visualizerStyle={visualizerStyle}
@@ -437,6 +541,10 @@ export const AudioViewer: React.FC<AudioViewerProps> = ({
               src={audioUrl}
               className="hidden"
               crossOrigin="anonymous"
+              onLoadedData={() => console.log('🎵 AudioViewer: Audio loaded data')}
+              onCanPlayThrough={() => console.log('🎵 AudioViewer: Audio can play through')}
+              onPlay={() => console.log('🎵 AudioViewer: Audio started playing')}
+              onPause={() => console.log('🎵 AudioViewer: Audio paused')}
             />
 
             {/* Visualizer */}

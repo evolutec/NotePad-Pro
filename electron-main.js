@@ -756,13 +756,41 @@ ipcMain.handle('foldersScan', async () => {
             fileType = 'link';
           }
 
-          // Get file size
+          // Get file size and additional metadata
           let fileSize = 0;
+          let fileOwner = 'Unknown';
+          let filePermissions = 'Unknown';
+          let fileAttributes = {};
+          
           try {
             const stats = fs.statSync(itemPath);
             fileSize = stats.size;
+            
+            // Get owner information (uid/gid)
+            try {
+              fileOwner = `${stats.uid}:${stats.gid}`;
+            } catch (ownerErr) {
+              console.log(`Could not get owner for file ${item}:`, ownerErr.message);
+            }
+            
+            // Get permissions in octal format
+            try {
+              filePermissions = (stats.mode & parseInt('777', 8)).toString(8);
+            } catch (permErr) {
+              console.log(`Could not get permissions for file ${item}:`, permErr.message);
+            }
+            
+            // Store additional attributes
+            fileAttributes = {
+              isReadable: true, // Assume readable since we can stat it
+              isWritable: true, // Assume writable for now
+              isExecutable: !!(stats.mode & parseInt('111', 8)),
+              isHidden: item.startsWith('.'),
+              isSystem: false // Windows-specific, default to false
+            };
+            
           } catch (err) {
-            console.log(`Could not get size for file ${item}:`, err.message);
+            console.log(`Could not get metadata for file ${item}:`, err.message);
           }
 
           node.children.push({
@@ -772,7 +800,10 @@ ipcMain.handle('foldersScan', async () => {
             isDirectory: false,
             size: fileSize,
             modifiedAt: itemStats.mtime,
-            createdAt: itemStats.birthtime
+            createdAt: itemStats.birthtime,
+            owner: fileOwner,
+            permissions: filePermissions,
+            attributes: fileAttributes
           });
         }
       }
@@ -2014,16 +2045,55 @@ ipcMain.handle('audio:openWindow', async (_event, audioPath) => {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
-        preload: path.join(__dirname, 'preload.js')
+        preload: path.join(__dirname, 'preload.js'),
+        webSecurity: false
       },
       autoHideMenuBar: true
     });
 
     // Load the audio player page with the file path as query param
     const isDev = !app.isPackaged;
-    const baseUrl = isDev ? 'http://localhost:3000' : 'http://127.0.0.1:3000';
+    let baseUrl;
+    if (isDev) {
+      // Try to detect the correct port by checking if localhost:3000 is available
+      const checkPort = (port) => {
+        return new Promise((resolve) => {
+          const req = http.get(`http://localhost:${port}`, (res) => {
+            if (res.statusCode === 200 || res.statusCode === 404) {
+              resolve(port);
+            } else {
+              resolve(null);
+            }
+          }).on('error', () => {
+            resolve(null);
+          });
+          req.setTimeout(1000, () => {
+            req.destroy();
+            resolve(null);
+          });
+        });
+      };
+      
+      // Check ports 3000, 3001, 3002 in order
+      let detectedPort = null;
+      for (const port of [3000, 3001, 3002]) {
+        detectedPort = await checkPort(port);
+        if (detectedPort) break;
+      }
+      
+      baseUrl = detectedPort ? `http://localhost:${detectedPort}` : 'http://localhost:3000';
+      console.log('[Electron] Detected dev server on port:', detectedPort || '3000 (fallback)');
+      console.log('[Electron] Base URL:', baseUrl);
+    } else {
+      baseUrl = 'http://127.0.0.1:3000';
+    }
+    
     const encodedPath = encodeURIComponent(audioPath);
-    audioWindow.loadURL(`${baseUrl}/audio-player?audioPath=${encodedPath}`);
+    const audioPlayerUrl = new URL('/audio-player', baseUrl);
+    audioPlayerUrl.searchParams.set('audioPath', encodedPath);
+    const finalUrl = audioPlayerUrl.toString();
+    console.log('[Electron] Loading audio player URL:', finalUrl);
+    audioWindow.loadURL(finalUrl);
 
     // Open DevTools in development
     // Ne pas ouvrir les DevTools automatiquement

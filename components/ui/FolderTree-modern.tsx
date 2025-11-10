@@ -606,9 +606,9 @@ const TreeItem = React.memo(({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={onRename}>
+                {/* <DropdownMenuItem onClick={onRename}>
                   Renommer
-                </DropdownMenuItem>
+                </DropdownMenuItem> */}
                 {fileType !== 'folder' && (
                   <DropdownMenuItem onClick={onDuplicate}>
                     Dupliquer
@@ -631,7 +631,7 @@ const TreeItem = React.memo(({
       </ContextMenuTrigger>
       
       <ContextMenuContent>
-        <ContextMenuItem onClick={onRename}>Renommer</ContextMenuItem>
+        {/* <ContextMenuItem onClick={onRename}>Renommer</ContextMenuItem> */}
         {fileType !== 'folder' && (
           <ContextMenuItem onClick={onDuplicate}>Dupliquer</ContextMenuItem>
         )}

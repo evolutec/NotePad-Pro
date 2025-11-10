@@ -7,6 +7,7 @@ import {
   Info,
   Settings,
   Download,
+  Edit3,
 } from "lucide-react";
 
 // Types de tuiles export dynamiques
@@ -50,12 +51,14 @@ export interface OnlyOfficeFileMenuProps {
   type: "document" | "image" | "video" | "audio" | "draw";
   onClose: () => void;
   onExport: (format: string) => void;
+  onRename?: () => void;
+  isPoppedOut?: boolean;
 }
 
-export const OnlyOfficeFileMenu: React.FC<OnlyOfficeFileMenuProps> = ({ type, onClose, onExport }) => {
+export const OnlyOfficeFileMenu: React.FC<OnlyOfficeFileMenuProps> = ({ type, onClose, onExport, onRename, isPoppedOut = false }) => {
   const formats = EXPORT_FORMATS[type] || [];
   return (
-    <div className="absolute inset-0 flex z-40">
+    <div className={`${isPoppedOut ? 'fixed' : 'absolute'} inset-0 flex z-40`}>
       <div className="w-80 bg-[#23272b] text-white flex flex-col border-r border-neutral-800 shadow-xl">
         <button className="flex items-center gap-2 px-4 py-3 hover:bg-neutral-700" onClick={onClose}>
           <ArrowLeft className="h-5 w-5" /> Retour
@@ -64,6 +67,14 @@ export const OnlyOfficeFileMenu: React.FC<OnlyOfficeFileMenuProps> = ({ type, on
           <button className="flex items-center gap-2 px-4 py-2 font-semibold bg-[#23272b] border-l-4 border-blue-500">
             <FileText className="h-5 w-5" /> Télécharger comme
           </button>
+          {onRename && (
+            <button 
+              className="flex items-center gap-2 px-4 py-2 hover:bg-neutral-700"
+              onClick={onRename}
+            >
+              <Edit3 className="h-5 w-5" /> Renommer
+            </button>
+          )}
           <button className="flex items-center gap-2 px-4 py-2 hover:bg-neutral-700">
             <Printer className="h-5 w-5" /> Imprimer
           </button>

@@ -27,9 +27,10 @@ export interface VideoViewerProps {
   videoPath: string
   videoName: string
   videoType: string
+  onRename?: () => void
 }
 
-export function VideoViewer({ videoPath, videoName, videoType }: VideoViewerProps) {
+export function VideoViewer({ videoPath, videoName, videoType, onRename }: VideoViewerProps) {
   const [activeTab, setActiveTab] = useState("Accueil")
   console.log('🎥 VideoViewer: === COMPONENT RENDERED ===')
   console.log('🎥 VideoViewer: Props received:', { videoPath, videoName, videoType })
@@ -307,6 +308,7 @@ export function VideoViewer({ videoPath, videoName, videoType }: VideoViewerProp
     <div className="flex flex-col h-full bg-zinc-950">
       {/* OnlyOffice-like Toolbar */}
       <OnlyOfficeLikeToolbar
+        key={`toolbar-${videoPath}`}
         tabs={[
           { label: "Fichier" },
           { label: "Accueil" },
@@ -320,11 +322,13 @@ export function VideoViewer({ videoPath, videoName, videoType }: VideoViewerProp
       {/* File Menu */}
       {activeTab === "Fichier" && (
         <OnlyOfficeFileMenu
+          key={`file-menu-${videoPath}`}
           onClose={() => setActiveTab("Accueil")}
           type="video"
           onExport={(format) => {
             console.log('Exporting video as:', format)
           }}
+          onRename={onRename}
         />
       )}
 
@@ -332,6 +336,7 @@ export function VideoViewer({ videoPath, videoName, videoType }: VideoViewerProp
       <div className="bg-zinc-900">
         {activeTab === "Accueil" && (
           <VideoHomeToolbar
+            key={`home-toolbar-${videoPath}`}
             isPlaying={isPlaying}
             isMuted={isMuted}
             volume={volume}
@@ -347,6 +352,7 @@ export function VideoViewer({ videoPath, videoName, videoType }: VideoViewerProp
         )}
         {activeTab === "Lecture" && (
           <VideoPlaybackToolbar
+            key={`playback-toolbar-${videoPath}`}
             playbackRate={playbackRate}
             onPlaybackRateChange={handlePlaybackRateChange}
             onLoopToggle={() => {
@@ -359,6 +365,7 @@ export function VideoViewer({ videoPath, videoName, videoType }: VideoViewerProp
         )}
         {activeTab === "Affichage" && (
           <VideoViewToolbar
+            key={`view-toolbar-${videoPath}`}
             isFullscreen={isFullscreen}
             onFullscreenToggle={toggleFullscreen}
             showStats={showStats}
