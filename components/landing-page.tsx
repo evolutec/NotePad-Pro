@@ -250,8 +250,13 @@ export function LandingPage({
                   src="/icon-512.png" 
                   alt="Fusion Logo" 
                   className="w-32 h-32 lg:w-40 lg:h-40 drop-shadow-2xl"
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ type: "spring", stiffness: 300 }}
+                  animate={{ rotate: 360 }}
+                  transition={{ 
+                    duration: 20, 
+                    repeat: Infinity, 
+                    ease: "linear" 
+                  }}
+                  whileHover={{ scale: 1.1 }}
                 />
               </motion.div>
 
