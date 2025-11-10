@@ -370,15 +370,24 @@ export default function NoteTakingApp() {
     };
 
     const handleFolderTreeRefresh = () => {
-      console.log('📱 Folder tree refresh event received');
+      console.log('📱 Folder tree refresh event received - starting refresh');
       setTreeVersion(prev => prev + 1);
 
       if (window.electronAPI?.foldersScan) {
+        console.log('📱 Calling foldersScan for tree refresh');
         window.electronAPI.foldersScan().then(result => {
+          console.log('📱 FoldersScan result received:', result);
           if (result && result.length > 0) {
+            console.log('📱 Setting new folder tree');
             setFolderTree(result[0]);
+          } else {
+            console.log('📱 No folder tree data received');
           }
+        }).catch(error => {
+          console.error('📱 Error refreshing tree:', error);
         });
+      } else {
+        console.log('📱 foldersScan API not available');
       }
     };
 

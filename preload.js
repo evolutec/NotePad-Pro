@@ -170,3 +170,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return ipcRenderer.invoke('audio:openWindow', audioPath);
   },
 });
+
+// Listen for IPC events from main process and dispatch them as DOM events
+ipcRenderer.on('recentFilesRefresh', () => {
+  console.log('🔄 [Preload] Received recentFilesRefresh event from main process');
+  // Dispatch a custom DOM event that the sidebar can listen to
+  window.dispatchEvent(new CustomEvent('recentFilesRefresh'));
+});
+
+ipcRenderer.on('folderTreeRefresh', () => {
+  console.log('🔄 [Preload] Received folderTreeRefresh event from main process');
+  // Dispatch a custom DOM event that components can listen to
+  window.dispatchEvent(new CustomEvent('folderTreeRefresh'));
+});

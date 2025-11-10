@@ -93,6 +93,7 @@ export function ModernSidebar({
   const [showExcelDialog, setShowExcelDialog] = useState(false);
   const [showPowerpointDialog, setShowPowerpointDialog] = useState(false);
   const [showPdfDialog, setShowPdfDialog] = useState(false);
+  const [recentFilesVersion, setRecentFilesVersion] = useState(0);
 
   // Use useEffect to detect Electron mode on client side only
   React.useEffect(() => {
@@ -219,16 +220,41 @@ export function ModernSidebar({
   }, [searchQuery, filterType]);
 
   const recentFiles = useCallback((): EnhancedFolderNode[] => {
+    // Extensions de tous les types de fichiers supportés par l'application
+    const supportedExtensions = [
+      // Notes et texte
+      'md', 'txt', 'markdown', 'text',
+      // Dessins
+      'draw',
+      // Documents
+      'pdf', 'doc', 'docx', 'rtf', 'odt',
+      // Images
+      'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp',
+      // Vidéos
+      'mp4', 'webm', 'ogv', 'avi', 'mov', 'mkv', 'wmv', 'flv', '3gp',
+      // Audio
+      'mp3', 'wav', 'wave', 'ogg', 'oga', 'opus', 'm4a', 'm4b', 'flac', 'aac', 'wma', 'weba', 'aiff', 'aif', 'ape', 'mka', 'wv', 'tta', 'tak', 'mp2', 'mp1', 'mpa', 'ac3', 'dts', 'amr', '3gp', 'ra', 'ram',
+      // Code
+      'js', 'ts', 'jsx', 'tsx', 'py', 'java', 'cpp', 'cs', 'html', 'css', 'json', 'xml', 'yaml', 'yml',
+      // Tableurs
+      'xlsx', 'xls',
+      // Présentations
+      'pptx', 'ppt'
+    ];
+
     const files: EnhancedFolderNode[] = [];
     const collectFiles = (node: EnhancedFolderNode) => {
-      if (!node.isDirectory && (node.name.endsWith('.md') || node.name.endsWith('.txt') || node.name.endsWith('.draw'))) {
-        files.push(node);
+      if (!node.isDirectory) {
+        const extension = node.name.split('.').pop()?.toLowerCase();
+        if (extension && supportedExtensions.includes(extension)) {
+          files.push(node);
+        }
       }
       node.children?.forEach(collectFiles);
     };
     if (tree) collectFiles(tree);
     return files.sort((a, b) => (b.modifiedAt?.getTime() || 0) - (a.modifiedAt?.getTime() || 0)).slice(0, 10);
-  }, [tree]);
+  }, [tree, recentFilesVersion]);
 
   const starredFiles = useCallback((): EnhancedFolderNode[] => {
     const files: EnhancedFolderNode[] = [];
@@ -274,6 +300,24 @@ export function ModernSidebar({
 
     loadEnhancedTree();
   }, [tree, searchQuery, filterType, filteredTree]);
+
+  // Listen for recent files refresh events
+  useEffect(() => {
+    const handleRecentFilesRefresh = () => {
+      console.log('🔄 Recent files refresh event received in sidebar');
+      setRecentFilesVersion(prev => prev + 1);
+    };
+
+    if (typeof window !== 'undefined') {
+      console.log('🔄 Setting up recent files refresh listener');
+      window.addEventListener('recentFilesRefresh', handleRecentFilesRefresh);
+
+      return () => {
+        console.log('🔄 Removing recent files refresh listener');
+        window.removeEventListener('recentFilesRefresh', handleRecentFilesRefresh);
+      };
+    }
+  }, []);
 
   return (
     <aside className={cn(

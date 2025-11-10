@@ -193,6 +193,12 @@ function createFileServer() {
                   fileStream.close();
                   console.log('[File Server] ✅ Document saved successfully:', filePath);
                   
+                  // Notify renderer process to refresh recent files and folder tree
+                  if (mainWindow && !mainWindow.isDestroyed()) {
+                    mainWindow.webContents.send('recentFilesRefresh');
+                    mainWindow.webContents.send('folderTreeRefresh');
+                  }
+                  
                   // Send success response to OnlyOffice
                   res.writeHead(200, { 'Content-Type': 'application/json' });
                   res.end(JSON.stringify({ error: 0 }));
@@ -841,6 +847,11 @@ ipcMain.handle('note:create', async (_event, noteData) => {
       console.log(`note:create handler created text note: ${fullPath}`);
     }
     
+    // Notify renderer process to refresh recent files
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('recentFilesRefresh');
+    }
+    
     return { success: true, path: fullPath };
   } catch (err) {
     console.log('note:create handler error:', err.message);
@@ -876,6 +887,12 @@ ipcMain.handle('draw:create', async (_event, drawData) => {
 
     fs.writeFileSync(fullPath, JSON.stringify({ name, tags, content: [] }, null, 2), 'utf-8');
     console.log('draw:create handler returning success');
+    
+    // Notify renderer process to refresh recent files
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('recentFilesRefresh');
+    }
+    
     return { success: true, path: fullPath };
   } catch (err) {
     console.log('draw:create handler error:', err.message);
@@ -941,6 +958,12 @@ ipcMain.handle('document:create', async (_event, documentData) => {
     }
 
     console.log('document:create handler returning success');
+    
+    // Notify renderer process to refresh recent files
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('recentFilesRefresh');
+    }
+    
     return { success: true, path: fullPath };
   } catch (err) {
     console.log('document:create handler error:', err.message);
@@ -1013,6 +1036,12 @@ ipcMain.handle('audio:create', async (_event, audioData) => {
     }
 
     console.log('audio:create handler returning success');
+    
+    // Notify renderer process to refresh recent files
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('recentFilesRefresh');
+    }
+    
     return { success: true, path: fullPath };
   } catch (err) {
     console.log('audio:create handler error:', err.message);
@@ -1048,6 +1077,12 @@ ipcMain.handle('code:create', async (_event, codeData) => {
 
     fs.writeFileSync(fullPath, '', 'utf-8');
     console.log('code:create handler returning success');
+    
+    // Notify renderer process to refresh recent files
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('recentFilesRefresh');
+    }
+    
     return { success: true, path: fullPath };
   } catch (err) {
     console.log('code:create handler error:', err.message);
@@ -1117,6 +1152,12 @@ ipcMain.handle('image:create', async (_event, imageData) => {
     }
 
     console.log('image:create handler returning success');
+    
+    // Notify renderer process to refresh recent files
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('recentFilesRefresh');
+    }
+    
     return { success: true, path: fullPath };
   } catch (err) {
     console.log('image:create handler error:', err.message);
@@ -1186,6 +1227,12 @@ ipcMain.handle('video:create', async (_event, videoData) => {
     }
 
     console.log('video:create handler returning success');
+    
+    // Notify renderer process to refresh recent files
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('recentFilesRefresh');
+    }
+    
     return { success: true, path: fullPath };
   } catch (err) {
     console.log('video:create handler error:', err.message);
@@ -1208,6 +1255,12 @@ ipcMain.handle('save-document', async (_event, { filePath, content, title }) => 
     fs.writeFileSync(filePath, buffer);
     
     console.log('[OnlyOffice IPC] ✅ Document saved successfully:', filePath, 'Size:', buffer.length);
+    
+    // Notify renderer process to refresh recent files and folder tree
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('recentFilesRefresh');
+      mainWindow.webContents.send('folderTreeRefresh');
+    }
     
     return { success: true };
   } catch (error) {
@@ -1368,6 +1421,12 @@ ipcMain.handle('camera:saveRecording', async (_event, videoData) => {
     // Write video file
     fs.writeFileSync(filePath, buffer);
     console.log('Video file saved successfully using Electron APIs:', filePath);
+    
+    // Notify renderer process to refresh recent files and folder tree
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('recentFilesRefresh');
+      mainWindow.webContents.send('folderTreeRefresh');
+    }
 
     return { success: true, path: filePath };
   } catch (err) {
@@ -1519,14 +1578,22 @@ ipcMain.handle('note:save', async (_event, noteData) => {
     if (!filePath) {
       return { success: false, error: 'File path is required' };
     }
-    
+
     // Ensure the directory exists
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    
+
     fs.writeFileSync(filePath, content, 'utf-8');
+
+    // Notify renderer process to refresh recent files and folder tree
+    console.log('[Electron] Sending refresh events after note save');
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('recentFilesRefresh');
+      mainWindow.webContents.send('folderTreeRefresh');
+    }
+
     return { success: true };
   } catch (err) {
     return { success: false, error: err.message };
@@ -1555,14 +1622,22 @@ ipcMain.handle('draw:save', async (_event, filePath, drawingData) => {
     if (!filePath) {
       return { success: false, error: 'File path is required' };
     }
-    
+
     // Ensure the directory exists
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    
+
     fs.writeFileSync(filePath, JSON.stringify(drawingData, null, 2), 'utf-8');
+
+    // Notify renderer process to refresh recent files and folder tree
+    console.log('[Electron] Sending refresh events after draw save');
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('recentFilesRefresh');
+      mainWindow.webContents.send('folderTreeRefresh');
+    }
+
     return { success: true };
   } catch (err) {
     return { success: false, error: err.message };
