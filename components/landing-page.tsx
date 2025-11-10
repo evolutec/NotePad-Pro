@@ -34,23 +34,84 @@ import { ModernFolderTree } from "@/components/ui/FolderTree-modern"
 interface LandingPageProps {
   onNavigateToFiles: () => void
   onNavigateToEditor: (filePath: string) => void
+  onNoteSelect: (filePath: string) => void
   onCreateNew: (type: FileType) => void
   folderTree: EnhancedFolderNode | null
-  recentFiles: any[]
 }
 
 export function LandingPage({
   onNavigateToFiles,
   onNavigateToEditor,
+  onNoteSelect,
   onCreateNew,
-  folderTree,
-  recentFiles
+  folderTree
 }: LandingPageProps) {
   const [mounted, setMounted] = useState(false)
+  const [recentFilesVersion, setRecentFilesVersion] = useState(0)
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Listen for recent files refresh events
+  useEffect(() => {
+    const handleRecentFilesRefresh = () => {
+      console.log('🔄 Recent files refresh event received in landing page');
+      setRecentFilesVersion(prev => prev + 1);
+    };
+
+    if (typeof window !== 'undefined') {
+      console.log('🔄 Setting up recent files refresh listener in landing page');
+      window.addEventListener('recentFilesRefresh', handleRecentFilesRefresh);
+      
+      return () => {
+        console.log('🔄 Removing recent files refresh listener from landing page');
+        window.removeEventListener('recentFilesRefresh', handleRecentFilesRefresh);
+      };
+    }
+  }, []);
+
+  // Calculer les fichiers récents à partir du folderTree
+  const getRecentFiles = (): EnhancedFolderNode[] => {
+    // Extensions de tous les types de fichiers supportés par l'application
+    const supportedExtensions = [
+      // Notes et texte
+      'md', 'txt', 'markdown', 'text',
+      // Dessins
+      'draw',
+      // Documents
+      'pdf', 'doc', 'docx', 'rtf', 'odt',
+      // Images
+      'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp',
+      // Vidéos
+      'mp4', 'webm', 'ogv', 'avi', 'mov', 'mkv', 'wmv', 'flv', '3gp',
+      // Audio
+      'mp3', 'wav', 'wave', 'ogg', 'oga', 'opus', 'm4a', 'm4b', 'flac', 'aac', 'wma', 'weba', 'aiff', 'aif', 'ape', 'mka', 'wv', 'tta', 'tak', 'mp2', 'mp1', 'mpa', 'ac3', 'dts', 'amr', '3gp', 'ra', 'ram',
+      // Code
+      'js', 'ts', 'jsx', 'tsx', 'py', 'java', 'cpp', 'cs', 'html', 'css', 'json', 'xml', 'yaml', 'yml',
+      // Tableurs
+      'xlsx', 'xls',
+      // Présentations
+      'pptx', 'ppt'
+    ];
+
+    const files: EnhancedFolderNode[] = [];
+    const collectFiles = (node: EnhancedFolderNode) => {
+      if (!node.isDirectory) {
+        const extension = node.name.split('.').pop()?.toLowerCase();
+        if (extension && supportedExtensions.includes(extension)) {
+          files.push(node);
+        }
+      }
+      node.children?.forEach(collectFiles);
+    };
+    if (folderTree) collectFiles(folderTree);
+    // Trier par date de modification (plus récent en premier) et limiter à 10 fichiers
+    return files.sort((a, b) => (b.modifiedAt?.getTime() || 0) - (a.modifiedAt?.getTime() || 0)).slice(0, 10);
+  };
+
+  // Recalculer les fichiers récents quand folderTree ou recentFilesVersion change
+  const recentFiles = React.useMemo(() => getRecentFiles(), [folderTree, recentFilesVersion]);
 
   const colorThemes = [
     { name: 'yellow', gradient: 'from-yellow-400 via-yellow-500 to-yellow-600', bg: 'bg-yellow-50', accent: 'bg-yellow-500' },
@@ -140,8 +201,10 @@ export function LandingPage({
     )
   }
 
-  const renderRecentFile = (file: any) => {
-    const config = getFileTypeConfig(file.type || 'generic')
+  const renderRecentFile = (file: EnhancedFolderNode) => {
+    // Convertir le type si nécessaire
+    const fileType = (file.type === 'link' ? 'generic' : file.type) as FileType
+    const config = getFileTypeConfig(fileType || 'generic')
     const Icon = config.icon
 
     return (
@@ -151,7 +214,7 @@ export function LandingPage({
         animate={{ opacity: 1, y: 0 }}
         whileHover={{ scale: 1.02 }}
         className="flex items-center gap-3 p-3 rounded-lg bg-card hover:bg-accent cursor-pointer transition-all"
-        onClick={() => onNavigateToEditor(file.path)}
+        onClick={() => onNoteSelect(file.path)}
       >
         <div className={cn("w-8 h-8 rounded flex items-center justify-center", config.sidebarButton.background)}>
           <Icon className={cn("w-4 h-4", config.sidebarButton.text)} />

@@ -921,6 +921,7 @@ export default function NoteTakingApp() {
                 setSelectedNote(filePath);
                 setActiveView("editor");
               }}
+              onNoteSelect={handleNoteSelect}
               onCreateNew={(type) => {
                 console.log('Creating new file of type:', type);
                 // Ouvrir le dialogue approprié selon le type de fichier
@@ -959,7 +960,6 @@ export default function NoteTakingApp() {
                 }
               }}
               folderTree={folderTree}
-              recentFiles={[]}
             />
           )}
           {activeView === "canvas" && <DrawingCanvas selectedNote={selectedNote || null} selectedFolder={selectedFolder} />}
