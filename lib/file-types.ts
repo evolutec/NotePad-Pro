@@ -1,6 +1,7 @@
 import {
   FolderPlus,
   FileText,
+  FilePlus,
   Palette,
   FileImage,
   FileVideo,
@@ -82,12 +83,12 @@ export const FILE_TYPES: Record<FileType, FileTypeConfig> = {
     mimeTypes: [],
     category: 'creation',
     sidebarButton: {
-      background: 'bg-yellow-100 hover:bg-yellow-200',
-      hover: 'hover:bg-yellow-200',
-      text: 'text-yellow-600',
-      darkBackground: 'dark:bg-yellow-900 dark:hover:bg-yellow-800',
-      darkHover: 'dark:hover:bg-yellow-800',
-      darkText: 'dark:text-yellow-400'
+      background: 'bg-yellow-500 hover:bg-yellow-600',
+      hover: 'hover:bg-yellow-600',
+      text: 'text-white',
+      darkBackground: 'dark:bg-yellow-600 dark:hover:bg-yellow-700',
+      darkHover: 'dark:hover:bg-yellow-700',
+      darkText: 'text-white'
     },
     modal: {
       gradient: 'from-yellow-500 to-yellow-600',
@@ -100,8 +101,8 @@ export const FILE_TYPES: Record<FileType, FileTypeConfig> = {
     name: 'Note',
     description: 'Notes et documents texte',
     colorTheme: 'blue',
-    icon: FileText,
-    buttonIcon: FileText,
+    icon: FilePlus,
+    buttonIcon: FilePlus,
     extensions: ['md', 'txt', 'markdown', 'text'],
     mimeTypes: ['text/markdown', 'text/plain', 'text/markdown'],
     category: 'document',

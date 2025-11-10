@@ -914,6 +914,40 @@ export default function NoteTakingApp() {
               }}
               onCreateNew={(type) => {
                 console.log('Creating new file of type:', type);
+                // Ouvrir le dialogue approprié selon le type de fichier
+                switch(type) {
+                  case 'folder':
+                    setIsAddFolderOpen(true);
+                    break;
+                  case 'note':
+                    setIsAddNoteOpen(true);
+                    break;
+                  case 'draw':
+                    setIsAddDrawOpen(true);
+                    break;
+                  case 'pdf':
+                  case 'document':
+                    setIsAddDocumentOpen(true);
+                    break;
+                  case 'excel':
+                  case 'powerpoint':
+                    setIsAddGenericDocumentOpen(true);
+                    break;
+                  case 'image':
+                    setIsAddImageOpen(true);
+                    break;
+                  case 'video':
+                    setIsAddVideoOpen(true);
+                    break;
+                  case 'audio':
+                    setIsAddAudioOpen(true);
+                    break;
+                  case 'code':
+                    setIsAddCodeOpen(true);
+                    break;
+                  default:
+                    console.log('Unknown file type:', type);
+                }
               }}
               folderTree={folderTree}
               recentFiles={[]}

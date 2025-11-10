@@ -229,104 +229,89 @@ export function LandingPage({
       </div>
 
       <div className="relative z-10">
-        {/* Header */}
+        {/* Header - Optimisé pour utiliser toute la largeur */}
         <motion.header
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-8 text-center"
+          className="py-6 px-8"
         >
-          <motion.div
-            animate={{
-              background: `linear-gradient(45deg, ${currentTheme.gradient})`
-            }}
-            className="inline-block p-1 rounded-full"
-          >
-            <div className="bg-background rounded-full p-4">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                className="flex items-center justify-center"
+          <div className="max-w-7xl mx-auto">
+            {/* Layout horizontal : Logo à gauche, texte au centre/droite */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+              
+              {/* Logo - Colonne gauche */}
+              <motion.div 
+                className="lg:col-span-3 flex justify-center lg:justify-start"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.5 }}
               >
-                <Sparkles className="w-8 h-8 text-primary" />
+                <motion.img 
+                  src="/icon-512.png" 
+                  alt="Fusion Logo" 
+                  className="w-32 h-32 lg:w-40 lg:h-40 drop-shadow-2xl"
+                  whileHover={{ scale: 1.05 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                />
               </motion.div>
-            </div>
-          </motion.div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-4xl font-bold mt-6 mb-2"
-          >
-              <div className="flex items-center justify-center mb-2">
-                <img src="/icon.ico" alt="Fusion Icon" style={{ width: 36, height: 36, marginRight: 10 }} />
-                Bienvenue dans FUSION
+              {/* Texte principal - Colonnes centrales et droite */}
+              <div className="lg:col-span-9 space-y-3 text-center lg:text-left">
+                <motion.h1
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="text-3xl lg:text-4xl font-bold"
+                >
+                  Bienvenue dans FUSION
+                </motion.h1>
+
+                <motion.p
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="text-lg lg:text-xl text-muted-foreground"
+                >
+                  Votre espace de travail créatif vous attend
+                </motion.p>
+
+                {/* FUSION = FOCUS - Inline pour économiser l'espace vertical */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="space-y-1"
+                >
+                  <div className="text-base lg:text-lg font-semibold text-primary">
+                    FUSION = FOCUS
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Fichiers • Organisation • Création • Utilisation Systémique
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Tous vos fichiers dans une interface cohérente et universelle
+                  </div>
+                </motion.div>
+
+                {/* Bouton */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  className="pt-2 flex justify-center lg:justify-start"
+                >
+                  <Button
+                    onClick={onNavigateToFiles}
+                    size="lg"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  >
+                    <Home className="w-5 h-5 mr-2" />
+                    Explorer mes fichiers
+                  </Button>
+                </motion.div>
               </div>
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="text-xl text-muted-foreground mb-4"
-          >
-            Votre espace de travail créatif vous attend
-          </motion.p>
-
-          {/* Animated FOCUS explanation */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="mb-8"
-          >
-            <div className="text-center space-y-2">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.8, duration: 0.5 }}
-                className="text-lg font-semibold text-primary"
-              >
-                FUSION = FOCUS
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.0, duration: 0.5 }}
-                className="text-sm text-muted-foreground"
-              >
-                Fichiers • Organisation • Création • Utilisation Systémique
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.2, duration: 0.5 }}
-                className="text-xs text-muted-foreground max-w-md mx-auto"
-              >
-                Tous vos fichiers dans une interface cohérente et universelle
-              </motion.div>
             </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="flex justify-center gap-4"
-          >
-            <Button
-              onClick={onNavigateToFiles}
-              size="lg"
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
-            >
-              <Home className="w-5 h-5 mr-2" />
-              Explorer mes fichiers
-            </Button>
-
-
-          </motion.div>
+          </div>
         </motion.header>
 
         {/* Main Content Grid */}
@@ -413,21 +398,31 @@ export function LandingPage({
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1">
-                  <div className="grid grid-cols-5 gap-2 h-[400px] overflow-y-auto">
-                    {Object.entries(FILE_TYPES).map(([type, config]) => (
-                      <motion.div
-                        key={type}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="flex items-center gap-3 p-2 rounded-lg bg-card hover:bg-accent transition-all cursor-pointer border border-border/50"
-                        onClick={() => onCreateNew(type as FileType)}
-                      >
-                        <div className={cn("w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0", config.sidebarButton.background)}>
-                          <config.icon className={cn("w-5 h-5", config.sidebarButton.text)} />
-                        </div>
-                        <div className="font-medium text-sm truncate">{config.name}</div>
-                      </motion.div>
-                    ))}
+                  <div className="grid grid-cols-3 gap-3">
+                    {/* Filtrer uniquement les types présents dans la sidebar */}
+                    {(['folder', 'note', 'draw', 'excel', 'powerpoint', 'image', 'video', 'audio'] as FileType[])
+                      .map((type) => {
+                        const config = FILE_TYPES[type];
+                        return (
+                          <motion.div
+                            key={type}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className="flex flex-col items-center gap-2 p-3 rounded-lg bg-card hover:bg-accent transition-all cursor-pointer border border-border/50"
+                            onClick={() => onCreateNew(type as FileType)}
+                          >
+                            <div className={cn(
+                              "w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0",
+                              config.sidebarButton.background,
+                              config.sidebarButton.darkBackground
+                            )}>
+                              <config.icon className={cn("w-6 h-6", config.sidebarButton.text, config.sidebarButton.darkText)} />
+                            </div>
+                            <div className="font-medium text-sm text-center">{config.name}</div>
+                          </motion.div>
+                        );
+                      })
+                    }
                   </div>
                 </CardContent>
               </Card>
