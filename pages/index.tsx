@@ -11,6 +11,7 @@ import { FirstRunSetup } from "@/components/first-run-setup"
 import { toast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { Settings, X, ExternalLink, List, LayoutGrid } from "lucide-react"
+import { ThemeToggle } from "@/components/theme-toggle"
 import type { EnhancedFolderNode } from "@/components/ui/FolderTree-modern"
 import { AddFolderDialog } from "@/components/add-folder_dialog"
 import { AddNoteDialog } from "@/components/add-note_dialog"
@@ -1028,6 +1029,7 @@ export default function NoteTakingApp() {
                 </Button>
               </>
             )}
+            <ThemeToggle />
             <SettingsDialog>
               <Button variant="ghost" size="icon" className="h-8 w-8" title="Paramètres">
                 <Settings className="h-4 w-4" />
