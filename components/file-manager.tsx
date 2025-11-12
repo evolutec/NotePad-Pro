@@ -386,7 +386,7 @@ const FileCard = React.memo(({
       {file.isDirectory ? (
         /* Folder with icon */
         <div className="relative flex flex-col items-center p-4">
-          <Folder className="w-20 h-20 text-orange-500" />
+          <Folder className="w-20 h-20 text-yellow-500" />
           <span className="text-xs font-medium text-center truncate max-w-full px-1 mt-2">
             {file.name}
           </span>
@@ -1230,7 +1230,7 @@ export function FileManager({
           height: 90px;
           margin: 0 auto;
           position: relative;
-          background-color: #f97316;
+          background-color: #eab308;
           border-radius: 0 8px 8px 8px;
           box-shadow: 4px 4px 7px rgba(0, 0, 0, 0.2);
         }
@@ -1240,19 +1240,19 @@ export function FileManager({
           width: 60%;
           height: 12px;
           border-radius: 0 20px 0 0;
-          background-color: #f97316;
+          background-color: #eab308;
           position: absolute;
           top: -12px;
           left: 0px;
         }
 
         .folder:hover {
-          background-color: #ea580c;
+          background-color: #ca8a04;
           transform: scale(1.05);
         }
 
         .folder:hover:before {
-          background-color: #ea580c;
+          background-color: #ca8a04;
         }
 
         .folder-content {

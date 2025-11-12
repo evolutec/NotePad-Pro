@@ -539,8 +539,6 @@ const TreeItem = React.memo(({
                 "font-medium text-sm truncate",
                 isSelected ? "text-primary" :
                 isNoteSelected ? "text-blue-600 dark:text-blue-400" :
-                fileType === 'note' ? "text-blue-600 dark:text-blue-400" :
-                fileType === 'draw' ? "text-purple-600 dark:text-purple-400" :
                 "text-foreground"
               )}>
                 {node.name}
@@ -561,22 +559,7 @@ const TreeItem = React.memo(({
               )}
             </div>
             
-            {(node.description || node.modifiedAt) && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                {node.description && (
-                  <span className="truncate">{node.description}</span>
-                )}
-                {node.modifiedAt && (
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    <span>{formatDate(node.modifiedAt)}</span>
-                  </div>
-                )}
-                {node.size && fileType !== 'folder' && (
-                  <span>{formatSize(node.size)}</span>
-                )}
-              </div>
-            )}
+
           </div>
 
           {/* Color Pastille for Folders */}
