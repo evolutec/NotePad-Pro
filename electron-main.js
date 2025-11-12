@@ -1,5 +1,5 @@
 
-const { app, BrowserWindow, ipcMain, dialog, protocol } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, protocol, Tray, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -8,6 +8,11 @@ const url = require('url');
 let mainWindow;
 let fileServer;
 let nextServer; // Serveur pour les fichiers Next.js
+let tray = null; // Tray icon
+let appSettings = {
+  startWithWindows: false,
+  minimizeToTray: true
+};
 
 // Helper function to get the config file path
 // In development: config.json in project root
@@ -16,6 +21,73 @@ function getConfigPath() {
   return app.isPackaged 
     ? path.join(app.getPath('userData'), 'config.json')
     : path.join(__dirname, 'config.json');
+}
+
+// Create tray icon and menu
+function createTray() {
+  if (tray) return; // Already created
+
+  // Use the favicon icon for the tray
+  const iconPath = path.join(__dirname, 'public', 'favicon.ico');
+  tray = new Tray(iconPath);
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Ouvrir NotesApp',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      }
+    },
+    {
+      label: 'Quitter',
+      click: () => {
+        app.quit();
+      }
+    }
+  ]);
+
+  tray.setToolTip('NotesApp - Application de prise de notes');
+  tray.setContextMenu(contextMenu);
+
+  tray.on('click', () => {
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
+
+// Load app settings and apply them
+function loadAndApplyAppSettings() {
+  try {
+    const configPath = getConfigPath();
+    if (fs.existsSync(configPath)) {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      if (config.app) {
+        appSettings = { ...appSettings, ...config.app };
+      }
+    }
+
+    // Apply start with Windows setting
+    app.setLoginItemSettings({
+      openAtLogin: appSettings.startWithWindows,
+      openAsHidden: false,
+      path: process.execPath,
+      args: []
+    });
+
+    // Create tray if minimizeToTray is enabled
+    if (appSettings.minimizeToTray) {
+      createTray();
+    }
+
+    console.log('[Settings] App settings loaded and applied:', appSettings);
+  } catch (err) {
+    console.error('[Settings] Error loading app settings:', err);
+  }
 }
 
 // Create a simple HTTP server to serve Next.js static files in production
@@ -372,6 +444,24 @@ function createWindow() {
   
   console.log('[Electron] Window created successfully with CORS headers for ZetaOffice');
 
+  // Handle minimize to tray
+  mainWindow.on('minimize', (event) => {
+    if (appSettings.minimizeToTray && tray) {
+      event.preventDefault();
+      mainWindow.hide();
+      console.log('[Tray] Window minimized to tray');
+    }
+  });
+
+  // Handle close button - minimize to tray instead of closing
+  mainWindow.on('close', (event) => {
+    if (appSettings.minimizeToTray && tray) {
+      event.preventDefault();
+      mainWindow.hide();
+      console.log('[Tray] Window closed to tray');
+    }
+  });
+
   // Détecter si on est en développement ou en production
   const isDev = !app.isPackaged;
   const serverUrl = 'http://localhost:3000';
@@ -437,6 +527,44 @@ ipcMain.handle('config:load', async () => {
   } catch (err) {
     console.error('[config:load] Error:', err);
     return null;
+  }
+});
+
+// Handler pour appliquer les paramètres d'application en temps réel
+ipcMain.handle('app:settings:update', async (_event, newSettings) => {
+  try {
+    console.log('[app:settings:update] Updating app settings:', newSettings);
+
+    // Update in-memory settings
+    appSettings = { ...appSettings, ...newSettings };
+
+    // Apply start with Windows setting
+    if (newSettings.startWithWindows !== undefined) {
+      app.setLoginItemSettings({
+        openAtLogin: newSettings.startWithWindows,
+        openAsHidden: false,
+        path: process.execPath,
+        args: []
+      });
+      console.log('[app:settings:update] Start with Windows set to:', newSettings.startWithWindows);
+    }
+
+    // Apply minimize to tray setting
+    if (newSettings.minimizeToTray !== undefined) {
+      if (newSettings.minimizeToTray && !tray) {
+        createTray();
+        console.log('[app:settings:update] Tray icon created');
+      } else if (!newSettings.minimizeToTray && tray) {
+        tray.destroy();
+        tray = null;
+        console.log('[app:settings:update] Tray icon destroyed');
+      }
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error('[app:settings:update] Error:', err);
+    return { success: false, error: err.message };
   }
 });
 
@@ -2112,6 +2240,9 @@ app.on('window-all-closed', function () {
 
 app.whenReady().then(async () => {
   console.log('[Electron] App is ready - starting embedded servers before creating window');
+
+  // Load and apply app settings first
+  loadAndApplyAppSettings();
 
   // persistent simple main-process log file for diagnostics
   const logPath = path.join(app.getPath('userData'), 'main.log');

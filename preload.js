@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onFolderSelected: (callback) => ipcRenderer.on('dialog:selectedFolder', (_event, folderPath) => callback(folderPath)),
   saveSettings: (settings) => ipcRenderer.invoke('config:save', settings),
   loadSettings: () => ipcRenderer.invoke('config:load'),
+  appSettingsUpdate: (settings) => ipcRenderer.invoke('app:settings:update', settings),
   foldersLoad: () => ipcRenderer.invoke('folders:load'),
   foldersSave: (folders) => ipcRenderer.invoke('folders:save', folders),
   folderCreate: (folderData) => ipcRenderer.invoke('folder:create', folderData),

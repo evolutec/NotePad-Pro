@@ -39,6 +39,7 @@ declare global {
     drawSave?: (filePath: string, drawingData: any) => Promise<{ success: boolean; error?: string }>;
     onFolderSelected?: (callback: (folderPath: string) => void) => void;
     loadSettings?: () => Promise<any>;
+    appSettingsUpdate?: (settings: any) => Promise<{ success: boolean; error?: string }>;
 
     // Native file system APIs for more reliable file operations
     fsExists?: (filePath: string) => Promise<{ success: boolean; exists: boolean; error?: string }>;

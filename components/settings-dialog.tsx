@@ -25,22 +25,9 @@ interface SettingsDialogProps {
 export function SettingsDialog({ children }: SettingsDialogProps) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
-  const [stylusSettings, setStylusSettings] = useState({
-    pressureSensitivity: 1.0,
-    offsetX: 0,
-    offsetY: 0,
-    minPressure: 0.1,
-    maxPressure: 1.0,
-    smoothing: 0.5,
-    palmRejection: true,
-  })
 
   const [fileSettings, setFileSettings] = useState({
     rootPath: "C:\\Users\\Documents\\NotesApp",
-    autoSave: true,
-    autoSaveInterval: 30,
-    backupEnabled: true,
-    maxFileSize: 50,
   })
 
   const [appSettings, setAppSettings] = useState({
@@ -55,8 +42,7 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
     if (window.electronAPI && window.electronAPI.loadSettings) {
       window.electronAPI.loadSettings().then((settings) => {
         if (settings) {
-          if (settings.stylus) setStylusSettings(settings.stylus);
-          if (settings.files) setFileSettings(settings.files);
+          if (settings.files && settings.files.rootPath) setFileSettings({ rootPath: settings.files.rootPath });
           if (settings.app) setAppSettings(settings.app);
         }
       });
@@ -66,7 +52,6 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
   // Fonction de sauvegarde des paramètres
   const saveSettings = useCallback(() => {
     const settings = {
-      stylus: stylusSettings,
       files: fileSettings,
       app: appSettings,
     };
@@ -74,6 +59,11 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
       window.electronAPI.saveSettings(settings)
         .then((result) => {
           if (result) {
+            // Apply app settings in real-time
+            if (window.electronAPI && window.electronAPI.appSettingsUpdate) {
+              window.electronAPI.appSettingsUpdate(appSettings);
+            }
+            
             toast({
               title: "Paramètres sauvegardés",
               description: "Les paramètres ont été enregistrés avec succès.",
@@ -102,29 +92,11 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
         variant: "destructive",
       });
     }
-  }, [stylusSettings, fileSettings, appSettings, toast]);
-
-  const handleStylusCalibration = () => {
-    // Simulate calibration process
-    alert("Veuillez toucher les 4 coins de l'écran avec votre stylet pour calibrer la précision.")
-  }
+  }, [fileSettings, appSettings, toast]);
 
   const handleResetSettings = () => {
-    setStylusSettings({
-      pressureSensitivity: 1.0,
-      offsetX: 0,
-      offsetY: 0,
-      minPressure: 0.1,
-      maxPressure: 1.0,
-      smoothing: 0.5,
-      palmRejection: true,
-    })
     setFileSettings({
       rootPath: "C:\\Users\\Documents\\NotesApp",
-      autoSave: true,
-      autoSaveInterval: 30,
-      backupEnabled: true,
-      maxFileSize: 50,
     })
     setAppSettings({
       theme: "system",
@@ -187,11 +159,8 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
           </DialogTitle>
         </DialogHeader>
         <div className="flex-1 flex flex-col">
-          <Tabs defaultValue="stylus" className="w-full flex-1">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="stylus" className="flex items-center gap-2">
-                <Pen className="h-4 w-4" /> Stylet
-              </TabsTrigger>
+          <Tabs defaultValue="files" className="w-full flex-1">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="files" className="flex items-center gap-2">
                 <Folder className="h-4 w-4" /> Fichiers
               </TabsTrigger>
@@ -200,33 +169,6 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
               </TabsTrigger>
               <TabsTrigger value="about">À propos</TabsTrigger>
             </TabsList>
-            <TabsContent value="stylus" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Étalonnage du stylet</CardTitle>
-                  <CardDescription>Configurez la précision et la sensibilité de votre stylet</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <Label>Calibration automatique</Label>
-                    <Button onClick={handleStylusCalibration} variant="outline">
-                      Calibrer maintenant
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Rejet de paume</Label>
-                      <p className="text-sm text-muted-foreground">Ignore les touches accidentelles de la paume</p>
-                    </div>
-                    <Switch
-                      checked={stylusSettings.palmRejection}
-                      onCheckedChange={(checked) => setStylusSettings((prev) => ({ ...prev, palmRejection: checked }))}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
             <TabsContent value="files" className="space-y-4">
               <Card>
                 <CardHeader>
@@ -246,54 +188,6 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
                         Parcourir
                       </Button>
                     </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Sauvegarde automatique</Label>
-                      <p className="text-sm text-muted-foreground">Sauvegarde automatiquement vos notes</p>
-                    </div>
-                    <Switch
-                      checked={fileSettings.autoSave}
-                      onCheckedChange={(checked) => setFileSettings((prev) => ({ ...prev, autoSave: checked }))}
-                    />
-                  </div>
-
-                  {fileSettings.autoSave && (
-                    <div>
-                      <Label>Intervalle de sauvegarde: {fileSettings.autoSaveInterval}s</Label>
-                      <Slider
-                        value={[fileSettings.autoSaveInterval]}
-                        onValueChange={([value]) => setFileSettings((prev) => ({ ...prev, autoSaveInterval: value }))}
-                        min={10}
-                        max={300}
-                        step={10}
-                        className="mt-2"
-                      />
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Sauvegarde de sécurité</Label>
-                      <p className="text-sm text-muted-foreground">Crée des copies de sauvegarde</p>
-                    </div>
-                    <Switch
-                      checked={fileSettings.backupEnabled}
-                      onCheckedChange={(checked) => setFileSettings((prev) => ({ ...prev, backupEnabled: checked }))}
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Taille maximale des fichiers: {fileSettings.maxFileSize} MB</Label>
-                    <Slider
-                      value={[fileSettings.maxFileSize]}
-                      onValueChange={([value]) => setFileSettings((prev) => ({ ...prev, maxFileSize: value }))}
-                      min={1}
-                      max={500}
-                      step={1}
-                      className="mt-2"
-                    />
                   </div>
                 </CardContent>
               </Card>
@@ -332,13 +226,13 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
             <TabsContent value="about" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>À propos de NotesApp</CardTitle>
+                  <CardTitle>À propos de Fusion</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Version 1.0.0</p>
                     <p className="text-sm text-muted-foreground">
-                      Application de prise de notes manuscrites pour Windows 11
+                      Application de création et de gestion de notes avancée, prenant en charge les notes , les documents office, les images, et plus encore...
                     </p>
                   </div>
                   <div className="pt-4 border-t">
