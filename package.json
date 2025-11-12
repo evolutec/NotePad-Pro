@@ -19,9 +19,14 @@
     "dist": "electron-builder"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.1.0",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
     "@hookform/resolvers": "^3.10.0",
+    "@mui/icons-material": "^7.3.5",
+    "@mui/material": "^7.3.5",
     "@onlyoffice/document-editor-react": "^2.1.1",
     "@prezly/slate-renderer": "^0.3.0",
     "@radix-ui/react-accordion": "1.2.2",
