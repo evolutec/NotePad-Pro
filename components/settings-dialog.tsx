@@ -26,6 +26,9 @@ import { FILE_TYPES, FileColorTheme } from "@/lib/file-types"
 // Dynamic imports for icon libraries - client-side only
 let AntIcons: any = {};
 let MaterialIcons: any = {};
+let HeroIcons: any = {};
+let TablerIcons: any = {};
+let PhosphorIcons: any = {};
 
 // Load icons only on client side
 if (typeof window !== 'undefined') {
@@ -86,6 +89,99 @@ if (typeof window !== 'undefined') {
       };
     }).catch(() => {
       console.log('Material UI icons not available');
+    });
+
+    // Dynamic import for Heroicons
+    import('@heroicons/react/24/outline').then((heroIcons) => {
+      HeroIcons = {
+        HomeIcon: heroIcons.HomeIcon,
+        Cog6ToothIcon: heroIcons.Cog6ToothIcon,
+        FolderIcon: heroIcons.FolderIcon,
+        PencilIcon: heroIcons.PencilIcon,
+        DocumentIcon: heroIcons.DocumentIcon,
+        ArchiveBoxIcon: heroIcons.ArchiveBoxIcon,
+        PhotoIcon: heroIcons.PhotoIcon,
+        VideoCameraIcon: heroIcons.VideoCameraIcon,
+        MusicalNoteIcon: heroIcons.MusicalNoteIcon,
+        MicrophoneIcon: heroIcons.MicrophoneIcon,
+        CameraIcon: heroIcons.CameraIcon,
+        DocumentTextIcon: heroIcons.DocumentTextIcon,
+        CpuChipIcon: heroIcons.CpuChipIcon,
+        CalculatorIcon: heroIcons.CalculatorIcon,
+        BuildingOfficeIcon: heroIcons.BuildingOfficeIcon,
+        CodeBracketIcon: heroIcons.CodeBracketIcon,
+        BoltIcon: heroIcons.BoltIcon,
+        PlayIcon: heroIcons.PlayIcon,
+        PauseIcon: heroIcons.PauseIcon,
+        StopIcon: heroIcons.StopIcon,
+        ComputerDesktopIcon: heroIcons.ComputerDesktopIcon,
+        WrenchScrewdriverIcon: heroIcons.WrenchScrewdriverIcon,
+        SwatchIcon: heroIcons.SwatchIcon
+      };
+    }).catch(() => {
+      console.log('Heroicons not available');
+    });
+
+    // Dynamic import for Tabler Icons
+    import('@tabler/icons-react').then((tablerIcons) => {
+      TablerIcons = {
+        IconHome: tablerIcons.IconHome,
+        IconSettings: tablerIcons.IconSettings,
+        IconFolder: tablerIcons.IconFolder,
+        IconEdit: tablerIcons.IconEdit,
+        IconFile: tablerIcons.IconFile,
+        IconArchive: tablerIcons.IconArchive,
+        IconPhoto: tablerIcons.IconPhoto,
+        IconVideo: tablerIcons.IconVideo,
+        IconMusic: tablerIcons.IconMusic,
+        IconMicrophone: tablerIcons.IconMicrophone,
+        IconCamera: tablerIcons.IconCamera,
+        IconFileText: tablerIcons.IconFileText,
+        IconTypography: tablerIcons.IconTypography,
+        IconCalculator: tablerIcons.IconCalculator,
+        IconBuilding: tablerIcons.IconBuilding,
+        IconCode: tablerIcons.IconCode,
+        IconBolt: tablerIcons.IconBolt,
+        IconPlayerPlay: tablerIcons.IconPlayerPlay,
+        IconPlayerPause: tablerIcons.IconPlayerPause,
+        IconPlayerStop: tablerIcons.IconPlayerStop,
+        IconDeviceDesktop: tablerIcons.IconDeviceDesktop,
+        IconTool: tablerIcons.IconTool,
+        IconPalette: tablerIcons.IconPalette
+      };
+    }).catch(() => {
+      console.log('Tabler Icons not available');
+    });
+
+    // Dynamic import for Phosphor Icons
+    import('@phosphor-icons/react').then((phosphorIcons) => {
+      PhosphorIcons = {
+        House: phosphorIcons.House,
+        Gear: phosphorIcons.Gear,
+        Folder: phosphorIcons.Folder,
+        Pencil: phosphorIcons.Pencil,
+        File: phosphorIcons.File,
+        Archive: phosphorIcons.Archive,
+        Image: phosphorIcons.Image,
+        VideoCamera: phosphorIcons.VideoCamera,
+        MusicNote: phosphorIcons.MusicNote,
+        Microphone: phosphorIcons.Microphone,
+        Camera: phosphorIcons.Camera,
+        FileText: phosphorIcons.FileText,
+        Article: phosphorIcons.Article,
+        Calculator: phosphorIcons.Calculator,
+        Buildings: phosphorIcons.Buildings,
+        Code: phosphorIcons.Code,
+        Lightning: phosphorIcons.Lightning,
+        Play: phosphorIcons.Play,
+        Pause: phosphorIcons.Pause,
+        Stop: phosphorIcons.Stop,
+        Monitor: phosphorIcons.Monitor,
+        Wrench: phosphorIcons.Wrench,
+        Palette: phosphorIcons.Palette
+      };
+    }).catch(() => {
+      console.log('Phosphor Icons not available');
     });
   } catch (e) {
     console.log('Error loading icon libraries');
@@ -338,6 +434,99 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
         }[iconName];
         return ShadcnIcon ? <ShadcnIcon className={colorClass} /> : <Settings className={colorClass} />;
 
+      case 'heroicons':
+        const heroIconMap: { [key: string]: string } = {
+          Settings: 'Cog6ToothIcon',
+          Home: 'HomeIcon',
+          Folder: 'FolderIcon',
+          Pen: 'PencilIcon',
+          File: 'DocumentIcon',
+          Archive: 'ArchiveBoxIcon',
+          Image: 'PhotoIcon',
+          Video: 'VideoCameraIcon',
+          Music: 'MusicalNoteIcon',
+          Volume2: 'MusicalNoteIcon',
+          Mic: 'MicrophoneIcon',
+          Camera: 'CameraIcon',
+          FileText: 'DocumentTextIcon',
+          Type: 'DocumentTextIcon',
+          Calculator: 'CalculatorIcon',
+          Briefcase: 'BuildingOfficeIcon',
+          Code: 'CodeBracketIcon',
+          Zap: 'BoltIcon',
+          Play: 'PlayIcon',
+          Pause: 'PauseIcon',
+          Square: 'StopIcon',
+          Monitor: 'ComputerDesktopIcon',
+          Wrench: 'WrenchScrewdriverIcon',
+          Palette: 'SwatchIcon'
+        };
+        const heroIconName = heroIconMap[iconName] || 'Cog6ToothIcon';
+        const HeroIcon = HeroIcons[heroIconName as keyof typeof HeroIcons];
+        return HeroIcon ? <HeroIcon className={colorClass} /> : <Settings className={colorClass} />;
+
+      case 'tabler':
+        const tablerIconMap: { [key: string]: string } = {
+          Settings: 'IconSettings',
+          Home: 'IconHome',
+          Folder: 'IconFolder',
+          Pen: 'IconEdit',
+          File: 'IconFile',
+          Archive: 'IconArchive',
+          Image: 'IconPhoto',
+          Video: 'IconVideo',
+          Music: 'IconMusic',
+          Volume2: 'IconMusic',
+          Mic: 'IconMicrophone',
+          Camera: 'IconCamera',
+          FileText: 'IconFileText',
+          Type: 'IconTypography',
+          Calculator: 'IconCalculator',
+          Briefcase: 'IconBuilding',
+          Code: 'IconCode',
+          Zap: 'IconBolt',
+          Play: 'IconPlayerPlay',
+          Pause: 'IconPlayerPause',
+          Square: 'IconPlayerStop',
+          Monitor: 'IconDeviceDesktop',
+          Wrench: 'IconTool',
+          Palette: 'IconPalette'
+        };
+        const tablerIconName = tablerIconMap[iconName] || 'IconSettings';
+        const TablerIcon = TablerIcons[tablerIconName as keyof typeof TablerIcons];
+        return TablerIcon ? <TablerIcon className={colorClass} /> : <Settings className={colorClass} />;
+
+      case 'phosphor':
+        const phosphorIconMap: { [key: string]: string } = {
+          Settings: 'Gear',
+          Home: 'House',
+          Folder: 'Folder',
+          Pen: 'Pencil',
+          File: 'File',
+          Archive: 'Archive',
+          Image: 'Image',
+          Video: 'VideoCamera',
+          Music: 'MusicNote',
+          Volume2: 'MusicNote',
+          Mic: 'Microphone',
+          Camera: 'Camera',
+          FileText: 'FileText',
+          Type: 'Article',
+          Calculator: 'Calculator',
+          Briefcase: 'Buildings',
+          Code: 'Code',
+          Zap: 'Lightning',
+          Play: 'Play',
+          Pause: 'Pause',
+          Square: 'Stop',
+          Monitor: 'Monitor',
+          Wrench: 'Wrench',
+          Palette: 'Palette'
+        };
+        const phosphorIconName = phosphorIconMap[iconName] || 'Gear';
+        const PhosphorIcon = PhosphorIcons[phosphorIconName as keyof typeof PhosphorIcons];
+        return PhosphorIcon ? <PhosphorIcon className={colorClass} /> : <Settings className={colorClass} />;
+
       default:
         return <Settings className={colorClass} />;
     }
@@ -556,10 +745,13 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
                           <SelectValue placeholder="Sélectionnez un bundle" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="lucide">Lucid React</SelectItem>
+                          <SelectItem value="lucide">Lucide React</SelectItem>
                           <SelectItem value="ant">Ant Design</SelectItem>
                           <SelectItem value="material">Material UI</SelectItem>
                           <SelectItem value="shadcn">Shadcn UI</SelectItem>
+                          <SelectItem value="heroicons">Heroicons</SelectItem>
+                          <SelectItem value="tabler">Tabler Icons</SelectItem>
+                          <SelectItem value="phosphor">Phosphor Icons</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -590,6 +782,9 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
                           {iconSettings.bundle === 'ant' && 'Ant Design'}
                           {iconSettings.bundle === 'material' && 'Material UI'}
                           {iconSettings.bundle === 'shadcn' && 'Shadcn UI'}
+                          {iconSettings.bundle === 'heroicons' && 'Heroicons'}
+                          {iconSettings.bundle === 'tabler' && 'Tabler Icons'}
+                          {iconSettings.bundle === 'phosphor' && 'Phosphor Icons'}
                           {' • '}
                           Style: {iconSettings.style === 'colored' && 'Colorées'}
                           {iconSettings.style === 'monochrome' && 'Monochrome'}
@@ -726,6 +921,9 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
                           {iconSettings.bundle === 'ant' && 'Icônes élégantes du système de design Ant Design'}
                           {iconSettings.bundle === 'material' && 'Icônes Material Design de Google'}
                           {iconSettings.bundle === 'shadcn' && 'Icônes Lucide optimisées pour Shadcn UI'}
+                          {iconSettings.bundle === 'heroicons' && 'Icônes élégantes et modernes de Heroicons'}
+                          {iconSettings.bundle === 'tabler' && 'Icônes cohérentes et minimalistes de Tabler'}
+                          {iconSettings.bundle === 'phosphor' && 'Icônes flexibles avec plusieurs styles de Phosphor'}
                           {' • '}
                           {iconSettings.style === 'colored' && 'Icônes colorées selon le schéma des types de fichiers (jaune=dossiers, bleu=notes, rouge=documents, etc.)'}
                           {iconSettings.style === 'monochrome' && 'Icônes en blanc/noir selon le thème'}
