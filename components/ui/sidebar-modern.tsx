@@ -32,6 +32,24 @@ import {
   Presentation,
   Sheet
 } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
+// Runtime cache for dynamically loaded MUI icons (loaded only at runtime)
+let _muiIconsCache: Record<string, any> | null = null
+
+async function ensureMuiIconsLoaded() {
+  if (_muiIconsCache) return _muiIconsCache
+  try {
+    // Use eval to avoid static analysis during build
+    const mod = await eval('import("@mui/icons-material")')
+    const map: Record<string, any> = {}
+    Object.keys(mod).forEach(k => { map[k] = (mod as any)[k] })
+    _muiIconsCache = map
+    return _muiIconsCache
+  } catch (err) {
+    console.warn('Failed to dynamically load @mui/icons-material', err)
+    return null
+  }
+}
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +63,52 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AddExcelDialog } from '@/components/add-excel_dialog';
 import { AddPowerpointDialog } from '@/components/add-powerpoint_dialog';
 import { AddPdfDocumentDialog } from '@/components/add-pdf-document_dialog';
+
+// Utility function to get mapped icon component
+const getMappedIconComponent = (key: string): any => {
+  const mapping = iconMappings[key];
+  if (mapping) {
+    if (mapping.library === 'Lucide') {
+      return (LucideIcons as any)[mapping.currentIcon] || FolderPlus;
+    }
+    // Material UI: if loaded, return it; otherwise fallback to Lucide or a generic
+    if (_muiIconsCache && _muiIconsCache[mapping.currentIcon]) {
+      return _muiIconsCache[mapping.currentIcon]
+    }
+    // fallback to lucide icon if it exists with same name
+    if ((LucideIcons as any)[mapping.currentIcon]) return (LucideIcons as any)[mapping.currentIcon]
+    // fallback to default map
+    const defaultMappings: Record<string, any> = {
+      add_folder: FolderPlus,
+      add_note: FilePlus,
+      add_draw: Palette,
+      add_excel: Table,
+      add_powerpoint: Presentation,
+      add_pdf: FileText,
+      add_image: FileImage,
+      add_video: FileVideo,
+      add_audio: FileAudio
+    };
+    return defaultMappings[key] || FolderPlus;
+  }
+
+  // Default mappings when no mapping set
+  const defaultMappings: Record<string, any> = {
+    add_folder: FolderPlus,
+    add_note: FilePlus,
+    add_draw: Palette,
+    add_excel: Table,
+    add_powerpoint: Presentation,
+    add_pdf: FileText,
+    add_image: FileImage,
+    add_video: FileVideo,
+    add_audio: FileAudio
+  };
+  return defaultMappings[key] || FolderPlus;
+};
+
+// State for icon mappings
+let iconMappings: Record<string, { currentIcon: string; library: string }> = {};
 
 interface ModernSidebarProps {
   tree: EnhancedFolderNode | null;
@@ -99,6 +163,62 @@ export function ModernSidebar({
   React.useEffect(() => {
     setIsClient(true);
     setIsElectronMode(!!(window.electronAPI || window.electron));
+  }, []);
+
+  // Load icon mappings from settings
+  useEffect(() => {
+    const loadIconMappings = async () => {
+      try {
+        if (window.electronAPI?.loadSettings) {
+          const s = await window.electronAPI.loadSettings();
+          if (s && s.icons && Array.isArray(s.icons.mappings)) {
+            const mappings: Record<string, { currentIcon: string; library: string }> = {};
+            s.icons.mappings.forEach((m: any) => {
+              if (m && m.key && m.key.startsWith('add_')) {
+                mappings[m.key] = { 
+                  currentIcon: String(m.currentIcon || 'FolderPlus'), 
+                  library: String(m.library || 'Lucide') 
+                };
+              }
+            });
+            iconMappings = mappings;
+            // Force re-render
+            setRecentFilesVersion(prev => prev + 1);
+            // If some mapping uses Material UI, warm-load it in background so icons display
+            const needsMui = Object.values(mappings).some(v => v.library === 'Material UI')
+            if (needsMui) ensureMuiIconsLoaded().catch(() => {})
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load icon mappings for sidebar', err);
+      }
+    };
+    loadIconMappings();
+
+    // Listen for icon mapping updates
+    const handleIconMappingsUpdate = (e: any) => {
+      try {
+        const mappings = e?.detail?.mappings || (window as any).__lastIconMappings;
+        if (!mappings) return;
+        const newMappings: Record<string, { currentIcon: string; library: string }> = {};
+        mappings.forEach((m: any) => {
+          if (m && m.key && m.key.startsWith('add_')) {
+            newMappings[m.key] = { 
+              currentIcon: String(m.currentIcon || 'FolderPlus'), 
+              library: String(m.library || 'Lucide') 
+            };
+          }
+        });
+        iconMappings = newMappings;
+        // Force re-render
+        setRecentFilesVersion(prev => prev + 1);
+      } catch (err) {
+        console.warn('Failed to update icon mappings for sidebar', err);
+      }
+    };
+
+    window.addEventListener('iconMappingsUpdated', handleIconMappingsUpdate);
+    return () => window.removeEventListener('iconMappingsUpdated', handleIconMappingsUpdate);
   }, []);
 
   // Sync with parent collapse state
@@ -353,7 +473,7 @@ export function ModernSidebar({
                           className="h-7 w-7 p-1 bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700 text-white"
                           onClick={handleNewFolder}
                         >
-                          <FolderPlus className="w-3 h-3" />
+                          {React.createElement(getMappedIconComponent('add_folder'), { className: "w-3 h-3 text-black dark:text-white" })}
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="right">
@@ -370,7 +490,7 @@ export function ModernSidebar({
                           className="h-7 w-7 p-1 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400 hover:text-blue-700"
                           onClick={() => onNewFile?.('root', 'note')}
                         >
-                          <FilePlus className="w-3 h-3" />
+                          {React.createElement(getMappedIconComponent('add_note'), { className: "w-3 h-3 text-black dark:text-white" })}
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="right">
@@ -387,7 +507,7 @@ export function ModernSidebar({
                           className="h-7 w-7 p-1 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 hover:text-purple-700"
                           onClick={handleNewDraw}
                         >
-                          <Palette className="w-3 h-3" />
+                          {React.createElement(getMappedIconComponent('add_draw'), { className: "w-3 h-3 text-black dark:text-white" })}
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="right">
@@ -404,7 +524,7 @@ export function ModernSidebar({
                           className="h-7 w-7 p-1 bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-600 dark:text-green-400 hover:text-green-700"
                           onClick={() => setShowExcelDialog(true)}
                         >
-                          <Table className="w-3 h-3" />
+                          {React.createElement(getMappedIconComponent('add_excel'), { className: "w-3 h-3 text-black dark:text-white" })}
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="right">
@@ -421,7 +541,7 @@ export function ModernSidebar({
                           className="h-7 w-7 p-1 bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-600 dark:text-orange-400 hover:text-orange-700"
                           onClick={() => setShowPowerpointDialog(true)}
                         >
-                          <Presentation className="w-3 h-3" />
+                          {React.createElement(getMappedIconComponent('add_powerpoint'), { className: "w-3 h-3 text-black dark:text-white" })}
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="right">
@@ -438,7 +558,7 @@ export function ModernSidebar({
                           className="h-7 w-7 p-1 bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-600 dark:text-red-400 hover:text-red-700"
                           onClick={() => setShowPdfDialog(true)}
                         >
-                          <FileText className="w-3 h-3" />
+                          {React.createElement(getMappedIconComponent('add_pdf'), { className: "w-3 h-3 text-black dark:text-white" })}
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="right">
@@ -455,7 +575,7 @@ export function ModernSidebar({
                           className="h-7 w-7 p-1 bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900 dark:hover:bg-yellow-800 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700"
                           onClick={() => onNewFile?.('root', 'image')}
                         >
-                          <FileImage className="w-3 h-3" />
+                          {React.createElement(getMappedIconComponent('add_image'), { className: "w-3 h-3 text-black dark:text-white" })}
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="right">
@@ -472,7 +592,7 @@ export function ModernSidebar({
                           className="h-7 w-7 p-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-900 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-700"
                           onClick={() => onNewFile?.('root', 'video')}
                         >
-                          <FileVideo className="w-3 h-3" />
+                          {React.createElement(getMappedIconComponent('add_video'), { className: "w-3 h-3 text-black dark:text-white" })}
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="right">
@@ -489,7 +609,7 @@ export function ModernSidebar({
                           className="h-7 w-7 p-1 bg-pink-100 hover:bg-pink-200 dark:bg-pink-900 dark:hover:bg-pink-800 text-pink-600 dark:text-pink-400 hover:text-pink-700"
                           onClick={() => onNewFile?.('root', 'audio')}
                         >
-                          <FileAudio className="w-3 h-3" />
+                          {React.createElement(getMappedIconComponent('add_audio'), { className: "w-3 h-3 text-black dark:text-white" })}
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="right">
@@ -512,7 +632,7 @@ export function ModernSidebar({
                             className="h-12 w-12 p-0 bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700 text-white"
                             onClick={handleNewFolder}
                           >
-                            <FolderPlus className="w-4 h-4" />
+                            {React.createElement(getMappedIconComponent('add_folder'), { className: "w-4 h-4 text-black dark:text-white" })}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="right">
@@ -529,7 +649,7 @@ export function ModernSidebar({
                             className="h-12 w-12 p-0 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
                             onClick={() => onNewFile?.('root', 'note')}
                           >
-                            <FilePlus className="w-4 h-4" />
+                            {React.createElement(getMappedIconComponent('add_note'), { className: "w-4 h-4 text-black dark:text-white" })}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="right">
@@ -546,7 +666,7 @@ export function ModernSidebar({
                             className="h-12 w-12 p-0 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
                             onClick={handleNewDraw}
                           >
-                            <Palette className="w-4 h-4" />
+                            {React.createElement(getMappedIconComponent('add_draw'), { className: "w-4 h-4 text-black dark:text-white" })}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="right">
@@ -563,8 +683,7 @@ export function ModernSidebar({
                             className="h-12 w-12 p-0 bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
                             onClick={() => setShowExcelDialog(true)}
                           >
-                            {/* Utiliser FileSpreadsheet ou FileTable */}
-                            <Table className="w-4 h-4" />
+                            {React.createElement(getMappedIconComponent('add_excel'), { className: "w-4 h-4 text-black dark:text-white" })}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="right">
@@ -581,8 +700,7 @@ export function ModernSidebar({
                             className="h-12 w-12 p-0 bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300"
                             onClick={() => setShowPowerpointDialog(true)}
                           >
-                            {/* Utiliser Presentation ou FilePresentation */}
-                            <Presentation className="w-4 h-4" />
+                            {React.createElement(getMappedIconComponent('add_powerpoint'), { className: "w-4 h-4 text-black dark:text-white" })}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="right">
@@ -603,7 +721,7 @@ export function ModernSidebar({
                             className="h-12 w-12 p-0 bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900 dark:hover:bg-yellow-800 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300"
                             onClick={() => onNewFile?.('root', 'image')}
                           >
-                            <FileImage className="w-4 h-4" />
+                            {React.createElement(getMappedIconComponent('add_image'), { className: "w-4 h-4 text-black dark:text-white" })}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="right">
@@ -620,7 +738,7 @@ export function ModernSidebar({
                             className="h-12 w-12 p-0 bg-gray-100 hover:bg-gray-200 dark:bg-gray-900 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                             onClick={() => onNewFile?.('root', 'video')}
                           >
-                            <FileVideo className="w-4 h-4" />
+                            {React.createElement(getMappedIconComponent('add_video'), { className: "w-4 h-4 text-black dark:text-white" })}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="right">
@@ -637,7 +755,7 @@ export function ModernSidebar({
                             className="h-12 w-12 p-0 bg-pink-100 hover:bg-pink-200 dark:bg-pink-900 dark:hover:bg-pink-800 text-pink-600 dark:text-pink-400 hover:text-pink-700 dark:hover:text-pink-300"
                             onClick={() => onNewFile?.('root', 'audio')}
                           >
-                            <FileAudio className="w-4 h-4" />
+                            {React.createElement(getMappedIconComponent('add_audio'), { className: "w-4 h-4 text-black dark:text-white" })}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="right">
@@ -654,7 +772,7 @@ export function ModernSidebar({
                             className="h-12 w-12 p-0 bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                             onClick={() => setShowPdfDialog(true)}
                           >
-                            <FileText className="w-4 h-4" />
+                            {React.createElement(getMappedIconComponent('add_pdf'), { className: "w-4 h-4 text-black dark:text-white" })}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="right">

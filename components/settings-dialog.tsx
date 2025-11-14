@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Settings, Folder, Pen, Monitor } from "lucide-react"
+import IconsSettings from "@/components/icons-settings"
 import { Switch } from "@/components/ui/switch"
 import { useCallback } from "react"
 
@@ -176,19 +177,19 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
     setShowFolderPicker(false);
   }
 
+  
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto flex flex-col">
-        <DialogHeader>
+      <DialogContent className="h-[90vh] w-[120rem] max-w-[96vw] flex flex-col overflow-hidden" style={{ height: '90vh', width: '120rem', maxWidth: '96vw' }}>
+      <Tabs defaultValue="stylus" className="w-full flex flex-col flex-1 min-h-0">
+        <DialogHeader className="sticky top-0 z-30 bg-background/80 backdrop-blur-sm">
           <DialogTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
             Configuration de l'application
           </DialogTitle>
-        </DialogHeader>
-        <div className="flex-1 flex flex-col">
-          <Tabs defaultValue="stylus" className="w-full flex-1">
-            <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5 py-2">
               <TabsTrigger value="stylus" className="flex items-center gap-2">
                 <Pen className="h-4 w-4" /> Stylet
               </TabsTrigger>
@@ -198,9 +199,12 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
               <TabsTrigger value="app" className="flex items-center gap-2">
                 <Monitor className="h-4 w-4" /> Application
               </TabsTrigger>
+              <TabsTrigger value="icons" className="flex items-center gap-2">Icônes</TabsTrigger>
               <TabsTrigger value="about">À propos</TabsTrigger>
             </TabsList>
-            <TabsContent value="stylus" className="space-y-4">
+          </DialogHeader>
+            <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar">
+              <TabsContent value="stylus" className="space-y-4">
               <Card>
                 <CardHeader>
                   <CardTitle>Étalonnage du stylet</CardTitle>
@@ -329,6 +333,9 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
                 </CardContent>
               </Card>
             </TabsContent>
+            <TabsContent value="icons" className="space-y-4">
+              <IconsSettings />
+            </TabsContent>
             <TabsContent value="about" className="space-y-4">
               <Card>
                 <CardHeader>
@@ -349,8 +356,8 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
                 </CardContent>
               </Card>
             </TabsContent>
-          </Tabs>
         </div>
+          </Tabs>
         {/* Footer du modal */}
         <div className="pt-4 border-t flex justify-end">
           <Button onClick={saveSettings} variant="default" className="min-w-[200px]">

@@ -1,6 +1,7 @@
 "use client";
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import * as LucideIcons from 'lucide-react'
 import {
   ChevronRight,
   ChevronDown,
@@ -105,6 +106,41 @@ const iconNameToComponent = (iconName: string) => {
 
   return iconMap[iconName] || FolderPlus; // Default to FolderPlus if icon not found
 };
+
+// Runtime cache for dynamically loaded MUI icons (loaded only at runtime)
+let _muiIconsCache: Record<string, any> | null = null
+
+async function ensureMuiIconsLoaded() {
+  if (_muiIconsCache) return _muiIconsCache
+  try {
+    const mod = await eval('import("@mui/icons-material")')
+    const map: Record<string, any> = {}
+    Object.keys(mod).forEach(k => { map[k] = (mod as any)[k] })
+    _muiIconsCache = map
+    return _muiIconsCache
+  } catch (err) {
+    console.warn('Failed to dynamically load @mui/icons-material', err)
+    return null
+  }
+}
+
+// Module-level icon map so TreeItem (declared above) can resolve mapped icons synchronously.
+let _moduleIconMap: Record<string, { currentIcon: string; library: string }> = {}
+function setModuleIconMap(map: Record<string, { currentIcon: string; library: string }>) {
+  _moduleIconMap = map || {}
+}
+
+function getMappedIconComponent(key: string) {
+  const m = _moduleIconMap[key]
+  if (!m) return null
+  if (m.library === 'Lucide') {
+    return (LucideIcons as any)[m.currentIcon] || iconNameToComponent(m.currentIcon)
+  }
+  if (_muiIconsCache) return _muiIconsCache[m.currentIcon] || null
+  // kick off load in background and fallback to lucide
+  ensureMuiIconsLoaded().catch(() => {})
+  return (LucideIcons as any)[m.currentIcon] || iconNameToComponent(m.currentIcon)
+}
 
 // File type detection and icon mapping
 const getFileType = (node: EnhancedFolderNode): FileType => {
@@ -523,13 +559,36 @@ const TreeItem = React.memo(({
             <div className="h-6 w-6" aria-hidden />
           )}
 
-          {/* Icon - Simple icon without background */}
+          {/* Icon - simple icon lookup with mapping support */}
           <div className={cn(getFileColor(fileType))}>
-            {node.icon ? (
-              React.createElement(iconNameToComponent(node.icon), { className: "w-4 h-4" })
-            ) : (
-              getFileIcon(fileType, isExpanded, node.name)
-            )}
+            {
+              (() => {
+                // Resolve mapping: folders use folder_open/folder_default, files can use ext_<ext>
+                let mappedComp: any = null
+                if (node.type === 'folder') {
+                  const key = isExpanded ? 'folder_open' : 'folder_default'
+                  mappedComp = getMappedIconComponent(key)
+                } else {
+                  const ext = node.name.split('.').pop()?.toLowerCase() || ''
+                  if (ext) mappedComp = getMappedIconComponent('ext_' + ext)
+                }
+
+                if (mappedComp) {
+                  try {
+                    return React.createElement(mappedComp, { className: 'w-4 h-4' })
+                  } catch (err) {
+                    // fallback below
+                  }
+                }
+
+                // fallback: explicit node.icon or type-based icon
+                if (node.icon) {
+                  return React.createElement(iconNameToComponent(node.icon), { className: 'w-4 h-4' })
+                }
+
+                return getFileIcon(fileType, isExpanded, node.name)
+              })()
+            }
           </div>
 
           {/* Content */}
@@ -692,6 +751,56 @@ export function ModernFolderTree({
     oldPath?: string;
     newPath?: string;
   } | null>(null);
+
+  // Icon mappings loaded from settings (key -> { currentIcon, library })
+  const [iconMap, setIconMap] = useState<Record<string, { currentIcon: string; library: string }>>({})
+
+  useEffect(() => {
+    let mounted = true
+    const load = async () => {
+      try {
+        if (window.electronAPI?.loadSettings) {
+          const s = await window.electronAPI.loadSettings()
+              if (s && s.icons && Array.isArray(s.icons.mappings)) {
+                const map: Record<string, any> = {}
+                s.icons.mappings.forEach((m: any) => {
+                  if (m && m.key) map[m.key] = { currentIcon: String(m.currentIcon || ''), library: String(m.library || 'Lucide') }
+                })
+                if (mounted) setIconMap(map)
+                // also update module-level map used by TreeItem
+                setModuleIconMap(map)
+
+                // If any mapping requests Material UI, warm-load it in background
+                const needsMui = Object.values(map).some(v => v.library === 'Material UI')
+                if (needsMui) ensureMuiIconsLoaded().catch(() => {})
+              }
+        }
+      } catch (err) {
+        console.warn('Failed to load icon mappings from settings', err)
+      }
+    }
+    load()
+
+    const handler = (e: any) => {
+      try {
+        const mappings = e?.detail?.mappings || (window as any).__lastIconMappings
+        if (!mappings) return
+        const map: Record<string, any> = {}
+        mappings.forEach((m: any) => { if (m && m.key) map[m.key] = { currentIcon: String(m.currentIcon || ''), library: String(m.library || 'Lucide') } })
+        if (mounted) setIconMap(map)
+        setModuleIconMap(map)
+        const needsMui = Object.values(map).some(v => v.library === 'Material UI')
+        if (needsMui) ensureMuiIconsLoaded().catch(() => {})
+      } catch (err) {
+        // ignore
+      }
+    }
+
+    window.addEventListener('iconMappingsUpdated', handler as EventListener)
+    return () => { mounted = false; window.removeEventListener('iconMappingsUpdated', handler as EventListener) }
+  }, [])
+
+  // module-level getMappedIconComponent is used by TreeItem; updateModuleIconMap keeps it in sync
 
   // Update tree version when tree changes (but don't clear expanded paths)
   React.useEffect(() => {

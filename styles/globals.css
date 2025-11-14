@@ -319,10 +319,31 @@
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
+  /* Avoid applying borders/outlines to every element globally — this can
+     unexpectedly change sizing of UI chrome (toolbars, buttons, etc).
+     Keep only the body background/foreground application here. */
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Utility to hide native scrollbars while keeping scrolling functional */
+.hide-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+  width: 0;
+  height: 0;
+}
+
+/* Also hide Radix ScrollArea custom scrollbar when applied */
+.hide-scrollbar [data-slot="scroll-area-scrollbar"] {
+  display: none !important;
+}
+.hide-scrollbar [data-slot="scroll-area-viewport"] {
+  /* ensure native scrollbar hidden in case viewport falls back */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
