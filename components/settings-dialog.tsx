@@ -14,7 +14,7 @@ import FolderPicker from "./folder-picker"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Settings, Folder, Pen, Monitor } from "lucide-react"
+import { Settings, Folder, Pen, Monitor, Palette } from "lucide-react"
 import IconsSettings from "@/components/icons-settings"
 import { Switch } from "@/components/ui/switch"
 import { useCallback } from "react"
@@ -64,42 +64,58 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
     }
   }, []);
 
-  // Fonction de sauvegarde des paramètres
-  const saveSettings = useCallback(() => {
-    const settings = {
-      stylus: stylusSettings,
-      files: fileSettings,
-      app: appSettings,
-    };
-    if (window.electronAPI && window.electronAPI.saveSettings) {
-      window.electronAPI.saveSettings(settings)
-        .then((result) => {
-          if (result) {
-            toast({
-              title: "Paramètres sauvegardés",
-              description: "Les paramètres ont été enregistrés avec succès.",
-              variant: "default",
-            });
-            setOpen(false);
-          } else {
-            toast({
-              title: "Erreur de sauvegarde",
-              description: "Impossible d'enregistrer les paramètres.",
-              variant: "destructive",
-            });
-          }
-        })
-        .catch(() => {
-          toast({
-            title: "Erreur de sauvegarde",
-            description: "Impossible d'enregistrer les paramètres.",
-            variant: "destructive",
-          });
-        });
-    } else {
+  // Fonction de sauvegarde des paramètres (fusionne avec la config existante pour préserver les sections personnalisées comme `icons`)
+  const saveSettings = useCallback(async () => {
+    if (!window.electronAPI) {
       toast({
         title: "Fonctionnalité non disponible",
         description: "L'API Electron n'est pas accessible pour la sauvegarde.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Charger les settings existants et fusionner
+      const existing = window.electronAPI.loadSettings ? await window.electronAPI.loadSettings() : {};
+      const merged = {
+        ...existing,
+        stylus: stylusSettings,
+        files: fileSettings,
+        app: appSettings,
+      };
+
+      const saveFn = window.electronAPI?.saveSettings
+      if (!saveFn) {
+        toast({
+          title: "Fonctionnalité non disponible",
+          description: "L'API Electron n'est pas accessible pour la sauvegarde.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const result = await saveFn(merged);
+      if (result) {
+        toast({
+          title: "Paramètres sauvegardés",
+          description: "Les paramètres ont été enregistrés avec succès.",
+          variant: "default",
+        });
+        setOpen(false);
+      } else {
+        toast({
+          title: "Erreur de sauvegarde",
+          description: "Impossible d'enregistrer les paramètres.",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error('settings-dialog: saveSettings error', err);
+      const message = (err as any)?.message || String(err);
+      toast({
+        title: "Erreur de sauvegarde",
+        description: `Impossible d'enregistrer les paramètres: ${message}`,
         variant: "destructive",
       });
     }
@@ -199,7 +215,7 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
               <TabsTrigger value="app" className="flex items-center gap-2">
                 <Monitor className="h-4 w-4" /> Application
               </TabsTrigger>
-              <TabsTrigger value="icons" className="flex items-center gap-2">Icônes</TabsTrigger>
+              <TabsTrigger value="icons" className="flex items-center gap-2"><Palette className="h-4 w-4" /> Icônes</TabsTrigger>
               <TabsTrigger value="about">À propos</TabsTrigger>
             </TabsList>
           </DialogHeader>

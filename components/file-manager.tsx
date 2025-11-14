@@ -26,6 +26,7 @@ const FileIconPdf = ({ className }: { className?: string }) => (
 
 
 import { cn } from "@/lib/utils"
+import { getFileTypeFromExtension, getFileTypeConfig } from '@/lib/file-types'
 import { AddPdfDocumentDialog } from "./add-pdf-document_dialog"
 import { AddDrawDialog } from "./add-draw_dialog"
 
@@ -71,47 +72,34 @@ interface FileItem {
   createdAt?: Date
 }
 
-const FILE_TYPES: {
-  [key: string]: {
-    icon: any,
-    color: string,
-    extensions: string[]
-  }
-} = {
-  folder: { icon: Folder, color: "text-yellow-500", extensions: [] },
-  image: { icon: FileImage, color: "text-yellow-500", extensions: ["jpg", "jpeg", "png", "gif", "svg", "webp"] },
-  pdf: { icon: FileText, color: "text-red-600", extensions: ["pdf"] },
-  document: { icon: FileText, color: "text-blue-600", extensions: ["doc", "docx", "rtf"] },
-  excel: { icon: Sheet, color: "text-green-600", extensions: ["xls", "xlsx"] },
-  powerpoint: { icon: Presentation, color: "text-orange-600", extensions: ["ppt", "pptx"] },
-  note: { icon: FileText, color: "text-blue-500", extensions: ["md", "txt"] },
-  draw: { icon: Palette, color: "text-purple-600", extensions: ["draw"] },
-  audio: { icon: FileAudio, color: "text-pink-500", extensions: ["mp3", "wav", "wave", "ogg", "oga", "opus", "flac", "aac", "m4a", "m4b", "m4p", "wma", "aiff", "aif", "ape", "mka", "wv", "tta", "tak", "mp2", "mp1", "mpa", "ac3", "dts", "amr", "3gp", "ra", "ram", "weba"] },
-  video: { icon: FileVideo, color: "text-gray-500", extensions: ["mp4", "webm", "ogv", "avi", "mov", "mkv", "wmv", "flv"] },
-  archive: { icon: Archive, color: "text-gray-500", extensions: ["zip", "rar", "7z", "tar"] },
-  link: { icon: Link, color: "text-cyan-600", extensions: [] },
-  code: { icon: FileCode, color: "text-orange-500", extensions: ["js", "ts", "jsx", "tsx", "py", "java", "cpp", "cs", "html", "css", "json"] },
-  other: { icon: File, color: "text-gray-600", extensions: [] },
+// Utility: map our FileColorTheme to a tailwind text color class
+const themeToColorClass: Record<string, string> = {
+  yellow: 'text-yellow-500',
+  blue: 'text-blue-600',
+  purple: 'text-purple-600',
+  red: 'text-red-600',
+  green: 'text-green-600',
+  pink: 'text-pink-500',
+  orange: 'text-orange-500',
+  gray: 'text-gray-500',
+  black: 'text-black'
 }
 
-// Fonction utilitaire pour obtenir l'icône et la couleur selon le type de fichier
+// Utility to get icon component and color class for a filename using lib/file-types
 const getFileIconAndColor = (fileName: string) => {
   const ext = fileName.split('.').pop()?.toLowerCase() || ''
-  
-  // Vérifier chaque type de fichier
-  for (const [type, config] of Object.entries(FILE_TYPES)) {
-    if (config.extensions.includes(ext)) {
-      return { Icon: config.icon, color: config.color, type }
-    }
+
+  // Special-case draw extension
+  if (fileName.toLowerCase().endsWith('.draw')) {
+    return { Icon: Palette, color: themeToColorClass['purple'], type: 'draw' }
   }
-  
-  // Cas spéciaux basés sur l'extension complète
-  if (fileName.endsWith('.draw')) {
-    return { Icon: Palette, color: "text-purple-600", type: 'draw' }
-  }
-  
-  // Par défaut
-  return { Icon: File, color: "text-gray-600", type: 'other' }
+
+  const type = getFileTypeFromExtension(ext)
+  const config = getFileTypeConfig(type)
+  const Icon = (config?.icon as any) || File
+  const color = themeToColorClass[(config as any)?.colorTheme || 'gray'] || 'text-gray-600'
+
+  return { Icon, color, type }
 }
 
 // FileListRow component for list view
@@ -802,29 +790,13 @@ export function FileManager({
   };
 
   const getFileType = (filename: string): FileType => {
-    const extension = filename.split(".").pop()?.toLowerCase();
-    if (!extension) return "other";
+    const extension = filename.split('.').pop()?.toLowerCase();
+    if (!extension) return 'other'
 
-    // Check for PDF first (most specific)
-    if (FILE_TYPES.pdf.extensions.includes(extension)) {
-      console.log('PDF file detected in file-manager getFileType:', filename);
-      return "pdf";
-    }
-
-    // Then check other types
-    if (FILE_TYPES.image.extensions.includes(extension)) return "image";
-    if (FILE_TYPES.document.extensions.includes(extension)) return "document";
-    if (FILE_TYPES.note.extensions.includes(extension)) return "note";
-    if (FILE_TYPES.draw.extensions.includes(extension)) return "draw";
-    if (FILE_TYPES.audio.extensions.includes(extension)) return "audio";
-    if (FILE_TYPES.video.extensions.includes(extension)) return "video";
-    if (FILE_TYPES.archive.extensions.includes(extension)) return "archive";
-    if (FILE_TYPES.code.extensions.includes(extension)) return "code";
-
-    // Si le nom est une URL, on considère comme 'link'
-    if (filename.startsWith("http://") || filename.startsWith("https://")) return "link";
-    return "other";
-  };
+    // use centralized mapping from lib/file-types
+    const type = getFileTypeFromExtension(extension)
+    return (type as FileType) || 'other'
+  }
 
   const files = useMemo(() => {
     if (!selectedFolder || !folderTree) {
@@ -1094,17 +1066,16 @@ export function FileManager({
   };
 
   const renderFileIcon = (file: FileItem) => {
-    const fileType = file.isDirectory ? "folder" : getFileType(file.name);
+    const fileType = file.isDirectory ? 'folder' : getFileType(file.name)
 
     // Special case for PDF files - use custom PDF icon
-    if (fileType === "pdf" || (file.name && file.name.toLowerCase().endsWith('.pdf'))) {
-      console.log('PDF file detected in file-manager renderFileIcon:', file.name);
-      return <FileIconPdf className="h-10 w-10 text-red-600" />;
+    if (fileType === 'pdf' || (file.name && file.name.toLowerCase().endsWith('.pdf'))) {
+      console.log('PDF file detected in file-manager renderFileIcon:', file.name)
+      return <FileIconPdf className="h-10 w-10 text-red-600" />
     }
 
-    const Icon = FILE_TYPES[fileType]?.icon || File;
-    const colorClass = FILE_TYPES[fileType]?.color || "text-gray-600";
-    return <Icon className={cn("h-10 w-10", colorClass)} />;
+    const { Icon, color } = getFileIconAndColor(file.name)
+    return <Icon className={cn('h-10 w-10', color)} />
   };
 
   return (

@@ -20,5 +20,249 @@
     "language": "fr",
     "startWithWindows": false,
     "minimizeToTray": true
+  },
+  "icons": {
+    "mappings": [
+      {
+        "key": "folder_default",
+        "label": "Dossier (fermé)",
+        "currentIcon": "Folder",
+        "library": "Lucide"
+      },
+      {
+        "key": "folder_open",
+        "label": "Dossier (ouvert)",
+        "currentIcon": "Folder",
+        "library": "Lucide"
+      },
+      {
+        "key": "add_folder",
+        "label": "Ajouter dossier",
+        "currentIcon": "FolderPlus",
+        "library": "Lucide"
+      },
+      {
+        "key": "add_note",
+        "label": "Ajouter note",
+        "currentIcon": "FilePlus",
+        "library": "Lucide"
+      },
+      {
+        "key": "add_draw",
+        "label": "Ajouter dessin",
+        "currentIcon": "Palette",
+        "library": "Lucide"
+      },
+      {
+        "key": "add_excel",
+        "label": "Ajouter tableur",
+        "currentIcon": "Table",
+        "library": "Lucide"
+      },
+      {
+        "key": "add_powerpoint",
+        "label": "Ajouter présentation",
+        "currentIcon": "Presentation",
+        "library": "Lucide"
+      },
+      {
+        "key": "add_pdf",
+        "label": "Ajouter PDF",
+        "currentIcon": "FileText",
+        "library": "Lucide"
+      },
+      {
+        "key": "add_image",
+        "label": "Ajouter image",
+        "currentIcon": "FileImage",
+        "library": "Lucide"
+      },
+      {
+        "key": "add_video",
+        "label": "Ajouter vidéo",
+        "currentIcon": "FileVideo",
+        "library": "Lucide"
+      },
+      {
+        "key": "add_audio",
+        "label": "Ajouter audio",
+        "currentIcon": "FileAudio",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_pdf",
+        "label": "Fichier PDF",
+        "currentIcon": "FileText",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_md",
+        "label": "Fichier Markdown",
+        "currentIcon": "FileText",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_txt",
+        "label": "Fichier texte",
+        "currentIcon": "FileText",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_doc",
+        "label": "Document Word",
+        "currentIcon": "FileText",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_docx",
+        "label": "Document Word",
+        "currentIcon": "FileText",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_xls",
+        "label": "Feuille Excel",
+        "currentIcon": "FileSpreadsheet",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_xlsx",
+        "label": "Feuille Excel",
+        "currentIcon": "FileSpreadsheet",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_ppt",
+        "label": "Présentation PowerPoint",
+        "currentIcon": "Presentation",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_pptx",
+        "label": "Présentation PowerPoint",
+        "currentIcon": "Presentation",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_image",
+        "label": "Image (jpg/png)",
+        "currentIcon": "FileImage",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_jpg",
+        "label": "Image JPG",
+        "currentIcon": "FileImage",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_jpeg",
+        "label": "Image JPEG",
+        "currentIcon": "FileImage",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_png",
+        "label": "Image PNG",
+        "currentIcon": "FileImage",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_gif",
+        "label": "Image GIF",
+        "currentIcon": "FileImage",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_svg",
+        "label": "Image SVG",
+        "currentIcon": "FileImage",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_video",
+        "label": "Vidéo",
+        "currentIcon": "FileVideo",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_mp4",
+        "label": "Vidéo MP4",
+        "currentIcon": "FileVideo",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_avi",
+        "label": "Vidéo AVI",
+        "currentIcon": "FileVideo",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_mov",
+        "label": "Vidéo MOV",
+        "currentIcon": "FileVideo",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_audio",
+        "label": "Audio",
+        "currentIcon": "FileAudio",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_mp3",
+        "label": "Audio MP3",
+        "currentIcon": "FileAudio",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_wav",
+        "label": "Audio WAV",
+        "currentIcon": "FileAudio",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_zip",
+        "label": "Archive ZIP",
+        "currentIcon": "Archive",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_rar",
+        "label": "Archive RAR",
+        "currentIcon": "Archive",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_json",
+        "label": "Fichier JSON",
+        "currentIcon": "FileCode",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_js",
+        "label": "Fichier JavaScript",
+        "currentIcon": "FileCode",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_ts",
+        "label": "Fichier TypeScript",
+        "currentIcon": "FileCode",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_html",
+        "label": "Fichier HTML",
+        "currentIcon": "FileCode",
+        "library": "Lucide"
+      },
+      {
+        "key": "ext_css",
+        "label": "Fichier CSS",
+        "currentIcon": "FileCode",
+        "library": "Lucide"
+      }
+    ]
   }
 }
