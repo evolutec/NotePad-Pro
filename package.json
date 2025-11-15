@@ -87,6 +87,7 @@
     "phosphor-react": "^1.4.1",
     "pptxgenjs": "^4.0.1",
     "react": "^18",
+    "react-colorful": "^5.6.1",
     "react-day-picker": "9.8.0",
     "react-doc-viewer": "^0.1.14",
     "react-dom": "^18",

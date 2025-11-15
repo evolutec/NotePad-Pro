@@ -3,8 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Chrome } from "@uiw/react-color"
-import { Check, RefreshCw, X } from "lucide-react"
+import { HexAlphaColorPicker } from "react-colorful"
+import { Check, RefreshCw, X, ChevronLeft, ChevronRight } from "lucide-react"
 
 export type IconShape = "square" | "rounded" | "circle" | "none"
 
@@ -88,6 +88,8 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
   const [showBgPicker, setShowBgPicker] = useState(false)
   const [showIconPicker, setShowIconPicker] = useState(false)
   const [showBorderPicker, setShowBorderPicker] = useState(false)
+  const [showPreviewBgPicker, setShowPreviewBgPicker] = useState(false)
+  const [previewBgColor, setPreviewBgColor] = useState<string | null>(null)
   const [borderWidth, setBorderWidth] = useState<number>(initial?.borderWidth ?? 0)
   const [borderColor, setBorderColor] = useState<string>(initial?.borderColor || "transparent")
   const [opacity, setOpacity] = useState<number>((initial?.opacity ?? defaultCustomization.opacity) as number)
@@ -244,7 +246,7 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
 
           <div className="flex flex-1 overflow-hidden">
             {/* LEFT SIDEBAR: narrow, scrollable controls */}
-            <aside className="w-[300px] min-w-[300px] p-4 overflow-y-auto border-r border-white/6 bg-[rgba(20,20,22,0.45)] backdrop-blur-sm">
+            <aside className="w-[380px] min-w-[380px] p-4 overflow-y-auto border-r border-white/6 bg-[rgba(20,20,22,0.45)] backdrop-blur-sm">
               <div className="space-y-5">
                 {/* FORMES */}
                 <div className="space-y-2">
@@ -252,7 +254,7 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
                   <select
                     value={shape}
                     onChange={(e) => setShape(e.target.value as IconShape)}
-                    className="w-full rounded-lg px-3 py-2 bg-white/6 text-white border border-white/8"
+                    className="w-full rounded-lg px-3 py-2 bg-black text-white border border-white/8"
                   >
                     <option value="square">Carré</option>
                     <option value="rounded">Arrondi</option>
@@ -274,11 +276,18 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
                         style={{ background: bgColor }}
                       />
                     </div>
-                    {showBgPicker && (
-                      <div className="mt-2 p-3 rounded-lg bg-[rgba(0,0,0,0.7)] border border-white/8">
-                        <Chrome color={bgColor} onChange={(c: any) => setBgColor(c.hex || String(c))} />
-                      </div>
-                    )}
+                    {/* Background color picker in its own modal to ensure proper pointer interactions (alpha + color) */}
+                    <Dialog open={showBgPicker} onOpenChange={setShowBgPicker}>
+                        <DialogContent showCloseButton={false} className="w-[28rem] max-w-[90vw]" style={{ transform: 'none' }}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-sm font-medium">Couleur de fond</div>
+                          <Button variant="ghost" size="sm" onClick={() => setShowBgPicker(false)}><X className="w-4 h-4" /></Button>
+                        </div>
+                        <div className="p-1 rounded bg-black" style={{ cursor: 'pointer', pointerEvents: 'auto', position: 'relative', zIndex: 100000 }}>
+                          <HexAlphaColorPicker color={bgColor} onChange={setBgColor} />
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </div>
 
                   <div>
@@ -292,11 +301,18 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
                         style={{ background: iconColor }}
                       />
                     </div>
-                    {showIconPicker && (
-                      <div className="mt-2 p-3 rounded-lg bg-[rgba(0,0,0,0.7)] border border-white/8">
-                        <Chrome color={iconColor} onChange={(c: any) => setIconColor(c.hex || String(c))} />
-                      </div>
-                    )}
+                    {/* Icon color picker modal */}
+                    <Dialog open={showIconPicker} onOpenChange={setShowIconPicker}>
+                        <DialogContent showCloseButton={false} className="w-[28rem] max-w-[90vw]" style={{ transform: 'none' }}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-sm font-medium">Couleur icône</div>
+                          <Button variant="ghost" size="sm" onClick={() => setShowIconPicker(false)}><X className="w-4 h-4" /></Button>
+                        </div>
+                        <div className="p-1 rounded bg-black" style={{ cursor: 'pointer', pointerEvents: 'auto', position: 'relative', zIndex: 100000 }}>
+                          <HexAlphaColorPicker color={iconColor} onChange={setIconColor} />
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 </div>
 
@@ -304,7 +320,13 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
                 <div>
                   <Label className="text-white/90">Taille</Label>
                   <div className="flex items-center gap-3 mt-2">
+                    <Button variant="ghost" size="sm" onClick={() => setSize(Math.max(24, size - 1))} className="p-1 h-8 w-8">
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
                     <input type="range" min={24} max={96} value={size} onChange={(e) => setSize(Number(e.target.value))} className="flex-1" />
+                    <Button variant="ghost" size="sm" onClick={() => setSize(Math.min(96, size + 1))} className="p-1 h-8 w-8">
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
                     <div className="w-12 text-right text-white/80">{size}px</div>
                   </div>
                 </div>
@@ -313,7 +335,13 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
                 <div>
                   <Label className="text-white/90">Bordure</Label>
                   <div className="flex items-center gap-3 mt-2">
+                    <Button variant="ghost" size="sm" onClick={() => setBorderWidth(Math.max(0, borderWidth - 1))} className="p-1 h-8 w-8">
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
                     <input type="range" min={0} max={12} value={borderWidth} onChange={(e) => setBorderWidth(Number(e.target.value))} className="flex-1" />
+                    <Button variant="ghost" size="sm" onClick={() => setBorderWidth(Math.min(12, borderWidth + 1))} className="p-1 h-8 w-8">
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
                     <div className="w-12 text-right text-white/80">{borderWidth}px</div>
                   </div>
                   <div className="flex items-center gap-2 mt-3">
@@ -325,11 +353,18 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
                       style={{ background: borderColor }}
                     />
                   </div>
-                  {showBorderPicker && (
-                    <div className="mt-2 p-3 rounded-lg bg-[rgba(0,0,0,0.7)] border border-white/8">
-                      <Chrome color={borderColor} onChange={(c: any) => setBorderColor(c.hex || String(c))} />
-                    </div>
-                  )}
+                  {/* Border color picker modal */}
+                  <Dialog open={showBorderPicker} onOpenChange={setShowBorderPicker}>
+                        <DialogContent showCloseButton={false} className="w-[28rem] max-w-[90vw]" style={{ transform: 'none' }}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-sm font-medium">Couleur bordure</div>
+                        <Button variant="ghost" size="sm" onClick={() => setShowBorderPicker(false)}><X className="w-4 h-4" /></Button>
+                      </div>
+                      <div className="p-1 rounded bg-black" style={{ cursor: 'pointer', pointerEvents: 'auto', position: 'relative', zIndex: 100000 }}>
+                        <HexAlphaColorPicker color={borderColor} onChange={setBorderColor} />
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
 
                 {/* PRESETS quick row */}
@@ -352,23 +387,45 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
 
             {/* CENTER: large preview */}
             <main className="flex-1 p-6 flex flex-col items-center justify-center overflow-auto">
-              <div className="w-full max-w-2xl">
-                <div className="mb-4 flex items-center justify-between">
+              <div className="w-full">
+                <div className="mb-4 flex items-center justify-between relative">
                   <div className="text-sm text-white/70">Aperçu</div>
 
                   <div className="flex items-center gap-2">
-                    <select value={previewState} onChange={(e) => setPreviewState(e.target.value as any)} className="rounded-md px-2 py-1 bg-white/6 text-white border border-white/8">
+                    <select value={previewState} onChange={(e) => setPreviewState(e.target.value as any)} className="rounded-md px-2 py-1 bg-black text-white border border-white/8">
                       <option value="normal">Normal</option>
                       <option value="hover">Hover</option>
                       <option value="active">Actif</option>
                     </select>
 
-                    <select value={previewSizePreset} onChange={(e) => setPreviewSizePreset(e.target.value as any)} className="rounded-md px-2 py-1 bg-white/6 text-white border border-white/8">
+                    <select value={previewSizePreset} onChange={(e) => setPreviewSizePreset(e.target.value as any)} className="rounded-md px-2 py-1 bg-black text-white border border-white/8">
                       <option value="sm">SM</option>
                       <option value="md">MD</option>
                       <option value="lg">LG</option>
                       <option value="xl">XL</option>
                     </select>
+                    {/* Preview background color control */}
+                    <div className="ml-2 flex items-center gap-2">
+                      <button
+                        aria-label="Changer arrière-plan aperçu"
+                        onClick={() => setShowPreviewBgPicker(s => !s)}
+                        className="w-8 h-8 rounded-md border border-white/8"
+                        style={{ background: previewBgColor || undefined }}
+                      />
+                      {showPreviewBgPicker && (
+                        <Dialog open={showPreviewBgPicker} onOpenChange={setShowPreviewBgPicker}>
+                          <DialogContent showCloseButton={false} className="w-[28rem] max-w-[90vw]" style={{ transform: 'none' }}>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="text-sm font-medium">Arrière-plan aperçu</div>
+                              <Button variant="ghost" size="sm" onClick={() => setShowPreviewBgPicker(false)}><X className="w-4 h-4" /></Button>
+                            </div>
+                            <div className="p-1 rounded bg-black" style={{ cursor: 'pointer', pointerEvents: 'auto', position: 'relative', zIndex: 100000 }}>
+                              <HexAlphaColorPicker color={previewBgColor || '#000000'} onChange={setPreviewBgColor} />
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -377,7 +434,7 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
                   style={{
                     width: "100%",
                     minHeight: 360,
-                    background: "linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.25))",
+                    background: previewBgColor || "linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.25))",
                     border: "1px solid rgba(255,255,255,0.03)",
                     backdropFilter: "blur(8px)",
                   }}
@@ -446,12 +503,18 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
             </main>
 
             {/* RIGHT SIDEBAR: compact actions & advanced sliders */}
-            <aside className="w-[260px] min-w-[260px] p-4 border-l border-white/6 bg-[rgba(18,18,20,0.45)] backdrop-blur-sm overflow-y-auto">
+            <aside className="w-[380px] min-w-[380px] p-4 border-l border-white/6 bg-[rgba(18,18,20,0.45)] backdrop-blur-sm overflow-y-auto">
               <div className="space-y-4">
                 <div>
                   <Label className="text-white/90">Opacité</Label>
                   <div className="flex items-center gap-3 mt-2">
+                    <Button variant="ghost" size="sm" onClick={() => setOpacity(Math.max(0, opacity - 1))} className="p-1 h-8 w-8">
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
                     <input type="range" min={0} max={100} value={opacity} onChange={(e) => setOpacity(Number(e.target.value))} className="flex-1" />
+                    <Button variant="ghost" size="sm" onClick={() => setOpacity(Math.min(100, opacity + 1))} className="p-1 h-8 w-8">
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
                     <div className="w-12 text-right text-white/80">{opacity}%</div>
                   </div>
                 </div>
@@ -467,23 +530,63 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
                     <div className="mt-2 space-y-2">
                       <div>
                         <Label className="text-xs text-white/80">Couleur</Label>
-                        <input className="w-full rounded-md px-2 py-1 bg-white/6 border border-white/8 text-white mt-1" value={shadowColor} onChange={(e) => setShadowColor(e.target.value)} />
+                        <div className="flex items-center gap-2 mt-1">
+                          <input className="flex-1 rounded-md px-2 py-1 bg-white/6 border border-white/8 text-white" value={shadowColor} onChange={(e) => setShadowColor(e.target.value)} />
+                          <button onClick={() => setShowShadowPicker(s => !s)} className="w-8 h-8 rounded-md border border-white/8" style={{ background: shadowColor }} aria-label="shadow color picker" />
+                        </div>
+                        {showShadowPicker && (
+                          <Dialog open={showShadowPicker} onOpenChange={setShowShadowPicker}>
+                            <DialogContent showCloseButton={false} className="w-[28rem] max-w-[90vw]" style={{ transform: 'none' }}>
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="text-sm font-medium">Couleur ombre</div>
+                                <Button variant="ghost" size="sm" onClick={() => setShowShadowPicker(false)}><X className="w-4 h-4" /></Button>
+                              </div>
+                              <div className="p-1 rounded bg-black" style={{ cursor: 'pointer', pointerEvents: 'auto', position: 'relative', zIndex: 100000 }}>
+                                <HexAlphaColorPicker color={shadowColor} onChange={setShadowColor} />
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        )}
                       </div>
 
                       <div>
                         <Label className="text-xs text-white/80">Flou</Label>
-                        <input type="range" min={0} max={40} value={shadowBlur} onChange={(e) => setShadowBlur(Number(e.target.value))} className="w-full" />
-                        <div className="text-xs text-white/60">{shadowBlur}px</div>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => setShadowBlur(Math.max(0, shadowBlur - 1))} className="p-1 h-6 w-6">
+                            <ChevronLeft className="h-3 w-3" />
+                          </Button>
+                          <input type="range" min={0} max={40} value={shadowBlur} onChange={(e) => setShadowBlur(Number(e.target.value))} className="flex-1" />
+                          <Button variant="ghost" size="sm" onClick={() => setShadowBlur(Math.min(40, shadowBlur + 1))} className="p-1 h-6 w-6">
+                            <ChevronRight className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <div className="text-xs text-white/60 text-center mt-1">{shadowBlur}px</div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <Label className="text-xs text-white/80">Décalage Y</Label>
-                          <input type="range" min={-12} max={24} value={shadowOffsetY} onChange={(e) => setShadowOffsetY(Number(e.target.value))} />
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => setShadowOffsetY(Math.max(-12, shadowOffsetY - 1))} className="p-1 h-6 w-6">
+                              <ChevronLeft className="h-3 w-3" />
+                            </Button>
+                            <input type="range" min={-12} max={24} value={shadowOffsetY} onChange={(e) => setShadowOffsetY(Number(e.target.value))} className="flex-1" />
+                            <Button variant="ghost" size="sm" onClick={() => setShadowOffsetY(Math.min(24, shadowOffsetY + 1))} className="p-1 h-6 w-6">
+                              <ChevronRight className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                         <div>
                           <Label className="text-xs text-white/80">Étendue</Label>
-                          <input type="range" min={-20} max={20} value={shadowSpread} onChange={(e) => setShadowSpread(Number(e.target.value))} />
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => setShadowSpread(Math.max(-20, shadowSpread - 1))} className="p-1 h-6 w-6">
+                              <ChevronLeft className="h-3 w-3" />
+                            </Button>
+                            <input type="range" min={-20} max={20} value={shadowSpread} onChange={(e) => setShadowSpread(Number(e.target.value))} className="flex-1" />
+                            <Button variant="ghost" size="sm" onClick={() => setShadowSpread(Math.min(20, shadowSpread + 1))} className="p-1 h-6 w-6">
+                              <ChevronRight className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -493,7 +596,13 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
                 <div>
                   <Label className="text-white/90">Padding</Label>
                   <div className="flex items-center gap-3 mt-2">
+                    <Button variant="ghost" size="sm" onClick={() => setPaddingVal(Math.max(0, paddingVal - 1))} className="p-1 h-8 w-8">
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
                     <input type="range" min={0} max={20} value={paddingVal} onChange={(e) => setPaddingVal(Number(e.target.value))} className="flex-1" />
+                    <Button variant="ghost" size="sm" onClick={() => setPaddingVal(Math.min(20, paddingVal + 1))} className="p-1 h-8 w-8">
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
                     <div className="w-12 text-right text-white/80">{paddingVal}px</div>
                   </div>
                 </div>
@@ -501,7 +610,13 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
                 <div>
                   <Label className="text-white/90">Rotation</Label>
                   <div className="flex items-center gap-3 mt-2">
+                    <Button variant="ghost" size="sm" onClick={() => setRotate(Math.max(-180, rotate - 1))} className="p-1 h-8 w-8">
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
                     <input type="range" min={-180} max={180} value={rotate} onChange={(e) => setRotate(Number(e.target.value))} className="flex-1" />
+                    <Button variant="ghost" size="sm" onClick={() => setRotate(Math.min(180, rotate + 1))} className="p-1 h-8 w-8">
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
                     <div className="w-12 text-right text-white/80">{rotate}°</div>
                   </div>
                 </div>
@@ -521,7 +636,19 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
                           <input className="flex-1 rounded-md px-2 py-1 bg-white/6 border border-white/8 text-white" value={gradientFrom} onChange={(e) => setGradientFrom(e.target.value)} />
                           <button onClick={() => setShowGradientFromPicker((s) => !s)} className="w-8 h-8 rounded-md border border-white/8" style={{ background: gradientFrom }} />
                         </div>
-                        {showGradientFromPicker && <div className="mt-2 p-2 bg-[rgba(0,0,0,0.7)] rounded"><Chrome color={gradientFrom} onChange={(c: any) => setGradientFrom(c.hex || String(c))} /></div>}
+                        {showGradientFromPicker && (
+                          <Dialog open={showGradientFromPicker} onOpenChange={setShowGradientFromPicker}>
+                            <DialogContent showCloseButton={false} className="w-[28rem] max-w-[90vw]" style={{ transform: 'none' }}>
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="text-sm font-medium">Couleur début</div>
+                                <Button variant="ghost" size="sm" onClick={() => setShowGradientFromPicker(false)}><X className="w-4 h-4" /></Button>
+                              </div>
+                              <div className="p-1 rounded bg-black" style={{ cursor: 'pointer', pointerEvents: 'auto', position: 'relative', zIndex: 100000 }}>
+                                <HexAlphaColorPicker color={gradientFrom} onChange={setGradientFrom} />
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        )}
                       </div>
 
                       <div>
@@ -530,13 +657,33 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
                           <input className="flex-1 rounded-md px-2 py-1 bg-white/6 border border-white/8 text-white" value={gradientTo} onChange={(e) => setGradientTo(e.target.value)} />
                           <button onClick={() => setShowGradientToPicker((s) => !s)} className="w-8 h-8 rounded-md border border-white/8" style={{ background: gradientTo }} />
                         </div>
-                        {showGradientToPicker && <div className="mt-2 p-2 bg-[rgba(0,0,0,0.7)] rounded"><Chrome color={gradientTo} onChange={(c: any) => setGradientTo(c.hex || String(c))} /></div>}
+                        {showGradientToPicker && (
+                          <Dialog open={showGradientToPicker} onOpenChange={setShowGradientToPicker}>
+                            <DialogContent showCloseButton={false} className="w-[28rem] max-w-[90vw]">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="text-sm font-medium">Couleur fin</div>
+                                <Button variant="ghost" size="sm" onClick={() => setShowGradientToPicker(false)}><X className="w-4 h-4" /></Button>
+                              </div>
+                              <div className="p-1 rounded bg-black" style={{ cursor: 'pointer', pointerEvents: 'auto', position: 'relative', zIndex: 100000 }}>
+                                <HexAlphaColorPicker color={gradientTo} onChange={setGradientTo} />
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        )}
                       </div>
 
                       <div>
                         <Label className="text-xs text-white/80">Angle</Label>
-                        <input type="range" min={0} max={360} value={gradientAngle} onChange={(e) => setGradientAngle(Number(e.target.value))} className="w-full" />
-                        <div className="text-xs text-white/60">{gradientAngle}°</div>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => setGradientAngle(Math.max(0, gradientAngle - 1))} className="p-1 h-6 w-6">
+                            <ChevronLeft className="h-3 w-3" />
+                          </Button>
+                          <input type="range" min={0} max={360} value={gradientAngle} onChange={(e) => setGradientAngle(Number(e.target.value))} className="flex-1" />
+                          <Button variant="ghost" size="sm" onClick={() => setGradientAngle(Math.min(360, gradientAngle + 1))} className="p-1 h-6 w-6">
+                            <ChevronRight className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <div className="text-xs text-white/60 text-center mt-1">{gradientAngle}°</div>
                       </div>
                     </div>
                   )}

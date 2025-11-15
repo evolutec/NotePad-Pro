@@ -77,11 +77,41 @@ const DEFAULT_SECTIONS: IconSection[] = [
       { key: "ext_wav", label: "Audio WAV", currentIcon: "FileAudio", library: "Lucide" },
       { key: "ext_zip", label: "Archive ZIP", currentIcon: "Archive", library: "Lucide" },
       { key: "ext_rar", label: "Archive RAR", currentIcon: "Archive", library: "Lucide" },
+  // Additional common extensions
+  { key: "ext_csv", label: "Fichier CSV", currentIcon: "FileSpreadsheet", library: "Lucide" },
+  { key: "ext_json", label: "Fichier JSON", currentIcon: "FileCode", library: "Lucide" },
+  { key: "ext_js", label: "Fichier JavaScript", currentIcon: "FileCode", library: "Lucide" },
+  { key: "ext_jsx", label: "Fichier JSX", currentIcon: "FileCode", library: "Lucide" },
+  { key: "ext_ts", label: "Fichier TypeScript", currentIcon: "FileCode", library: "Lucide" },
+  { key: "ext_tsx", label: "Fichier TSX", currentIcon: "FileCode", library: "Lucide" },
+  { key: "ext_py", label: "Fichier Python", currentIcon: "FileCode", library: "Lucide" },
+  { key: "ext_rb", label: "Fichier Ruby", currentIcon: "FileCode", library: "Lucide" },
+  { key: "ext_go", label: "Fichier Go", currentIcon: "FileCode", library: "Lucide" },
+  { key: "ext_rs", label: "Fichier Rust", currentIcon: "FileCode", library: "Lucide" },
+  { key: "ext_c", label: "Fichier C", currentIcon: "FileCode", library: "Lucide" },
+  { key: "ext_cpp", label: "Fichier C++", currentIcon: "FileCode", library: "Lucide" },
+  { key: "ext_cs", label: "Fichier C#", currentIcon: "FileCode", library: "Lucide" },
+  { key: "ext_java", label: "Fichier Java", currentIcon: "FileCode", library: "Lucide" },
+  { key: "ext_yaml", label: "Fichier YAML", currentIcon: "FileCode", library: "Lucide" },
+  { key: "ext_yml", label: "Fichier YAML", currentIcon: "FileCode", library: "Lucide" },
+  { key: "ext_toml", label: "Fichier TOML", currentIcon: "FileCode", library: "Lucide" },
+  { key: "ext_ini", label: "Fichier INI", currentIcon: "FileCode", library: "Lucide" },
+  { key: "ext_lock", label: "Fichier lock", currentIcon: "Lock", library: "Lucide" },
+  { key: "ext_rtf", label: "Fichier RTF", currentIcon: "FileText", library: "Lucide" },
+  { key: "ext_odt", label: "OpenDocument Texte (ODT)", currentIcon: "FileText", library: "Lucide" },
+  { key: "ext_ods", label: "OpenDocument Feuille (ODS)", currentIcon: "FileSpreadsheet", library: "Lucide" },
+  { key: "ext_odp", label: "OpenDocument Présentation (ODP)", currentIcon: "Presentation", library: "Lucide" },
+  { key: "ext_epub", label: "EPUB", currentIcon: "FileText", library: "Lucide" },
+  { key: "ext_mobi", label: "MOBI", currentIcon: "FileText", library: "Lucide" },
+  { key: "ext_psd", label: "Fichier Photoshop (PSD)", currentIcon: "FileImage", library: "Lucide" },
+  { key: "ext_exe", label: "Exécutable (EXE)", currentIcon: "Package", library: "Lucide" },
+  { key: "ext_dmg", label: "Image macOS (DMG)", currentIcon: "HardDrive", library: "Lucide" },
+  { key: "ext_iso", label: "Image ISO", currentIcon: "HardDrive", library: "Lucide" },
       { key: "ext_json", label: "Fichier JSON", currentIcon: "FileCode", library: "Lucide" },
-      { key: "ext_js", label: "Fichier JavaScript", currentIcon: "FileCode", library: "Lucide" },
-      { key: "ext_ts", label: "Fichier TypeScript", currentIcon: "FileCode", library: "Lucide" },
-      { key: "ext_html", label: "Fichier HTML", currentIcon: "FileCode", library: "Lucide" },
-      { key: "ext_css", label: "Fichier CSS", currentIcon: "FileCode", library: "Lucide" }
+  { key: "ext_js", label: "Fichier JavaScript", currentIcon: "FileCode", library: "Lucide" },
+  { key: "ext_ts", label: "Fichier TypeScript", currentIcon: "FileCode", library: "Lucide" },
+  { key: "ext_html", label: "Fichier HTML", currentIcon: "FileCode", library: "Lucide" },
+  { key: "ext_css", label: "Fichier CSS", currentIcon: "FileCode", library: "Lucide" }
     ]
   }
 ]
@@ -136,7 +166,8 @@ const renderIcon = (iconComp: any, className = "w-8 h-8") => {
 
 export const IconsSettings: React.FC = () => {
   const [sections, setSections] = useState<IconSection[]>(DEFAULT_SECTIONS)
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set(["Icônes de dossiers (FolderTree)"]))
+  // Keep the important sections open by default so file extensions are visible
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(["Icônes de dossiers (FolderTree)", "Icônes de fichiers (Extensions)"]))
   const [openPicker, setOpenPicker] = useState(false)
   const [selected, setSelected] = useState<MappingItem | null>(null)
   const lastOpenedMappingKeyRef = React.useRef<string | null>(null)
@@ -672,9 +703,21 @@ export const IconsSettings: React.FC = () => {
                           )}
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium truncate">{m.label}</div>
-                            <div className="text-xs text-muted-foreground truncate">
-                              Icône actuelle: <span className="font-mono text-primary">{m.currentIcon}</span>
-                            </div>
+                            {/* Show the mapping key (extension identifier) so users can see ext_xls / ext_docx etc. */}
+                              <div className="mt-1 flex items-center gap-2">
+                                {/* Show the extension without the 'ext_' prefix when applicable */}
+                                {(() => {
+                                  const displayKey = (m.key || '').startsWith('ext_') ? (m.key || '').replace(/^ext_/, '') : (m.key || '')
+                                  return (
+                                    <>
+                                      <div className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-muted text-muted-foreground">{displayKey}</div>
+                                      <div className="text-xs text-muted-foreground truncate">
+                                        Icône actuelle: <span className="font-mono text-primary">{m.currentIcon}</span>
+                                      </div>
+                                    </>
+                                  )
+                                })()}
+                              </div>
                           </div>
                           <div className="shrink-0 flex items-center gap-2">
                             <Button size="sm" variant="outline" onClick={() => openFor(m)}>
