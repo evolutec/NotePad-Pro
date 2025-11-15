@@ -124,22 +124,189 @@ async function ensureMuiIconsLoaded() {
   }
 }
 
+// Runtime cache for dynamically loaded Phosphor icons
+let _phosphorIconsCache: Record<string, any> | null = null
+
+async function ensurePhosphorIconsLoaded() {
+  if (_phosphorIconsCache) return _phosphorIconsCache
+  try {
+    const mod = await import('phosphor-react')
+    const map: Record<string, any> = {}
+    // Only keep exports that look like icon components
+    const blacklist = new Set(['default', 'Context', 'Provider', 'Consumer', 'IconContext'])
+    Object.keys(mod).forEach(k => {
+      if (!k || blacklist.has(k)) return
+      if (!/^[A-Z][A-Za-z0-9_]+$/.test(k)) return
+      try {
+        const exportVal = (mod as any)[k]
+        if (typeof exportVal === 'function' || (typeof exportVal === 'object' && exportVal.$$typeof)) {
+          map[k] = exportVal
+        }
+      } catch (e) {
+        // ignore
+      }
+    })
+    _phosphorIconsCache = map
+    return _phosphorIconsCache
+  } catch (err) {
+    console.warn('Failed to dynamically load phosphor-react', err)
+    return null
+  }
+}
+
+// Runtime cache for dynamically loaded Tabler icons
+let _tablerIconsCache: Record<string, any> | null = null
+
+async function ensureTablerIconsLoaded() {
+  if (_tablerIconsCache) return _tablerIconsCache
+  try {
+    const mod = await import('tabler-icons-react')
+    const map: Record<string, any> = {}
+    const blacklist = new Set(['default', 'Context', 'Provider', 'Consumer', 'IconContext'])
+    Object.keys(mod).forEach(k => {
+      if (!k || blacklist.has(k)) return
+      if (!/^[A-Z][A-Za-z0-9_]+$/.test(k)) return
+      try {
+        const exportVal = (mod as any)[k]
+        if (typeof exportVal === 'function' || (typeof exportVal === 'object' && exportVal.$$typeof)) {
+          map[k] = exportVal
+        }
+      } catch (e) {
+        // ignore
+      }
+    })
+    _tablerIconsCache = map
+    return _tablerIconsCache
+  } catch (err) {
+    console.warn('Failed to dynamically load tabler-icons-react', err)
+    return null
+  }
+}
+
+// Runtime cache for dynamically loaded React Icons
+let _reactIconsCache: Record<string, any> | null = null
+
+async function ensureReactIconsLoaded() {
+  if (_reactIconsCache) return _reactIconsCache
+  try {
+    const [fa, md, ai] = await Promise.all([
+      import('react-icons/fa'),
+      import('react-icons/md'),
+      import('react-icons/ai')
+    ])
+    // Merge exports into one map
+    const merged: Record<string, any> = Object.assign({}, fa, md, ai)
+    const map: Record<string, any> = {}
+    const blacklist = new Set(['default'])
+    Object.keys(merged).forEach(k => {
+      if (!k || blacklist.has(k)) return
+      if (!/^[A-Z][A-Za-z0-9]+$/.test(k)) return
+      try {
+        const exportVal = (merged as any)[k]
+        if (typeof exportVal === 'function' || (typeof exportVal === 'object' && exportVal.$$typeof)) {
+          map[k] = exportVal
+        }
+      } catch (e) {
+        // ignore
+      }
+    })
+    _reactIconsCache = map
+    return _reactIconsCache
+  } catch (err) {
+    console.warn('Failed to dynamically load react-icons packs', err)
+    return null
+  }
+}
+
 // Module-level icon map so TreeItem (declared above) can resolve mapped icons synchronously.
-let _moduleIconMap: Record<string, { currentIcon: string; library: string }> = {}
-function setModuleIconMap(map: Record<string, { currentIcon: string; library: string }>) {
+let _moduleIconMap: Record<string, { currentIcon: string; library: string; customization?: any }> = {}
+function setModuleIconMap(map: Record<string, { currentIcon: string; library: string; customization?: any }>) {
   _moduleIconMap = map || {}
 }
 
 function getMappedIconComponent(key: string) {
   const m = _moduleIconMap[key]
   if (!m) return null
+
+  // Resolve the raw icon component
+  let RawComp: any = null
   if (m.library === 'Lucide') {
-    return (LucideIcons as any)[m.currentIcon] || iconNameToComponent(m.currentIcon)
+    RawComp = (LucideIcons as any)[m.currentIcon] || iconNameToComponent(m.currentIcon)
+  } else if (m.library === 'Phosphor' && _phosphorIconsCache && _phosphorIconsCache[m.currentIcon]) {
+    RawComp = _phosphorIconsCache[m.currentIcon]
+  } else if (m.library === 'Tabler' && _tablerIconsCache && _tablerIconsCache[m.currentIcon]) {
+    RawComp = _tablerIconsCache[m.currentIcon]
+  } else if (m.library === 'ReactIcons' && _reactIconsCache && _reactIconsCache[m.currentIcon]) {
+    RawComp = _reactIconsCache[m.currentIcon]
+  } else if (_muiIconsCache && _muiIconsCache[m.currentIcon]) {
+    RawComp = _muiIconsCache[m.currentIcon]
+  } else {
+    // kick off load in background for the appropriate library and fallback to lucide
+    if (m.library === 'Phosphor') {
+      ensurePhosphorIconsLoaded().catch(() => {})
+    } else if (m.library === 'Tabler') {
+      ensureTablerIconsLoaded().catch(() => {})
+    } else if (m.library === 'ReactIcons') {
+      ensureReactIconsLoaded().catch(() => {})
+    } else {
+      ensureMuiIconsLoaded().catch(() => {})
+    }
+    RawComp = (LucideIcons as any)[m.currentIcon] || iconNameToComponent(m.currentIcon)
   }
-  if (_muiIconsCache) return _muiIconsCache[m.currentIcon] || null
-  // kick off load in background and fallback to lucide
-  ensureMuiIconsLoaded().catch(() => {})
-  return (LucideIcons as any)[m.currentIcon] || iconNameToComponent(m.currentIcon)
+
+  // Return a wrapper component that applies customization
+  return ({ className }: { className?: string }) => {
+    const customization = (m as any).customization as any | undefined
+    const bg = customization?.bgColor || 'transparent'
+    const iconColor = customization?.iconColor || undefined
+    const shape = customization?.shape || 'rounded'
+    const pxSize = customization?.size || 16
+    const borderWidth = customization?.borderWidth ?? 0
+    const borderColor = customization?.borderColor || 'transparent'
+    const opacity = customization?.opacity ?? 100
+    const paddingVal = customization?.padding ?? 0
+    const rotate = customization?.rotate ?? 0
+    const gradientEnabled = customization?.gradientEnabled
+    const gradientFrom = customization?.gradientFrom
+    const gradientTo = customization?.gradientTo
+    const gradientAngle = customization?.gradientAngle ?? 90
+    const shadowEnabled = customization?.shadowEnabled
+    const shadowColor = customization?.shadowColor || 'rgba(0,0,0,0.3)'
+    const shadowBlur = customization?.shadowBlur ?? 0
+    const shadowOffsetY = customization?.shadowOffsetY ?? 0
+    const shadowSpread = customization?.shadowSpread ?? 0
+
+    const borderRadius = shape === 'circle' ? '9999px' : shape === 'square' ? '4px' : '8px'
+
+    const backgroundStyle = gradientEnabled ? `linear-gradient(${gradientAngle}deg, ${gradientFrom}, ${gradientTo})` : bg
+    const boxShadow = shadowEnabled ? `${shadowOffsetY}px ${shadowOffsetY}px ${shadowBlur}px ${shadowSpread}px ${shadowColor}` : undefined
+
+    const wrapperStyle: React.CSSProperties = {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: pxSize,
+      height: pxSize,
+      background: backgroundStyle,
+      borderRadius: borderRadius,
+      borderWidth: borderWidth,
+      borderStyle: borderWidth > 0 ? 'solid' : undefined,
+      borderColor: borderColor,
+      opacity: (opacity ?? 100) / 100,
+      padding: paddingVal,
+      transform: `rotate(${rotate}deg)`,
+      boxShadow: boxShadow
+    }
+
+    const iconProps: any = { className: className || undefined, width: pxSize - (paddingVal || 0), height: pxSize - (paddingVal || 0) }
+    if (iconColor) iconProps.color = iconColor
+
+    return (
+      <span style={wrapperStyle}>
+        {React.createElement(RawComp, iconProps)}
+      </span>
+    )
+  }
 }
 
 // File type detection and icon mapping
@@ -753,7 +920,7 @@ export function ModernFolderTree({
   } | null>(null);
 
   // Icon mappings loaded from settings (key -> { currentIcon, library })
-  const [iconMap, setIconMap] = useState<Record<string, { currentIcon: string; library: string }>>({})
+  const [iconMap, setIconMap] = useState<Record<string, { currentIcon: string; library: string; customization?: any }>>({})
 
   useEffect(() => {
     let mounted = true
@@ -764,15 +931,20 @@ export function ModernFolderTree({
               if (s && s.icons && Array.isArray(s.icons.mappings)) {
                 const map: Record<string, any> = {}
                 s.icons.mappings.forEach((m: any) => {
-                  if (m && m.key) map[m.key] = { currentIcon: String(m.currentIcon || ''), library: String(m.library || 'Lucide') }
+                  if (m && m.key) map[m.key] = { currentIcon: String(m.currentIcon || ''), library: String(m.library || 'Lucide'), customization: m.customization || undefined }
                 })
                 if (mounted) setIconMap(map)
                 // also update module-level map used by TreeItem
                 setModuleIconMap(map)
 
-                // If any mapping requests Material UI, warm-load it in background
-                const needsMui = Object.values(map).some(v => v.library === 'Material UI')
-                if (needsMui) ensureMuiIconsLoaded().catch(() => {})
+                // Preload libraries that are used in the mappings
+                const usedLibraries = new Set(Object.values(map).map(v => v.library))
+                const preloadPromises = []
+                if (usedLibraries.has('Phosphor')) preloadPromises.push(ensurePhosphorIconsLoaded().catch(() => {}))
+                if (usedLibraries.has('Tabler')) preloadPromises.push(ensureTablerIconsLoaded().catch(() => {}))
+                if (usedLibraries.has('ReactIcons')) preloadPromises.push(ensureReactIconsLoaded().catch(() => {}))
+                if (usedLibraries.has('Material UI')) preloadPromises.push(ensureMuiIconsLoaded().catch(() => {}))
+                await Promise.all(preloadPromises)
               }
         }
       } catch (err) {
@@ -785,12 +957,17 @@ export function ModernFolderTree({
       try {
         const mappings = e?.detail?.mappings || (window as any).__lastIconMappings
         if (!mappings) return
-        const map: Record<string, any> = {}
-        mappings.forEach((m: any) => { if (m && m.key) map[m.key] = { currentIcon: String(m.currentIcon || ''), library: String(m.library || 'Lucide') } })
+  const map: Record<string, any> = {}
+  mappings.forEach((m: any) => { if (m && m.key) map[m.key] = { currentIcon: String(m.currentIcon || ''), library: String(m.library || 'Lucide'), customization: m.customization || undefined } })
         if (mounted) setIconMap(map)
         setModuleIconMap(map)
-        const needsMui = Object.values(map).some(v => v.library === 'Material UI')
-        if (needsMui) ensureMuiIconsLoaded().catch(() => {})
+        const usedLibraries = new Set(Object.values(map).map(v => v.library))
+        const preloadPromises = []
+        if (usedLibraries.has('Phosphor')) preloadPromises.push(ensurePhosphorIconsLoaded().catch(() => {}))
+        if (usedLibraries.has('Tabler')) preloadPromises.push(ensureTablerIconsLoaded().catch(() => {}))
+        if (usedLibraries.has('ReactIcons')) preloadPromises.push(ensureReactIconsLoaded().catch(() => {}))
+        if (usedLibraries.has('Material UI')) preloadPromises.push(ensureMuiIconsLoaded().catch(() => {}))
+        Promise.all(preloadPromises).catch(() => {})
       } catch (err) {
         // ignore
       }

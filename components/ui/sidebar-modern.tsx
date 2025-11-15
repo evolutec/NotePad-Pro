@@ -50,6 +50,100 @@ async function ensureMuiIconsLoaded() {
     return null
   }
 }
+
+// Runtime cache for dynamically loaded Phosphor icons
+let _phosphorIconsCache: Record<string, any> | null = null
+
+async function ensurePhosphorIconsLoaded() {
+  if (_phosphorIconsCache) return _phosphorIconsCache
+  try {
+    const mod = await import('phosphor-react')
+    const map: Record<string, any> = {}
+    // Only keep exports that look like icon components
+    const blacklist = new Set(['default', 'Context', 'Provider', 'Consumer', 'IconContext'])
+    Object.keys(mod).forEach(k => {
+      if (!k || blacklist.has(k)) return
+      if (!/^[A-Z][A-Za-z0-9_]+$/.test(k)) return
+      try {
+        const exportVal = (mod as any)[k]
+        if (typeof exportVal === 'function' || (typeof exportVal === 'object' && exportVal.$$typeof)) {
+          map[k] = exportVal
+        }
+      } catch (e) {
+        // ignore
+      }
+    })
+    _phosphorIconsCache = map
+    return _phosphorIconsCache
+  } catch (err) {
+    console.warn('Failed to dynamically load phosphor-react', err)
+    return null
+  }
+}
+
+// Runtime cache for dynamically loaded Tabler icons
+let _tablerIconsCache: Record<string, any> | null = null
+
+async function ensureTablerIconsLoaded() {
+  if (_tablerIconsCache) return _tablerIconsCache
+  try {
+    const mod = await import('tabler-icons-react')
+    const map: Record<string, any> = {}
+    const blacklist = new Set(['default', 'Context', 'Provider', 'Consumer', 'IconContext'])
+    Object.keys(mod).forEach(k => {
+      if (!k || blacklist.has(k)) return
+      if (!/^[A-Z][A-Za-z0-9_]+$/.test(k)) return
+      try {
+        const exportVal = (mod as any)[k]
+        if (typeof exportVal === 'function' || (typeof exportVal === 'object' && exportVal.$$typeof)) {
+          map[k] = exportVal
+        }
+      } catch (e) {
+        // ignore
+      }
+    })
+    _tablerIconsCache = map
+    return _tablerIconsCache
+  } catch (err) {
+    console.warn('Failed to dynamically load tabler-icons-react', err)
+    return null
+  }
+}
+
+// Runtime cache for dynamically loaded React Icons
+let _reactIconsCache: Record<string, any> | null = null
+
+async function ensureReactIconsLoaded() {
+  if (_reactIconsCache) return _reactIconsCache
+  try {
+    const [fa, md, ai] = await Promise.all([
+      import('react-icons/fa'),
+      import('react-icons/md'),
+      import('react-icons/ai')
+    ])
+    // Merge exports into one map
+    const merged: Record<string, any> = Object.assign({}, fa, md, ai)
+    const map: Record<string, any> = {}
+    const blacklist = new Set(['default'])
+    Object.keys(merged).forEach(k => {
+      if (!k || blacklist.has(k)) return
+      if (!/^[A-Z][A-Za-z0-9]+$/.test(k)) return
+      try {
+        const exportVal = (merged as any)[k]
+        if (typeof exportVal === 'function' || (typeof exportVal === 'object' && exportVal.$$typeof)) {
+          map[k] = exportVal
+        }
+      } catch (e) {
+        // ignore
+      }
+    })
+    _reactIconsCache = map
+    return _reactIconsCache
+  } catch (err) {
+    console.warn('Failed to dynamically load react-icons packs', err)
+    return null
+  }
+}
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,51 +158,106 @@ import { AddExcelDialog } from '@/components/add-excel_dialog';
 import { AddPowerpointDialog } from '@/components/add-powerpoint_dialog';
 import { AddPdfDocumentDialog } from '@/components/add-pdf-document_dialog';
 
-// Utility function to get mapped icon component
-const getMappedIconComponent = (key: string): any => {
-  const mapping = iconMappings[key];
-  if (mapping) {
-    if (mapping.library === 'Lucide') {
-      return (LucideIcons as any)[mapping.currentIcon] || FolderPlus;
+// Utility function to get mapped icon component (returns a React component that applies customization)
+const getMappedIconComponent = (key: string): React.FC<any> => {
+  return ({ className, size }: { className?: string; size?: number }) => {
+    const mapping = iconMappings[key];
+    let IconComp: any = null
+    if (mapping) {
+      if (mapping.library === 'Lucide') {
+        IconComp = (LucideIcons as any)[mapping.currentIcon] || FolderPlus;
+      } else if (mapping.library === 'Phosphor' && _phosphorIconsCache && _phosphorIconsCache[mapping.currentIcon]) {
+        IconComp = _phosphorIconsCache[mapping.currentIcon]
+      } else if (mapping.library === 'Tabler' && _tablerIconsCache && _tablerIconsCache[mapping.currentIcon]) {
+        IconComp = _tablerIconsCache[mapping.currentIcon]
+      } else if (mapping.library === 'ReactIcons' && _reactIconsCache && _reactIconsCache[mapping.currentIcon]) {
+        IconComp = _reactIconsCache[mapping.currentIcon]
+      } else if (_muiIconsCache && _muiIconsCache[mapping.currentIcon]) {
+        IconComp = _muiIconsCache[mapping.currentIcon]
+      } else {
+        // kick off load in background for the appropriate library and fallback to lucide
+        if (mapping.library === 'Phosphor') {
+          ensurePhosphorIconsLoaded().catch(() => {})
+        } else if (mapping.library === 'Tabler') {
+          ensureTablerIconsLoaded().catch(() => {})
+        } else if (mapping.library === 'ReactIcons') {
+          ensureReactIconsLoaded().catch(() => {})
+        } else {
+          ensureMuiIconsLoaded().catch(() => {})
+        }
+        IconComp = (LucideIcons as any)[mapping.currentIcon] || FolderPlus
+      }
     }
-    // Material UI: if loaded, return it; otherwise fallback to Lucide or a generic
-    if (_muiIconsCache && _muiIconsCache[mapping.currentIcon]) {
-      return _muiIconsCache[mapping.currentIcon]
+    if (!IconComp) {
+      const defaultMappings: Record<string, any> = {
+        add_folder: FolderPlus,
+        add_note: FilePlus,
+        add_draw: Palette,
+        add_excel: Table,
+        add_powerpoint: Presentation,
+        add_pdf: FileText,
+        add_image: FileImage,
+        add_video: FileVideo,
+        add_audio: FileAudio
+      };
+      IconComp = defaultMappings[key] || FolderPlus;
     }
-    // fallback to lucide icon if it exists with same name
-    if ((LucideIcons as any)[mapping.currentIcon]) return (LucideIcons as any)[mapping.currentIcon]
-    // fallback to default map
-    const defaultMappings: Record<string, any> = {
-      add_folder: FolderPlus,
-      add_note: FilePlus,
-      add_draw: Palette,
-      add_excel: Table,
-      add_powerpoint: Presentation,
-      add_pdf: FileText,
-      add_image: FileImage,
-      add_video: FileVideo,
-      add_audio: FileAudio
-    };
-    return defaultMappings[key] || FolderPlus;
-  }
 
-  // Default mappings when no mapping set
-  const defaultMappings: Record<string, any> = {
-    add_folder: FolderPlus,
-    add_note: FilePlus,
-    add_draw: Palette,
-    add_excel: Table,
-    add_powerpoint: Presentation,
-    add_pdf: FileText,
-    add_image: FileImage,
-    add_video: FileVideo,
-    add_audio: FileAudio
-  };
-  return defaultMappings[key] || FolderPlus;
-};
+    const customization = (mapping as any)?.customization as any | undefined
+    const bg = customization?.bgColor || 'transparent'
+    const iconColor = customization?.iconColor || undefined
+    const shape = customization?.shape || 'rounded'
+    const pxSize = customization?.size || size || 16
+    const borderWidth = customization?.borderWidth ?? 0
+    const borderColor = customization?.borderColor || 'transparent'
+    const opacity = customization?.opacity ?? 100
+    const paddingVal = customization?.padding ?? 0
+    const rotate = customization?.rotate ?? 0
+    const gradientEnabled = customization?.gradientEnabled
+    const gradientFrom = customization?.gradientFrom
+    const gradientTo = customization?.gradientTo
+    const gradientAngle = customization?.gradientAngle ?? 90
+    const shadowEnabled = customization?.shadowEnabled
+    const shadowColor = customization?.shadowColor || 'rgba(0,0,0,0.3)'
+    const shadowBlur = customization?.shadowBlur ?? 0
+    const shadowOffsetY = customization?.shadowOffsetY ?? 0
+    const shadowSpread = customization?.shadowSpread ?? 0
+
+    const borderRadius = shape === 'circle' ? '9999px' : shape === 'square' ? '4px' : '8px'
+
+    const backgroundStyle = gradientEnabled ? `linear-gradient(${gradientAngle}deg, ${gradientFrom}, ${gradientTo})` : bg
+    const boxShadow = shadowEnabled ? `${shadowOffsetY}px ${shadowOffsetY}px ${shadowBlur}px ${shadowSpread}px ${shadowColor}` : undefined
+
+    const wrapperStyle: React.CSSProperties = {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: pxSize,
+      height: pxSize,
+      background: backgroundStyle,
+      borderRadius: borderRadius,
+      borderWidth: borderWidth,
+      borderStyle: borderWidth > 0 ? 'solid' : undefined,
+      borderColor: borderColor,
+      opacity: (opacity ?? 100) / 100,
+      padding: paddingVal,
+      transform: `rotate(${rotate}deg)`,
+      boxShadow: boxShadow
+    }
+
+    const iconProps: any = { className: className || undefined, width: pxSize - (paddingVal || 0), height: pxSize - (paddingVal || 0) }
+    if (iconColor) iconProps.color = iconColor
+
+    return (
+      <span style={wrapperStyle}>
+        {React.createElement(IconComp, { ...iconProps })}
+      </span>
+    )
+  }
+}
 
 // State for icon mappings
-let iconMappings: Record<string, { currentIcon: string; library: string }> = {};
+let iconMappings: Record<string, { currentIcon: string; library: string; customization?: any }> = {};
 
 interface ModernSidebarProps {
   tree: EnhancedFolderNode | null;
@@ -172,20 +321,27 @@ export function ModernSidebar({
         if (window.electronAPI?.loadSettings) {
           const s = await window.electronAPI.loadSettings();
           if (s && s.icons && Array.isArray(s.icons.mappings)) {
-            const mappings: Record<string, { currentIcon: string; library: string }> = {};
+            const mappings: Record<string, { currentIcon: string; library: string; customization?: any }> = {};
             s.icons.mappings.forEach((m: any) => {
               if (m && m.key && m.key.startsWith('add_')) {
                 mappings[m.key] = { 
                   currentIcon: String(m.currentIcon || 'FolderPlus'), 
-                  library: String(m.library || 'Lucide') 
+                  library: String(m.library || 'Lucide'),
+                  customization: m.customization || undefined
                 };
               }
             });
             iconMappings = mappings;
             // Force re-render
             setRecentFilesVersion(prev => prev + 1);
-            // If some mapping uses Material UI, warm-load it in background so icons display
+            // Preload icon libraries based on used mappings
+            const needsPhosphor = Object.values(mappings).some(v => v.library === 'Phosphor')
+            const needsTabler = Object.values(mappings).some(v => v.library === 'Tabler')
+            const needsReactIcons = Object.values(mappings).some(v => v.library === 'ReactIcons')
             const needsMui = Object.values(mappings).some(v => v.library === 'Material UI')
+            if (needsPhosphor) ensurePhosphorIconsLoaded().catch(() => {})
+            if (needsTabler) ensureTablerIconsLoaded().catch(() => {})
+            if (needsReactIcons) ensureReactIconsLoaded().catch(() => {})
             if (needsMui) ensureMuiIconsLoaded().catch(() => {})
           }
         }
@@ -200,18 +356,28 @@ export function ModernSidebar({
       try {
         const mappings = e?.detail?.mappings || (window as any).__lastIconMappings;
         if (!mappings) return;
-        const newMappings: Record<string, { currentIcon: string; library: string }> = {};
+        const newMappings: Record<string, { currentIcon: string; library: string; customization?: any }> = {};
         mappings.forEach((m: any) => {
           if (m && m.key && m.key.startsWith('add_')) {
             newMappings[m.key] = { 
               currentIcon: String(m.currentIcon || 'FolderPlus'), 
-              library: String(m.library || 'Lucide') 
+              library: String(m.library || 'Lucide'),
+              customization: m.customization || undefined
             };
           }
         });
         iconMappings = newMappings;
         // Force re-render
         setRecentFilesVersion(prev => prev + 1);
+        // Preload icon libraries based on used mappings
+        const needsPhosphor = Object.values(newMappings).some(v => v.library === 'Phosphor')
+        const needsTabler = Object.values(newMappings).some(v => v.library === 'Tabler')
+        const needsReactIcons = Object.values(newMappings).some(v => v.library === 'ReactIcons')
+        const needsMui = Object.values(newMappings).some(v => v.library === 'Material UI')
+        if (needsPhosphor) ensurePhosphorIconsLoaded().catch(() => {})
+        if (needsTabler) ensureTablerIconsLoaded().catch(() => {})
+        if (needsReactIcons) ensureReactIconsLoaded().catch(() => {})
+        if (needsMui) ensureMuiIconsLoaded().catch(() => {})
       } catch (err) {
         console.warn('Failed to update icon mappings for sidebar', err);
       }

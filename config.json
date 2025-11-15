@@ -29,16 +29,30 @@
         "currentIcon": "Folder",
         "library": "Lucide",
         "customization": {
-          "shape": "circle",
-          "bgColor": "#2B6CB0",
-          "iconColor": "#ffffff",
-          "size": 40
+          "shape": "none",
+          "bgColor": "#101010",
+          "iconColor": "#fef4f4",
+          "size": 40,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000000",
+          "shadowBlur": 8,
+          "shadowOffsetY": 2,
+          "shadowSpread": 0,
+          "padding": 4,
+          "rotate": -1,
+          "gradientEnabled": false,
+          "gradientFrom": "#2B6CB0",
+          "gradientTo": "#2C7A7B",
+          "gradientAngle": 90
         }
       },
       {
         "key": "folder_open",
         "label": "Dossier (ouvert)",
-        "currentIcon": "Folder",
+        "currentIcon": "FolderOpen",
         "library": "Lucide"
       },
       {
@@ -50,8 +64,8 @@
       {
         "key": "add_note",
         "label": "Ajouter note",
-        "currentIcon": "FilePlus",
-        "library": "Lucide"
+        "currentIcon": "NotePencil",
+        "library": "Phosphor"
       },
       {
         "key": "add_draw",
@@ -74,26 +88,26 @@
       {
         "key": "add_pdf",
         "label": "Ajouter PDF",
-        "currentIcon": "FileText",
-        "library": "Lucide"
+        "currentIcon": "FaFilePdf",
+        "library": "ReactIcons"
       },
       {
         "key": "add_image",
         "label": "Ajouter image",
-        "currentIcon": "FileImage",
-        "library": "Lucide"
+        "currentIcon": "FaImages",
+        "library": "ReactIcons"
       },
       {
         "key": "add_video",
         "label": "Ajouter vidéo",
-        "currentIcon": "FileVideo",
+        "currentIcon": "Video",
         "library": "Lucide"
       },
       {
         "key": "add_audio",
         "label": "Ajouter audio",
-        "currentIcon": "FileAudio",
-        "library": "Lucide"
+        "currentIcon": "MdAudiotrack",
+        "library": "ReactIcons"
       },
       {
         "key": "ext_pdf",
@@ -122,20 +136,20 @@
       {
         "key": "ext_docx",
         "label": "Document Word",
-        "currentIcon": "FileText",
-        "library": "Phosphor"
+        "currentIcon": "FaFileWord",
+        "library": "ReactIcons"
       },
       {
         "key": "ext_xls",
         "label": "Feuille Excel",
-        "currentIcon": "FileSpreadsheet",
-        "library": "Lucide"
+        "currentIcon": "AiOutlineFileExcel",
+        "library": "ReactIcons"
       },
       {
         "key": "ext_xlsx",
         "label": "Feuille Excel",
-        "currentIcon": "FileSpreadsheet",
-        "library": "Lucide"
+        "currentIcon": "AiOutlineFileExcel",
+        "library": "ReactIcons"
       },
       {
         "key": "ext_ppt",

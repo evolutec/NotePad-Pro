@@ -139,6 +139,7 @@ export const IconsSettings: React.FC = () => {
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(["Icônes de dossiers (FolderTree)"]))
   const [openPicker, setOpenPicker] = useState(false)
   const [selected, setSelected] = useState<MappingItem | null>(null)
+  const lastOpenedMappingKeyRef = React.useRef<string | null>(null)
   const [openCustomization, setOpenCustomization] = useState(false)
   const [customizationTarget, setCustomizationTarget] = useState<MappingItem | null>(null)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
@@ -203,6 +204,7 @@ export const IconsSettings: React.FC = () => {
       })
       setPhosphorKeys(keys.sort())
       console.log('icons-settings: loaded phosphor-react, keys:', keys.length, 'sample:', keys.slice(0,20))
+      return mod
     } catch (err) {
       console.warn('icons-settings: failed to load phosphor-react', err)
     }
@@ -226,6 +228,7 @@ export const IconsSettings: React.FC = () => {
       })
       setTablerKeys(keys.sort())
       console.log('icons-settings: loaded tabler-icons-react, keys:', keys.length, 'sample:', keys.slice(0,20))
+      return mod
     } catch (err) {
       console.warn('icons-settings: failed to load tabler-icons-react', err)
     }
@@ -256,23 +259,51 @@ export const IconsSettings: React.FC = () => {
       })
       setReactIconsKeys(keys.sort())
       console.log('icons-settings: loaded react-icons packs, keys:', keys.length, 'sample:', keys.slice(0,20))
+      return merged
     } catch (err) {
       console.warn('icons-settings: failed to load react-icons packs', err)
     }
   }
 
   useEffect(() => {
-    // Try load saved mappings from config.json
-    const load = async () => {
+    // Will load saved mappings from config.json. Also callable on demand (event listener).
+  const loadSavedMappings = async () => {
       try {
         if (window.electronAPI?.loadSettings) {
           const s = await window.electronAPI.loadSettings()
           if (s && s.icons && Array.isArray(s.icons.mappings)) {
+            // Check which libraries are used in saved mappings and preload them
+            const usedLibraries = new Set(s.icons.mappings.map((it: any) => String(it.library || "Lucide")))
+            const preloadPromises = []
+            if (usedLibraries.has('Phosphor')) preloadPromises.push(loadPhosphor().catch(() => {}))
+            if (usedLibraries.has('Tabler')) preloadPromises.push(loadTabler().catch(() => {}))
+            if (usedLibraries.has('ReactIcons')) preloadPromises.push(loadReactIcons().catch(() => {}))
+            await Promise.all(preloadPromises)
+
+            // Preload actual modules and use the returned module objects to check existence immediately
+            const phosphorLoaded = usedLibraries.has('Phosphor') ? await loadPhosphor().catch(() => null) : phosphorModule
+            const tablerLoaded = usedLibraries.has('Tabler') ? await loadTabler().catch(() => null) : tablerModule
+            const reactIconsLoaded = usedLibraries.has('ReactIcons') ? await loadReactIcons().catch(() => null) : reactIconsModule
+
+            // Helper: check for icon existence in the right library (use returned modules first, fall back to state)
+            const iconExistsInLibrary = (lib: string, iconName: string) => {
+              try {
+                if (lib === 'Lucide') return !!(LucideIcons as any)[iconName]
+                if (lib === 'Phosphor') return !!(phosphorLoaded as any)?.[iconName] || !!(phosphorModule as any)?.[iconName]
+                if (lib === 'Tabler') return !!(tablerLoaded as any)?.[iconName] || !!(tablerModule as any)?.[iconName]
+                if (lib === 'ReactIcons') return !!(reactIconsLoaded as any)?.[iconName] || !!(reactIconsModule as any)?.[iconName]
+                return false
+              } catch (e) {
+                return false
+              }
+            }
+
             const saved = s.icons.mappings.map((it: any) => ({
               key: String(it.key || ""),
               label: String(it.label || it.key || ""),
               currentIcon: String(it.currentIcon || "Folder"),
-              library: String(it.library || "Lucide")
+              library: String(it.library || "Lucide"),
+              customization: it.customization
             }))
             // merge: keep default structure but apply saved overrides
             const mergedSections = DEFAULT_SECTIONS.map(section => ({
@@ -280,15 +311,23 @@ export const IconsSettings: React.FC = () => {
               mappings: section.mappings.map(defaultMapping => {
                 const savedMapping = saved.find((x: any) => x.key === defaultMapping.key)
                 if (savedMapping) {
-                  // Check if the saved icon exists in LucideIcons
-                  const comp = (LucideIcons as any)[savedMapping.currentIcon]
-                  const iconExists = comp && typeof comp === 'object' && comp.$$typeof
-                  return {
-                    ...defaultMapping,
-                    currentIcon: iconExists ? savedMapping.currentIcon : defaultMapping.currentIcon,
-                    library: savedMapping.library || "Lucide",
-                    customization: savedMapping.customization || undefined
+                  // Verify icon exists in the saved library. If not, fallback to the default mapping.
+                  const lib = savedMapping.library || 'Lucide'
+                  const exists = iconExistsInLibrary(lib, savedMapping.currentIcon)
+                  if (exists) {
+                    return {
+                      ...defaultMapping,
+                      currentIcon: savedMapping.currentIcon,
+                      library: lib,
+                      customization: savedMapping.customization || undefined
+                    }
                   }
+                  // fallback: try to preserve name if exists in Lucide as a last resort
+                  if (iconExistsInLibrary('Lucide', savedMapping.currentIcon)) {
+                    return { ...defaultMapping, currentIcon: savedMapping.currentIcon, library: 'Lucide', customization: savedMapping.customization || undefined }
+                  }
+                  console.warn('icons-settings: saved icon not found in any loaded libraries, falling back to default', savedMapping)
+                  return defaultMapping
                 }
                 return defaultMapping
               })
@@ -300,7 +339,20 @@ export const IconsSettings: React.FC = () => {
         console.warn("icons-settings: failed to load saved mappings", err)
       }
     }
-    load()
+
+    // initial load
+    loadSavedMappings()
+
+    // Listen for updates (when other parts save mappings) and reload when the window becomes visible
+    const onIconMappingsUpdated = () => { loadSavedMappings().catch(() => {}) }
+    window.addEventListener('iconMappingsUpdated', onIconMappingsUpdated as EventListener)
+    const onVisibility = () => { if (document.visibilityState === 'visible') { loadSavedMappings().catch(() => {}) } }
+    document.addEventListener('visibilitychange', onVisibility)
+
+    return () => {
+      window.removeEventListener('iconMappingsUpdated', onIconMappingsUpdated as EventListener)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [])
 
 
@@ -360,20 +412,34 @@ export const IconsSettings: React.FC = () => {
     setSelected(mapping)
     setSearch("")
     setOpenPicker(true)
+    // keep a ref copy to avoid timing/race issues when user clicks quickly in the picker
+    lastOpenedMappingKeyRef.current = mapping.key
     // Preload additional libraries on demand
-    // load Phosphor when opening the picker so keys are available
-    loadPhosphor().catch(() => {})
+    // preload other icon libraries so user can immediately pick from them (avoids race where module isn't loaded yet)
+    Promise.all([loadPhosphor().catch(() => {}), loadTabler().catch(() => {}), loadReactIcons().catch(() => {})]).catch(() => {})
   }
 
-  const setIconForSelected = (name: string, library?: string) => {
-    if (!selected) return
-    const lib = library || selected.library || 'Lucide'
+  const setIconForSelected = async (name: string, library?: string, mappingKey?: string) => {
+    // mappingKey can be passed explicitly to avoid relying on closure/timing of `selected`
+    const key = mappingKey || selected?.key || lastOpenedMappingKeyRef.current
+    if (!key) {
+      console.warn('setIconForSelected: no mapping selected, aborting', { name, library, selected, lastOpened: lastOpenedMappingKeyRef.current })
+      return
+    }
+    const lib = library || selected?.library || 'Lucide'
+    console.log('setIconForSelected:', { key, name, lib, selectedKey: selected?.key, lastOpened: lastOpenedMappingKeyRef.current })
     const updatedSections = sections.map(section => ({
       ...section,
-      mappings: (section.mappings || []).map(m => (m.key === selected.key ? { ...m, currentIcon: name, library: lib } : m))
+      mappings: (section.mappings || []).map(m => (m.key === key ? { ...m, currentIcon: name, library: lib } : m))
     }))
     setSections(updatedSections)
-    saveMappings(updatedSections)
+    try {
+      // persist and wait to ensure mapping is saved before closing to avoid races
+      await saveMappings(updatedSections)
+    } catch (e) {
+      // saveMappings handles errors internally; still proceed to close but log
+      console.warn('setIconForSelected: saveMappings failed', e)
+    }
     setOpenPicker(false)
     setSelected(null)
   }
@@ -416,7 +482,7 @@ export const IconsSettings: React.FC = () => {
     id: string
     label: string
     logo: string
-    loader?: () => Promise<void>
+    loader?: () => Promise<any>
   }> = [
     { id: 'All', label: 'Toutes', logo: '/icons/library-logos/all.svg', loader: async () => { await Promise.all([loadPhosphor(), loadTabler(), loadReactIcons()]) } },
     { id: 'Lucide', label: 'Lucide', logo: '/icons/library-logos/lucide.svg' },
@@ -576,6 +642,8 @@ export const IconsSettings: React.FC = () => {
                       const iconColor = customization?.iconColor || 'currentColor'
                       const shape = customization?.shape || 'rounded'
                       const size = customization?.size || 32
+                      const borderWidth = customization?.borderWidth ?? 0
+                      const borderColor = customization?.borderColor || 'transparent'
 
                       const wrapperStyle: React.CSSProperties = {
                         background: bg,
@@ -585,7 +653,8 @@ export const IconsSettings: React.FC = () => {
                         alignItems: 'center',
                         justifyContent: 'center',
                         borderRadius: shape === 'circle' ? 9999 : shape === 'rounded' ? 10 : 4,
-                        color: iconColor
+                        color: iconColor,
+                        border: borderWidth ? `${borderWidth}px solid ${borderColor}` : undefined
                       }
 
                       const iconClass = `w-${Math.max(6, Math.round(size / 4))} h-${Math.max(6, Math.round(size / 4))}`
@@ -593,7 +662,7 @@ export const IconsSettings: React.FC = () => {
                       return (
                         <div key={m.key} className="flex items-center gap-3 p-3 border rounded-md hover:bg-muted/50 transition-colors">
                           {shape === 'none' ? (
-                            <div className="flex-shrink-0" style={{ color: iconColor }}>
+                            <div className="flex-shrink-0" style={{ color: iconColor, border: borderWidth ? `${borderWidth}px solid ${borderColor}` : undefined, borderRadius: 4, padding: borderWidth ? 4 : 0 }}>
                               {renderIcon(comp, iconClass) || renderIcon((LucideIcons as any).Folder, "w-8 h-8")}
                             </div>
                           ) : (
@@ -669,15 +738,16 @@ export const IconsSettings: React.FC = () => {
             <ScrollArea className="h-full hide-scrollbar">
               <div className="grid grid-cols-3 gap-3 p-3">
                 {availableIcons.map(ic => {
-                  const isCurrent = selected && ic.name === selected.currentIcon
-                  return (
-                    <Button 
+                  // mark current only when both name and library match the selected mapping
+                  const isCurrent = selected && ic.name === selected.currentIcon && ic.library === selected.library
+                      return (
+                        <Button 
                       key={`${ic.library}-${ic.name}`} 
                       variant={isCurrent ? "default" : "ghost"} 
                       className={`flex flex-col items-center gap-1 p-3 h-auto relative ${
                         isCurrent ? 'ring-2 ring-primary' : ''
                       }`} 
-                      onClick={() => setIconForSelected(ic.name, ic.library)}
+                      onClick={() => setIconForSelected(ic.name, ic.library, selected?.key)}
                     >
                       {isCurrent && (
                         <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
