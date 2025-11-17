@@ -14,6 +14,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label"
 import { Archive, Copy, Download, Edit, Eye, File, FileCode, FileText, FileWarning, Folder, FolderOpen, ImageIcon, Link, MoreHorizontal, Move, Music, NotebookText, Palette, Plus, Scissors, Search, SearchX, Share, Trash, Upload, UploadCloud, Video, FilePlus, ChevronLeft, ChevronRight, Home, FileImage, FileVideo, FileAudio, Sheet, Presentation, List, LayoutGrid } from "lucide-react"
 import * as LucideIcons from "lucide-react"
+import { cn } from "@/lib/utils"
+import { normalizeIconForThumbnail } from "@/lib/utils"
+import { getFileTypeFromExtension, getFileTypeConfig } from "@/lib/file-types"
 import { FileConflictDialog } from "./file-conflict-dialog"
 
 // Custom PDF icon component
@@ -26,10 +29,116 @@ const FileIconPdf = ({ className }: { className?: string }) => (
 )
 
 
-import { cn } from "@/lib/utils"
-import { getFileTypeFromExtension, getFileTypeConfig } from '@/lib/file-types'
-import { AddPdfDocumentDialog } from "./add-pdf-document_dialog"
-import { AddDrawDialog } from "./add-draw_dialog"
+// Runtime cache for dynamically loaded Phosphor icons
+let _phosphorIconsCache: Record<string, any> | null = null
+
+async function ensurePhosphorIconsLoaded() {
+  if (_phosphorIconsCache) return _phosphorIconsCache
+  try {
+    const mod = await import('phosphor-react')
+    const map: Record<string, any> = {}
+    // Only keep exports that look like icon components
+    const blacklist = new Set(['default', 'Context', 'Provider', 'Consumer', 'IconContext'])
+    Object.keys(mod).forEach(k => {
+      if (!k || blacklist.has(k)) return
+      if (!/^[A-Z][A-Za-z0-9_]+$/.test(k)) return
+      try {
+        const exportVal = (mod as any)[k]
+        if (typeof exportVal === 'function' || (typeof exportVal === 'object' && exportVal.$$typeof)) {
+          map[k] = exportVal
+        }
+      } catch (e) {
+        // ignore
+      }
+    })
+    _phosphorIconsCache = map
+    return _phosphorIconsCache
+  } catch (err) {
+    console.warn('Failed to dynamically load phosphor-react', err)
+    return null
+  }
+}
+
+// Runtime cache for dynamically loaded Tabler icons
+let _tablerIconsCache: Record<string, any> | null = null
+
+async function ensureTablerIconsLoaded() {
+  if (_tablerIconsCache) return _tablerIconsCache
+  try {
+    const mod = await import('tabler-icons-react')
+    const map: Record<string, any> = {}
+    const blacklist = new Set(['default', 'Context', 'Provider', 'Consumer', 'IconContext'])
+    Object.keys(mod).forEach(k => {
+      if (!k || blacklist.has(k)) return
+      if (!/^[A-Z][A-Za-z0-9_]+$/.test(k)) return
+      try {
+        const exportVal = (mod as any)[k]
+        if (typeof exportVal === 'function' || (typeof exportVal === 'object' && exportVal.$$typeof)) {
+          map[k] = exportVal
+        }
+      } catch (e) {
+        // ignore
+      }
+    })
+    _tablerIconsCache = map
+    return _tablerIconsCache
+  } catch (err) {
+    console.warn('Failed to dynamically load tabler-icons-react', err)
+    return null
+  }
+}
+
+// Runtime cache for dynamically loaded React Icons
+let _reactIconsCache: Record<string, any> | null = null
+
+async function ensureReactIconsLoaded() {
+  if (_reactIconsCache) return _reactIconsCache
+  try {
+    const [fa, md, ai] = await Promise.all([
+      import('react-icons/fa'),
+      import('react-icons/md'),
+      import('react-icons/ai')
+    ])
+    // Merge exports into one map
+    const merged: Record<string, any> = Object.assign({}, fa, md, ai)
+    const map: Record<string, any> = {}
+    const blacklist = new Set(['default'])
+    Object.keys(merged).forEach(k => {
+      if (!k || blacklist.has(k)) return
+      if (!/^[A-Z][A-Za-z0-9]+$/.test(k)) return
+      try {
+        const exportVal = (merged as any)[k]
+        if (typeof exportVal === 'function' || (typeof exportVal === 'object' && exportVal.$$typeof)) {
+          map[k] = exportVal
+        }
+      } catch (e) {
+        // ignore
+      }
+    })
+    _reactIconsCache = map
+    return _reactIconsCache
+  } catch (err) {
+    console.warn('Failed to dynamically load react-icons packs', err)
+    return null
+  }
+}
+
+// Runtime cache for dynamically loaded MUI icons
+let _muiIconsCache: Record<string, any> | null = null
+
+async function ensureMuiIconsLoaded() {
+  if (_muiIconsCache) return _muiIconsCache
+  try {
+    const mod = await eval('import("@mui/icons-material")')
+    const map: Record<string, any> = {}
+    Object.keys(mod).forEach(k => { map[k] = (mod as any)[k] })
+    _muiIconsCache = map
+    return _muiIconsCache
+  } catch (err) {
+    console.warn('Failed to dynamically load @mui/icons-material', err)
+    return null
+  }
+}
 
 import { RenameDialog } from "./rename-dialog"
 
@@ -153,21 +262,16 @@ const FileListRow = React.memo(({
   };
 
   const { Icon, color } = getFileIconAndColor(file.name);
-
-  // Use mapped icon for folders in list view
-  const IconComponent = file.isDirectory ? getMappedIconComponent('fm_folder_list', Folder) : Icon;
   console.log('FileListRow: rendering icon for', file.name, 'isDirectory:', file.isDirectory, 'viewMode:', viewMode);
-  console.log('FileListRow: IconComponent for folder:', IconComponent);
   const displayColor = file.isDirectory ? '' : color;
-
   return (
     <div
       className="flex items-center gap-4 p-3 hover:bg-muted/50 cursor-pointer border-b border-border/50 group"
       onClick={() => handleFileClick(file)}
     >
       {/* Icon */}
-      <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center">
-        {file.isDirectory ? renderMappedIcon('fm_folder_list', Folder, 24) : <IconComponent className={`w-6 h-6 ${displayColor}`} />}
+        <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center">
+        {file.isDirectory ? renderMappedIcon('folder_default', Folder, 24) : renderMappedIcon(('ext_' + (file.name.split('.').pop() || '')).toLowerCase(), Icon, 24)}
       </div>
 
       {/* Name */}
@@ -404,7 +508,7 @@ const FileCard = React.memo(({
         <div className="relative flex flex-col items-center p-4">
           {(() => {
             console.log('FileCard: rendering folder icon for', file.name, 'viewMode:', viewMode);
-            return renderMappedIcon('fm_folder_grid', Folder, 80);
+            return renderMappedIcon('folder_default', Folder, 80);
           })()}
           <span className="text-xs font-medium text-center truncate max-w-full px-1 mt-2">
             {file.name}
@@ -415,10 +519,12 @@ const FileCard = React.memo(({
         <div className="flex flex-col items-center justify-center p-4">
           {(() => {
             const { Icon, color } = getFileIconAndColor(file.name)
+            const ext = file.name.split('.').pop()?.toLowerCase() || ''
+            const mappingKey = 'ext_' + ext
 
             return (
               <div className="relative flex flex-col items-center justify-center gap-2">
-                <Icon className={`w-20 h-20 ${color}`} />
+                {renderMappedIcon(mappingKey, Icon, 80)}
                 <span className="text-xs font-medium text-center truncate max-w-full px-1">
                   {file.name}
                 </span>
@@ -544,6 +650,7 @@ export function FileManager({
 
   // Icon mappings state
   const [iconMappings, setIconMappings] = useState<IconMapping[]>([]);
+  const [iconMappingsCollapsed, setIconMappingsCollapsed] = useState<IconMapping[]>([]);
 
   // Load icon mappings from config.json
   useEffect(() => {
@@ -556,8 +663,70 @@ export function FileManager({
             console.log('file-manager: loaded icon mappings from config.json:', settings.icons.mappings.length, 'mappings');
             console.log('file-manager: mappings details:', settings.icons.mappings);
             setIconMappings(settings.icons.mappings);
+
+            // Preload libraries used in mappings
+            const usedLibraries = new Set(settings.icons.mappings.map((m: any) => m.library));
+            const preloadPromises = [];
+            if (usedLibraries.has('Phosphor')) {
+              preloadPromises.push(ensurePhosphorIconsLoaded().catch(() => {}));
+            }
+            if (usedLibraries.has('Tabler')) {
+              preloadPromises.push(ensureTablerIconsLoaded().catch(() => {}));
+            }
+            if (usedLibraries.has('ReactIcons')) {
+              preloadPromises.push(ensureReactIconsLoaded().catch(() => {}));
+            }
+            if (usedLibraries.has('Material UI')) {
+              preloadPromises.push(ensureMuiIconsLoaded().catch(() => {}));
+            }
+            await Promise.all(preloadPromises);
+            console.log('file-manager: preloaded icon libraries');
           } else {
-            console.log('file-manager: no icon mappings found in config.json');
+            console.log('file-manager: no icon mappings found in config.json (expanded)');
+          }
+
+          if (settings?.icons?.collapsedMappings) {
+            console.log('file-manager: loaded collapsed icon mappings from config.json:', settings.icons.collapsedMappings.length, 'mappings');
+            setIconMappingsCollapsed(settings.icons.collapsedMappings);
+
+            // Preload libraries for collapsed mappings too
+            const usedLibrariesCollapsed = new Set(settings.icons.collapsedMappings.map((m: any) => m.library));
+            const preloadPromisesCollapsed = [];
+            if (usedLibrariesCollapsed.has('Phosphor')) {
+              preloadPromisesCollapsed.push(ensurePhosphorIconsLoaded().catch(() => {}));
+            }
+            if (usedLibrariesCollapsed.has('Tabler')) {
+              preloadPromisesCollapsed.push(ensureTablerIconsLoaded().catch(() => {}));
+            }
+            if (usedLibrariesCollapsed.has('ReactIcons')) {
+              preloadPromisesCollapsed.push(ensureReactIconsLoaded().catch(() => {}));
+            }
+            if (usedLibrariesCollapsed.has('Material UI')) {
+              preloadPromisesCollapsed.push(ensureMuiIconsLoaded().catch(() => {}));
+            }
+            await Promise.all(preloadPromisesCollapsed);
+            console.log('file-manager: preloaded collapsed icon libraries');
+          } else {
+            console.log('file-manager: no collapsed icon mappings found in config.json');
+          }
+          // Legacy fallback: some modules store the last mappings on window
+          if ((!settings?.icons || !settings.icons.mappings) && (window as any).__lastIconMappings) {
+            try {
+              const legacy = (window as any).__lastIconMappings
+              console.log('file-manager: using legacy window.__lastIconMappings fallback', legacy?.length)
+              setIconMappings(legacy)
+            } catch (e) {
+              // ignore
+            }
+          }
+          if ((!settings?.icons || !settings.icons.collapsedMappings) && (window as any).__lastIconMappingsCollapsed) {
+            try {
+              const legacyCollapsed = (window as any).__lastIconMappingsCollapsed
+              console.log('file-manager: using legacy window.__lastIconMappingsCollapsed fallback', legacyCollapsed?.length)
+              setIconMappingsCollapsed(legacyCollapsed)
+            } catch (e) {
+              // ignore
+            }
           }
         } else {
           console.log('file-manager: window.electronAPI.loadSettings not available');
@@ -572,8 +741,34 @@ export function FileManager({
     // Listen for icon mapping updates
     const handleIconMappingsUpdate = (event: any) => {
       console.log('file-manager: received iconMappingsUpdated event:', event.detail);
+      // Support both new event shape and legacy payload
       if (event.detail?.mappings) {
         setIconMappings(event.detail.mappings);
+      }
+      if (event.detail?.collapsedMappings) {
+        setIconMappingsCollapsed(event.detail.collapsedMappings);
+      }
+
+      // Legacy support: some dispatches may provide flattened arrays
+      if (!event.detail?.mappings && event.detail?.length) {
+        try {
+          // attempt to detect shape
+          const arr = event.detail as any[];
+          setIconMappings(arr);
+        } catch (e) {
+          // ignore
+        }
+      }
+      // Another legacy fallback: read globals if present
+      if ((!event.detail || !event.detail.mappings) && (window as any).__lastIconMappings) {
+        try {
+          setIconMappings((window as any).__lastIconMappings)
+        } catch (e) {}
+      }
+      if ((!event.detail || !event.detail.collapsedMappings) && (window as any).__lastIconMappingsCollapsed) {
+        try {
+          setIconMappingsCollapsed((window as any).__lastIconMappingsCollapsed)
+        } catch (e) {}
       }
     };
 
@@ -586,7 +781,9 @@ export function FileManager({
 
   // Function to get mapped icon component
   const getMappedIconComponent = useCallback((mappingKey: string, fallbackIcon: any = Folder) => {
-    const mapping = iconMappings.find(m => m.key === mappingKey);
+    // Prefer expanded mappings, fallback to collapsed mappings
+    const keyNormalized = (mappingKey || '').toLowerCase()
+    const mapping = iconMappings.find(m => String(m.key || '').toLowerCase() === keyNormalized) || iconMappingsCollapsed.find(m => String(m.key || '').toLowerCase() === keyNormalized);
     if (!mapping) {
       console.log(`file-manager: no mapping found for key '${mappingKey}', using fallback`);
       return fallbackIcon;
@@ -598,29 +795,73 @@ export function FileManager({
         const icon = (LucideIcons as any)[mapping.currentIcon];
         console.log(`file-manager: using Lucide icon '${mapping.currentIcon}' for key '${mappingKey}'`);
         return icon || fallbackIcon;
+      } else if (mapping.library === 'Phosphor' && _phosphorIconsCache && _phosphorIconsCache[mapping.currentIcon]) {
+        console.log(`file-manager: using Phosphor icon '${mapping.currentIcon}' for key '${mappingKey}'`);
+        return _phosphorIconsCache[mapping.currentIcon];
+      } else if (mapping.library === 'Tabler' && _tablerIconsCache && _tablerIconsCache[mapping.currentIcon]) {
+        console.log(`file-manager: using Tabler icon '${mapping.currentIcon}' for key '${mappingKey}'`);
+        return _tablerIconsCache[mapping.currentIcon];
+      } else if (mapping.library === 'ReactIcons' && _reactIconsCache && _reactIconsCache[mapping.currentIcon]) {
+        console.log(`file-manager: using ReactIcons icon '${mapping.currentIcon}' for key '${mappingKey}'`);
+        return _reactIconsCache[mapping.currentIcon];
+      } else if (_muiIconsCache && _muiIconsCache[mapping.currentIcon]) {
+        console.log(`file-manager: using MUI icon '${mapping.currentIcon}' for key '${mappingKey}'`);
+        return _muiIconsCache[mapping.currentIcon];
+      } else {
+        // Library not loaded yet, kick off load in background and fallback to Lucide
+        console.log(`file-manager: library '${mapping.library}' not loaded for key '${mappingKey}', falling back to Lucide`);
+        if (mapping.library === 'Phosphor') {
+          ensurePhosphorIconsLoaded().catch(() => {});
+        } else if (mapping.library === 'Tabler') {
+          ensureTablerIconsLoaded().catch(() => {});
+        } else if (mapping.library === 'ReactIcons') {
+          ensureReactIconsLoaded().catch(() => {});
+        } else if (mapping.library === 'Material UI') {
+          ensureMuiIconsLoaded().catch(() => {});
+        }
+        const icon = (LucideIcons as any)[mapping.currentIcon];
+        return icon || fallbackIcon;
       }
-      // For now, only support Lucide icons in file-manager
-      // Could be extended to support other libraries later
-      console.log(`file-manager: unsupported library '${mapping.library}' for key '${mappingKey}', using fallback`);
-      return (LucideIcons as any)[mapping.currentIcon] || fallbackIcon;
     } catch (error) {
       console.warn(`file-manager: Failed to load icon for mapping '${mappingKey}':`, error);
       return fallbackIcon;
     }
-  }, [iconMappings]);
+  }, [iconMappings, iconMappingsCollapsed]);
 
   // Return the full mapping object for a key
   const getMappingForKey = useCallback((mappingKey: string) => {
-    return iconMappings.find(m => m.key === mappingKey) || null
-  }, [iconMappings])
+    const keyNormalized = (mappingKey || '').toLowerCase()
+    return iconMappings.find(m => String(m.key || '').toLowerCase() === keyNormalized) || iconMappingsCollapsed.find(m => String(m.key || '').toLowerCase() === keyNormalized) || null
+  }, [iconMappings, iconMappingsCollapsed])
 
   // Render an icon element using mapping customization (size, color, bg, shape, border)
   const renderMappedIcon = useCallback((mappingKey: string, fallbackIcon: any = Folder, defaultSize = 48) => {
-    const mapping = getMappingForKey(mappingKey)
-    const Comp: any = getMappedIconComponent(mappingKey, fallbackIcon)
+    // Try to resolve exact mapping first
+    let mapping = getMappingForKey(mappingKey)
+    let Comp: any = getMappedIconComponent(mappingKey, fallbackIcon)
+
+    // If there is still no custom mapping, render the fallback icon as before (no pastille wrapper)
+    if (!mapping) {
+      const svgSize = Math.max(4, Math.round(defaultSize * 0.6))
+      try {
+        return (
+          <div style={{ width: defaultSize, height: defaultSize, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {React.createElement(fallbackIcon, { style: { width: svgSize, height: svgSize } })}
+          </div>
+        )
+      } catch (e) {
+        return React.createElement(fallbackIcon, { className: `w-8 h-8` })
+      }
+    }
 
     const customization = mapping?.customization || {}
-    const size = customization.size || defaultSize
+
+    // Use shared normalization so file-manager icons match preview/sidebar behavior
+    const normalized = normalizeIconForThumbnail(customization, defaultSize, { respectIconSize: true })
+    const wrapperPx = normalized.wrapperPx
+    const iconInnerSize = normalized.iconInnerSize
+    const paddingVal = normalized.padding
+
     const iconColor = customization.iconColor || 'currentColor'
     const bg = customization.bgColor || 'transparent'
     const shape = customization.shape || 'rounded'
@@ -629,28 +870,19 @@ export function FileManager({
 
     const wrapperStyle: React.CSSProperties = {
       background: bg,
-      width: size,
-      height: size,
+      width: wrapperPx,
+      height: wrapperPx,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       borderRadius: shape === 'circle' ? 9999 : shape === 'rounded' ? 10 : 4,
       color: iconColor,
       border: borderWidth ? `${borderWidth}px solid ${borderColor}` : undefined,
-      padding: customization.padding || 0
+      padding: paddingVal
     }
 
-    // Compute inline size for the svg inside the wrapper
-    const svgSize = Math.max(4, Math.round(size * 0.6))
-
     try {
-      if (!Comp) return React.createElement(fallbackIcon, { className: `w-8 h-8`, style: { color: iconColor } })
-      // Only pass Tailwind classes when no explicit size is configured
-      const svgProps: any = { style: { color: iconColor, width: svgSize, height: svgSize } }
-      if (!customization.size) {
-        // best-effort tailwind class for default sizes when no customization exists
-        svgProps.className = `w-${Math.max(4, Math.round(svgSize / 4))} h-${Math.max(4, Math.round(svgSize / 4))}`
-      }
+      const svgProps: any = { style: { color: iconColor, width: iconInnerSize, height: iconInnerSize } }
       return (
         <div style={wrapperStyle} className="flex-shrink-0">
           {React.createElement(Comp, svgProps)}
@@ -1221,6 +1453,16 @@ export function FileManager({
     const fileType = file.isDirectory ? 'folder' : getFileType(file.name)
 
     // Special case for PDF files - use custom PDF icon
+    const ext = file.name.split('.').pop()?.toLowerCase() || ''
+    const mappingKey = 'ext_' + ext
+
+    // If a custom mapping exists for this extension, use it
+    const mapping = getMappingForKey(mappingKey)
+    if (mapping) {
+      return renderMappedIcon(mappingKey, File, 40)
+    }
+
+    // Special case for PDF files - use custom PDF icon as fallback
     if (fileType === 'pdf' || (file.name && file.name.toLowerCase().endsWith('.pdf'))) {
       console.log('PDF file detected in file-manager renderFileIcon:', file.name)
       return <FileIconPdf className="h-10 w-10 text-red-600" />

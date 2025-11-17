@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import * as LucideIcons from 'lucide-react'
 import {
   FolderPlus,
   FileText,
@@ -26,10 +27,121 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { cn } from "@/lib/utils"
+import { cn, normalizeIconForThumbnail } from "@/lib/utils"
 import { FILE_TYPES, getFileTypeConfig, type FileType } from "@/lib/file-types"
 import type { EnhancedFolderNode } from "@/components/ui/FolderTree-modern"
 import { ModernFolderTree } from "@/components/ui/FolderTree-modern"
+
+// Runtime cache for dynamically loaded Phosphor icons
+let _phosphorIconsCache: Record<string, any> | null = null
+
+async function ensurePhosphorIconsLoaded() {
+  if (_phosphorIconsCache) return _phosphorIconsCache
+  try {
+    const mod = await import('phosphor-react')
+    const map: Record<string, any> = {}
+    // Only keep exports that look like icon components
+    const blacklist = new Set(['default', 'Context', 'Provider', 'Consumer', 'IconContext'])
+    Object.keys(mod).forEach(k => {
+      if (!k || blacklist.has(k)) return
+      if (!/^[A-Z][A-Za-z0-9_]+$/.test(k)) return
+      try {
+        const exportVal = (mod as any)[k]
+        if (typeof exportVal === 'function' || (typeof exportVal === 'object' && exportVal.$$typeof)) {
+          map[k] = exportVal
+        }
+      } catch (e) {
+        // ignore
+      }
+    })
+    _phosphorIconsCache = map
+    return _phosphorIconsCache
+  } catch (err) {
+    console.warn('Failed to dynamically load phosphor-react', err)
+    return null
+  }
+}
+
+// Runtime cache for dynamically loaded Tabler icons
+let _tablerIconsCache: Record<string, any> | null = null
+
+async function ensureTablerIconsLoaded() {
+  if (_tablerIconsCache) return _tablerIconsCache
+  try {
+    const mod = await import('tabler-icons-react')
+    const map: Record<string, any> = {}
+    const blacklist = new Set(['default', 'Context', 'Provider', 'Consumer', 'IconContext'])
+    Object.keys(mod).forEach(k => {
+      if (!k || blacklist.has(k)) return
+      if (!/^[A-Z][A-Za-z0-9_]+$/.test(k)) return
+      try {
+        const exportVal = (mod as any)[k]
+        if (typeof exportVal === 'function' || (typeof exportVal === 'object' && exportVal.$$typeof)) {
+          map[k] = exportVal
+        }
+      } catch (e) {
+        // ignore
+      }
+    })
+    _tablerIconsCache = map
+    return _tablerIconsCache
+  } catch (err) {
+    console.warn('Failed to dynamically load tabler-icons-react', err)
+    return null
+  }
+}
+
+// Runtime cache for dynamically loaded React Icons
+let _reactIconsCache: Record<string, any> | null = null
+
+async function ensureReactIconsLoaded() {
+  if (_reactIconsCache) return _reactIconsCache
+  try {
+    const [fa, md, ai] = await Promise.all([
+      import('react-icons/fa'),
+      import('react-icons/md'),
+      import('react-icons/ai')
+    ])
+    // Merge exports into one map
+    const merged: Record<string, any> = Object.assign({}, fa, md, ai)
+    const map: Record<string, any> = {}
+    const blacklist = new Set(['default'])
+    Object.keys(merged).forEach(k => {
+      if (!k || blacklist.has(k)) return
+      if (!/^[A-Z][A-Za-z0-9]+$/.test(k)) return
+      try {
+        const exportVal = (merged as any)[k]
+        if (typeof exportVal === 'function' || (typeof exportVal === 'object' && exportVal.$$typeof)) {
+          map[k] = exportVal
+        }
+      } catch (e) {
+        // ignore
+      }
+    })
+    _reactIconsCache = map
+    return _reactIconsCache
+  } catch (err) {
+    console.warn('Failed to dynamically load react-icons packs', err)
+    return null
+  }
+}
+
+// Runtime cache for dynamically loaded MUI icons
+let _muiIconsCache: Record<string, any> | null = null
+
+async function ensureMuiIconsLoaded() {
+  if (_muiIconsCache) return _muiIconsCache
+  try {
+    const mod = await eval('import("@mui/icons-material")')
+    const map: Record<string, any> = {}
+    Object.keys(mod).forEach(k => { map[k] = (mod as any)[k] })
+    _muiIconsCache = map
+    return _muiIconsCache
+  } catch (err) {
+    console.warn('Failed to dynamically load @mui/icons-material', err)
+    return null
+  }
+}
 
 interface LandingPageProps {
   onNavigateToFiles: () => void
@@ -48,6 +160,7 @@ export function LandingPage({
 }: LandingPageProps) {
   const [mounted, setMounted] = useState(false)
   const [recentFilesVersion, setRecentFilesVersion] = useState(0)
+  const [iconMappings, setIconMappings] = useState<Record<string, { currentIcon: string; library: string; customization?: any }>>({})
 
   useEffect(() => {
     setMounted(true)
@@ -70,6 +183,151 @@ export function LandingPage({
       };
     }
   }, []);
+
+  // Load icon mappings from settings and listen for updates
+  useEffect(() => {
+    let mounted = true
+    const load = async () => {
+      try {
+        if (window.electronAPI?.loadSettings) {
+          const s = await window.electronAPI.loadSettings()
+          if (s && s.icons && Array.isArray(s.icons.mappings)) {
+            const map: Record<string, any> = {}
+            s.icons.mappings.forEach((m: any) => {
+              if (m && m.key) map[m.key] = { currentIcon: String(m.currentIcon || ''), library: String(m.library || 'Lucide'), customization: m.customization || undefined }
+            })
+            if (mounted) setIconMappings(map)
+
+            // Preload libraries used in mappings
+            const usedLibraries = new Set(s.icons.mappings.map((m: any) => m.library))
+            const preloadPromises = []
+            if (usedLibraries.has('Phosphor')) {
+              preloadPromises.push(ensurePhosphorIconsLoaded().catch(() => {}))
+            }
+            if (usedLibraries.has('Tabler')) {
+              preloadPromises.push(ensureTablerIconsLoaded().catch(() => {}))
+            }
+            if (usedLibraries.has('ReactIcons')) {
+              preloadPromises.push(ensureReactIconsLoaded().catch(() => {}))
+            }
+            if (usedLibraries.has('Material UI')) {
+              preloadPromises.push(ensureMuiIconsLoaded().catch(() => {}))
+            }
+            await Promise.all(preloadPromises)
+            console.log('landing-page: preloaded icon libraries')
+          }
+        }
+      } catch (err) {
+        console.warn('landing-page: failed to load icon mappings', err)
+      }
+    }
+    load()
+
+    const handler = (e: any) => {
+      try {
+        const mappings = e?.detail?.mappings || (window as any).__lastIconMappings
+        if (!mappings) return
+        const map: Record<string, any> = {}
+        mappings.forEach((m: any) => { if (m && m.key) map[m.key] = { currentIcon: String(m.currentIcon || ''), library: String(m.library || 'Lucide'), customization: m.customization || undefined } })
+        if (mounted) setIconMappings(map)
+      } catch (err) {
+        // ignore
+      }
+    }
+
+    window.addEventListener('iconMappingsUpdated', handler as EventListener)
+    return () => { mounted = false; window.removeEventListener('iconMappingsUpdated', handler as EventListener) }
+  }, [])
+
+  // Render an icon element using mapping customization (size, color, bg, shape, border)
+  const renderMappedIcon = (mappingKey: string, fallbackIcon: any = FileText, defaultSize = 32) => {
+    // Try to resolve exact mapping first
+    const mapping = iconMappings[mappingKey]
+    let Comp: any = fallbackIcon
+
+    // If there is still no custom mapping, render the fallback icon as before (no pastille wrapper)
+    if (!mapping) {
+      const svgSize = Math.max(4, Math.round(defaultSize * 0.6))
+      try {
+        return (
+          <div style={{ width: defaultSize, height: defaultSize, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {React.createElement(fallbackIcon, { style: { width: svgSize, height: svgSize } })}
+          </div>
+        )
+      } catch (e) {
+        return React.createElement(fallbackIcon, { className: `w-8 h-8` })
+      }
+    }
+
+    // Load icon from appropriate library
+    try {
+      if (mapping.library === 'Lucide') {
+        Comp = (LucideIcons as any)[mapping.currentIcon] || fallbackIcon
+      } else if (mapping.library === 'Phosphor' && _phosphorIconsCache && _phosphorIconsCache[mapping.currentIcon]) {
+        Comp = _phosphorIconsCache[mapping.currentIcon]
+      } else if (mapping.library === 'Tabler' && _tablerIconsCache && _tablerIconsCache[mapping.currentIcon]) {
+        Comp = _tablerIconsCache[mapping.currentIcon]
+      } else if (mapping.library === 'ReactIcons' && _reactIconsCache && _reactIconsCache[mapping.currentIcon]) {
+        Comp = _reactIconsCache[mapping.currentIcon]
+      } else if (_muiIconsCache && _muiIconsCache[mapping.currentIcon]) {
+        Comp = _muiIconsCache[mapping.currentIcon]
+      } else {
+        // Library not loaded yet, kick off load in background and fallback to Lucide
+        if (mapping.library === 'Phosphor') {
+          ensurePhosphorIconsLoaded().catch(() => {})
+        } else if (mapping.library === 'Tabler') {
+          ensureTablerIconsLoaded().catch(() => {})
+        } else if (mapping.library === 'ReactIcons') {
+          ensureReactIconsLoaded().catch(() => {})
+        } else if (mapping.library === 'Material UI') {
+          ensureMuiIconsLoaded().catch(() => {})
+        }
+        Comp = (LucideIcons as any)[mapping.currentIcon] || fallbackIcon
+      }
+    } catch (error) {
+      console.warn(`landing-page: Failed to load icon for mapping '${mappingKey}':`, error)
+      Comp = fallbackIcon
+    }
+
+    const customization = mapping?.customization || {}
+
+    // Use shared normalization so landing page icons match file-manager/sidebar behavior
+    const normalized = normalizeIconForThumbnail(customization, defaultSize, { respectIconSize: true })
+    const wrapperPx = normalized.wrapperPx
+    const iconInnerSize = normalized.iconInnerSize
+    const paddingVal = normalized.padding
+
+    const iconColor = customization.iconColor || 'currentColor'
+    const bg = customization.bgColor || 'transparent'
+    const shape = customization.shape || 'rounded'
+    const borderWidth = customization.borderWidth ?? 0
+    const borderColor = customization.borderColor || 'transparent'
+
+    const wrapperStyle: React.CSSProperties = {
+      background: bg,
+      width: wrapperPx,
+      height: wrapperPx,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: shape === 'circle' ? 9999 : shape === 'rounded' ? 10 : 4,
+      color: iconColor,
+      border: borderWidth ? `${borderWidth}px solid ${borderColor}` : undefined,
+      padding: paddingVal
+    }
+
+    try {
+      const svgProps: any = { style: { color: iconColor, width: iconInnerSize, height: iconInnerSize } }
+      return (
+        <div style={wrapperStyle} className="flex-shrink-0">
+          {React.createElement(Comp, svgProps)}
+        </div>
+      )
+    } catch (e) {
+      console.warn('landing-page: renderMappedIcon error for', mappingKey, e)
+      return React.createElement(fallbackIcon, { className: `w-8 h-8`, style: { color: iconColor } })
+    }
+  }
 
   // Calculer les fichiers récents à partir du folderTree
   const getRecentFiles = (): EnhancedFolderNode[] => {
@@ -207,6 +465,10 @@ export function LandingPage({
     const config = getFileTypeConfig(fileType || 'generic')
     const Icon = config.icon
 
+    // Determine extension mapping key
+    const ext = file.name.split('.').pop()?.toLowerCase() || ''
+    const mappingKey = 'ext_' + ext
+
     return (
       <motion.div
         key={file.path}
@@ -216,9 +478,7 @@ export function LandingPage({
         className="flex items-center gap-3 p-3 rounded-lg bg-card hover:bg-accent cursor-pointer transition-all"
         onClick={() => onNoteSelect(file.path)}
       >
-        <div className={cn("w-8 h-8 rounded flex items-center justify-center", config.sidebarButton.background)}>
-          <Icon className={cn("w-4 h-4", config.sidebarButton.text)} />
-        </div>
+        {renderMappedIcon(mappingKey, Icon, 32)}
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm truncate">{file.name}</p>
           <p className="text-xs text-muted-foreground">

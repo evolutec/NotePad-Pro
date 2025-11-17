@@ -33,7 +33,7 @@ import {
   Presentation
 } from 'lucide-react';
 import { getFileTypeConfig, type FileType as LibFileType } from '@/lib/file-types';
-import { cn } from '@/lib/utils';
+import { cn, normalizeIconForThumbnail } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -739,19 +739,46 @@ const TreeItem = React.memo(({
           <div className={cn(getFileColor(fileType))}>
             {
               (() => {
-                // Resolve mapping: folders use folder_open/folder_default, files can use ext_<ext>
+                // Resolve mapping: folders use folder_open/folder_default, files can use ext_<ext> with fallbacks
                 let mappedComp: any = null
+                let mappingKey = ''
                 if (node.type === 'folder') {
-                  const key = isExpanded ? 'folder_open' : 'folder_default'
-                  mappedComp = getMappedIconComponent(key)
+                  mappingKey = isExpanded ? 'folder_open' : 'folder_default'
+                  mappedComp = getMappedIconComponent(mappingKey)
                 } else {
                   const ext = node.name.split('.').pop()?.toLowerCase() || ''
-                  if (ext) mappedComp = getMappedIconComponent('ext_' + ext)
+                  mappingKey = 'ext_' + ext
+                  mappedComp = getMappedIconComponent(mappingKey)
+                  
+                  // If no exact mapping, try fallbacks to match FileManager behavior
+                  if (!mappedComp) {
+                    const derivedType = getFileType(node)
+                    const fallbackCandidates: string[] = []
+                    if (derivedType) fallbackCandidates.push('ext_' + derivedType)
+                    // generic fallbacks
+                    fallbackCandidates.push('ext_image', 'ext_video', 'ext_audio', 'ext_pdf', 'ext_draw', 'ext_document', 'ext_file')
+                    
+                    for (const fk of fallbackCandidates) {
+                      const comp = getMappedIconComponent(fk)
+                      if (comp) {
+                        mappedComp = comp
+                        mappingKey = fk
+                        console.log(`FolderTree: using fallback mapping '${fk}' for original key '${'ext_' + ext}'`)
+                        break
+                      }
+                    }
+                  }
                 }
 
                 if (mappedComp) {
                   try {
-                    return React.createElement(mappedComp)
+                    // Use the actual mapping key (including fallbacks) for customization lookup
+                    const mappingEntry = (typeof _moduleIconMap !== 'undefined' && _moduleIconMap && _moduleIconMap[mappingKey]) ? _moduleIconMap[mappingKey] : undefined
+                    const customization = mappingEntry?.customization
+                    const displayMax = node.type === 'folder' ? (isExpanded ? 20 : 16) : 16
+                    const normalized = normalizeIconForThumbnail(customization, displayMax, { respectIconSize: true })
+                    const iconInnerSize = normalized.iconInnerSize
+                    return React.createElement(mappedComp, { size: iconInnerSize, className: 'w-4 h-4' })
                   } catch (err) {
                     // fallback below
                   }

@@ -101,6 +101,9 @@ const DEFAULT_SECTIONS: IconSection[] = [
       { key: "ext_audio", label: "Audio", currentIcon: "FileAudio", library: "Lucide" },
       { key: "ext_mp3", label: "Audio MP3", currentIcon: "FileAudio", library: "Lucide" },
       { key: "ext_wav", label: "Audio WAV", currentIcon: "FileAudio", library: "Lucide" },
+  { key: "ext_oga", label: "Audio OGA", currentIcon: "FileAudio", library: "Lucide" },
+  { key: "ext_webm", label: "Vidéo WEBM", currentIcon: "FileVideo", library: "Lucide" },
+  { key: "ext_draw", label: "Dessin (draw)", currentIcon: "FileImage", library: "Lucide" },
       { key: "ext_zip", label: "Archive ZIP", currentIcon: "Archive", library: "Lucide" },
       { key: "ext_rar", label: "Archive RAR", currentIcon: "Archive", library: "Lucide" },
   // Additional common extensions
@@ -949,7 +952,7 @@ export const IconsSettings: React.FC = () => {
 
             <div className="border-t pt-4 flex-1 min-h-0">
             <ScrollArea className="h-full hide-scrollbar">
-              <div className="grid grid-cols-3 gap-3 p-3">
+              <div className="grid grid-cols-4 gap-3 p-3">
                 {availableIcons.map(ic => {
                   // mark current only when both name and library match the selected mapping
                   const isCurrent = selected && ic.name === selected.currentIcon && ic.library === selected.library
@@ -967,13 +970,13 @@ export const IconsSettings: React.FC = () => {
                           <Check className="w-2.5 h-2.5 text-primary-foreground" />
                         </div>
                       )}
-                      <div className="w-20 h-20 flex items-center justify-center">{renderIcon(ic.comp, "w-16 h-16")}</div>
+                      <div className="w-28 h-28 flex items-center justify-center overflow-visible">{renderIcon(ic.comp, "text-black dark:text-white", 72)}</div>
                       <div className="text-xs text-center truncate w-full">{ic.name}</div>
                       <div className="text-[10px] text-muted-foreground">{ic.library}</div>
                     </Button>
                   )
                 })}
-                {availableIcons.length === 0 && <div className="p-4 text-sm text-muted-foreground col-span-3">Aucune icône trouvée. Essayez d'élargir la recherche.</div>}
+                {availableIcons.length === 0 && <div className="p-4 text-sm text-muted-foreground col-span-4">Aucune icône trouvée. Essayez d'élargir la recherche.</div>}
               </div>
             </ScrollArea>
           </div>

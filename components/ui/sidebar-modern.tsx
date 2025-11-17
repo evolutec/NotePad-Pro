@@ -268,6 +268,93 @@ const getMappedIconComponent = (key: string, options?: { collapsed?: boolean }):
   }
 }
 
+// Render an icon element using mapping customization (size, color, bg, shape, border)
+const renderMappedIcon = (mappingKey: string, fallbackIcon: any = Folder, defaultSize = 32) => {
+  // Try to resolve exact mapping first
+  const keyNormalized = (mappingKey || '').toLowerCase()
+  let mapping = iconMappings[keyNormalized] || iconMappingsCollapsed[keyNormalized]
+  let Comp: any = null
+
+  if (mapping) {
+    if (mapping.library === 'Lucide') {
+      Comp = (LucideIcons as any)[mapping.currentIcon] || fallbackIcon;
+    } else if (mapping.library === 'Phosphor' && _phosphorIconsCache && _phosphorIconsCache[mapping.currentIcon]) {
+      Comp = _phosphorIconsCache[mapping.currentIcon]
+    } else if (mapping.library === 'Tabler' && _tablerIconsCache && _tablerIconsCache[mapping.currentIcon]) {
+      Comp = _tablerIconsCache[mapping.currentIcon]
+    } else if (mapping.library === 'ReactIcons' && _reactIconsCache && _reactIconsCache[mapping.currentIcon]) {
+      Comp = _reactIconsCache[mapping.currentIcon]
+    } else if (_muiIconsCache && _muiIconsCache[mapping.currentIcon]) {
+      Comp = _muiIconsCache[mapping.currentIcon]
+    } else {
+      // Library not loaded yet, kick off load in background and fallback to lucide
+      if (mapping.library === 'Phosphor') {
+        ensurePhosphorIconsLoaded().catch(() => {})
+      } else if (mapping.library === 'Tabler') {
+        ensureTablerIconsLoaded().catch(() => {})
+      } else if (mapping.library === 'ReactIcons') {
+        ensureReactIconsLoaded().catch(() => {})
+      } else {
+        ensureMuiIconsLoaded().catch(() => {})
+      }
+      Comp = (LucideIcons as any)[mapping.currentIcon] || fallbackIcon
+    }
+  }
+
+  // If there is still no custom mapping, render the fallback icon as before (no pastille wrapper)
+  if (!mapping) {
+    const svgSize = Math.max(4, Math.round(defaultSize * 0.6))
+    try {
+      return (
+        <div style={{ width: defaultSize, height: defaultSize, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {React.createElement(fallbackIcon, { style: { width: svgSize, height: svgSize } })}
+        </div>
+      )
+    } catch (e) {
+      return React.createElement(fallbackIcon, { className: `w-8 h-8` })
+    }
+  }
+
+  const customization = mapping?.customization || {}
+
+  // Use shared normalization so sidebar icons match preview/sidebar behavior
+  const normalized = normalizeIconForThumbnail(customization, defaultSize, { respectIconSize: true })
+  const wrapperPx = normalized.wrapperPx
+  const iconInnerSize = normalized.iconInnerSize
+  const paddingVal = normalized.padding
+
+  const iconColor = customization.iconColor || 'currentColor'
+  const bg = customization.bgColor || 'transparent'
+  const shape = customization.shape || 'rounded'
+  const borderWidth = customization.borderWidth ?? 0
+  const borderColor = customization.borderColor || 'transparent'
+
+  const wrapperStyle: React.CSSProperties = {
+    background: bg,
+    width: wrapperPx,
+    height: wrapperPx,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: shape === 'circle' ? 9999 : shape === 'square' ? 4 : 8,
+    color: iconColor,
+    border: borderWidth ? `${borderWidth}px solid ${borderColor}` : undefined,
+    padding: paddingVal
+  }
+
+  try {
+    const svgProps: any = { style: { color: iconColor, width: iconInnerSize, height: iconInnerSize } }
+    return (
+      <div style={wrapperStyle} className="flex-shrink-0">
+        {React.createElement(Comp, svgProps)}
+      </div>
+    )
+  } catch (e) {
+    console.warn('sidebar: renderMappedIcon error for', mappingKey, e)
+    return React.createElement(fallbackIcon, { className: `w-8 h-8`, style: { color: iconColor } })
+  }
+}
+
 // State for icon mappings
 let iconMappings: Record<string, { currentIcon: string; library: string; customization?: any }> = {};
 let iconMappingsCollapsed: Record<string, { currentIcon: string; library: string; customization?: any }> = {};
@@ -340,7 +427,7 @@ export function ModernSidebar({
             const collapsedArr = Array.isArray(s.icons.collapsedMappings) ? s.icons.collapsedMappings : []
 
             expandedArr.forEach((m: any) => {
-              if (m && m.key && m.key.startsWith('add_')) {
+              if (m && m.key) {
                 mappings[m.key] = {
                   currentIcon: String(m.currentIcon || 'FolderPlus'),
                   library: String(m.library || 'Lucide'),
@@ -349,7 +436,7 @@ export function ModernSidebar({
               }
             })
             collapsedArr.forEach((m: any) => {
-              if (m && m.key && m.key.startsWith('add_')) {
+              if (m && m.key) {
                 collapsed[m.key] = {
                   currentIcon: String(m.currentIcon || 'FolderPlus'),
                   library: String(m.library || 'Lucide'),
@@ -387,7 +474,7 @@ export function ModernSidebar({
         const newMappings: Record<string, { currentIcon: string; library: string; customization?: any }> = {};
         const newCollapsed: Record<string, { currentIcon: string; library: string; customization?: any }> = {};
         (mappings || []).forEach((m: any) => {
-          if (m && m.key && m.key.startsWith('add_')) {
+          if (m && m.key) {
             newMappings[m.key] = {
               currentIcon: String(m.currentIcon || 'FolderPlus'),
               library: String(m.library || 'Lucide'),
@@ -396,7 +483,7 @@ export function ModernSidebar({
           }
         });
         (collapsed || []).forEach((m: any) => {
-          if (m && m.key && m.key.startsWith('add_')) {
+          if (m && m.key) {
             newCollapsed[m.key] = {
               currentIcon: String(m.currentIcon || 'FolderPlus'),
               library: String(m.library || 'Lucide'),
@@ -1133,55 +1220,55 @@ export function ModernSidebar({
               {activeView === 'recent' && (
                 <div className="space-y-2">
                   {recentFiles().map((file) => {
+                    const ext = file.name.split('.').pop()?.toLowerCase() || ''
+                    const mappingKey = 'ext_' + ext
+                    const mapping = iconMappings[mappingKey] || iconMappingsCollapsed[mappingKey]
+                    
                     const getFileIcon = () => {
-                      const ext = file.name.split('.').pop()?.toLowerCase() || ''
+                      // If there's a custom mapping, use it
+                      if (mapping) {
+                        return renderMappedIcon(mappingKey, FileText, 32)
+                      }
                       
-                      // Images - yellow
+                      // Fallback to hardcoded icons
                       if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext)) {
                         return <FileImage className="w-4 h-4 text-yellow-500" />;
                       }
-                      // Videos - gray
                       else if (['mp4', 'webm', 'ogg', 'avi', 'mov', 'mkv', 'wmv', 'flv', '3gp'].includes(ext)) {
                         return <FileVideo className="w-4 h-4 text-gray-500" />;
                       }
-                      // Audio - pink
                       else if (['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac'].includes(ext)) {
                         return <FileAudio className="w-4 h-4 text-pink-500" />;
                       }
-                      // Excel - green
                       else if (['xls', 'xlsx'].includes(ext)) {
                         return <Table className="w-4 h-4 text-green-600" />;
                       }
-                      // PowerPoint - orange
                       else if (['ppt', 'pptx'].includes(ext)) {
                         return <Presentation className="w-4 h-4 text-orange-600" />;
                       }
-                      // PDF - red
                       else if (ext === 'pdf') {
                         return <FileText className="w-4 h-4 text-red-600" />;
                       }
-                      // Draw - purple
                       else if (file.name.endsWith('.draw')) {
                         return <Palette className="w-4 h-4 text-purple-600" />;
                       }
-                      // Code - orange
                       else if (['js', 'ts', 'jsx', 'tsx', 'py', 'java', 'cpp', 'cs', 'html', 'css', 'json'].includes(ext)) {
                         return <FileCode className="w-4 h-4 text-orange-500" />;
                       }
-                      // Documents - blue
                       else if (['doc', 'docx', 'rtf'].includes(ext)) {
                         return <FileText className="w-4 h-4 text-blue-600" />;
                       }
-                      // Notes - blue
                       else if (['md', 'txt'].includes(ext)) {
                         return <FileText className="w-4 h-4 text-blue-500" />;
                       }
-                      // Default
                       return <FileText className="w-4 h-4 text-blue-600" />;
                     };
 
                     const getFileColor = () => {
-                      const ext = file.name.split('.').pop()?.toLowerCase() || ''
+                      if (mapping) {
+                        // Custom mapping has its own background
+                        return '';
+                      }
                       
                       if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext)) {
                         return 'bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800';
@@ -1216,12 +1303,14 @@ export function ModernSidebar({
                       >
                         <div className={cn("w-8 h-8 rounded-md border flex items-center justify-center relative", getFileColor())}>
                           {getFileIcon()}
-                          {/* File name inside the icon container */}
-                          <div className="absolute inset-0 flex items-center justify-center bg-inherit rounded-md">
-                            <span className="text-xs font-medium text-white mix-blend-difference truncate px-1">
-                              {file.name.length > 4 ? file.name.substring(0, 4) + '...' : file.name}
-                            </span>
-                          </div>
+                          {/* File name inside the icon container - only for non-custom icons */}
+                          {!mapping && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-inherit rounded-md">
+                              <span className="text-xs font-medium text-white mix-blend-difference truncate px-1">
+                                {file.name.length > 4 ? file.name.substring(0, 4) + '...' : file.name}
+                              </span>
+                            </div>
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm truncate">{file.name}</p>
@@ -1238,55 +1327,55 @@ export function ModernSidebar({
               {activeView === 'starred' && (
                 <div className="space-y-2">
                   {starredFiles().map((file) => {
+                    const ext = file.name.split('.').pop()?.toLowerCase() || ''
+                    const mappingKey = 'ext_' + ext
+                    const mapping = iconMappings[mappingKey] || iconMappingsCollapsed[mappingKey]
+                    
                     const getFileIcon = () => {
-                      const ext = file.name.split('.').pop()?.toLowerCase() || ''
+                      // If there's a custom mapping, use it
+                      if (mapping) {
+                        return renderMappedIcon(mappingKey, FileText, 32)
+                      }
                       
-                      // Images - yellow
+                      // Fallback to hardcoded icons
                       if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext)) {
                         return <FileImage className="w-4 h-4 text-yellow-500" />;
                       }
-                      // Videos - gray
                       else if (['mp4', 'webm', 'ogg', 'avi', 'mov', 'mkv', 'wmv', 'flv', '3gp'].includes(ext)) {
                         return <FileVideo className="w-4 h-4 text-gray-500" />;
                       }
-                      // Audio - pink
                       else if (['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac'].includes(ext)) {
                         return <FileAudio className="w-4 h-4 text-pink-500" />;
                       }
-                      // Excel - green
                       else if (['xls', 'xlsx'].includes(ext)) {
                         return <Table className="w-4 h-4 text-green-600" />;
                       }
-                      // PowerPoint - orange
                       else if (['ppt', 'pptx'].includes(ext)) {
                         return <Presentation className="w-4 h-4 text-orange-600" />;
                       }
-                      // PDF - red
                       else if (ext === 'pdf') {
                         return <FileText className="w-4 h-4 text-red-600" />;
                       }
-                      // Draw - purple
                       else if (file.name.endsWith('.draw')) {
                         return <Palette className="w-4 h-4 text-purple-600" />;
                       }
-                      // Code - orange
                       else if (['js', 'ts', 'jsx', 'tsx', 'py', 'java', 'cpp', 'cs', 'html', 'css', 'json'].includes(ext)) {
                         return <FileCode className="w-4 h-4 text-orange-500" />;
                       }
-                      // Documents - blue
                       else if (['doc', 'docx', 'rtf'].includes(ext)) {
                         return <FileText className="w-4 h-4 text-blue-600" />;
                       }
-                      // Notes - blue
                       else if (['md', 'txt'].includes(ext)) {
                         return <FileText className="w-4 h-4 text-blue-500" />;
                       }
-                      // Default
                       return <FileText className="w-4 h-4 text-blue-600" />;
                     };
 
                     const getFileColor = () => {
-                      const ext = file.name.split('.').pop()?.toLowerCase() || ''
+                      if (mapping) {
+                        // Custom mapping has its own background
+                        return '';
+                      }
                       
                       if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext)) {
                         return 'bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800';
@@ -1321,12 +1410,14 @@ export function ModernSidebar({
                       >
                         <div className={cn("w-8 h-8 rounded-md border flex items-center justify-center relative", getFileColor())}>
                           {getFileIcon()}
-                          {/* File name inside the icon container */}
-                          <div className="absolute inset-0 flex items-center justify-center bg-inherit rounded-md">
-                            <span className="text-xs font-medium text-white mix-blend-difference truncate px-1">
-                              {file.name.length > 4 ? file.name.substring(0, 4) + '...' : file.name}
-                            </span>
-                          </div>
+                          {/* File name inside the icon container - only for non-custom icons */}
+                          {!mapping && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-inherit rounded-md">
+                              <span className="text-xs font-medium text-white mix-blend-difference truncate px-1">
+                                {file.name.length > 4 ? file.name.substring(0, 4) + '...' : file.name}
+                              </span>
+                            </div>
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm truncate">{file.name}</p>
