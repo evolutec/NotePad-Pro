@@ -14,7 +14,7 @@ import FolderPicker from "./folder-picker"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Settings, Folder, Pen, Monitor, Palette } from "lucide-react"
+import { Settings, Folder, Pen, Monitor, Palette, Image } from "lucide-react"
 import IconsSettings from "@/components/icons-settings"
 import { Switch } from "@/components/ui/switch"
 import { useCallback } from "react"
@@ -44,6 +44,10 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
     maxFileSize: 50,
   })
 
+  const [designSettings, setDesignSettings] = useState({
+    backgroundImage: null as string | null,
+  })
+
   const [appSettings, setAppSettings] = useState({
     theme: "system",
     language: "fr",
@@ -59,6 +63,7 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
           if (settings.stylus) setStylusSettings(settings.stylus);
           if (settings.files) setFileSettings(settings.files);
           if (settings.app) setAppSettings(settings.app);
+          if (settings.design) setDesignSettings(settings.design);
         }
       });
     }
@@ -83,6 +88,7 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
         stylus: stylusSettings,
         files: fileSettings,
         app: appSettings,
+        design: designSettings,
       };
 
       const saveFn = window.electronAPI?.saveSettings
@@ -102,6 +108,14 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
           description: "Les paramètres ont été enregistrés avec succès.",
           variant: "default",
         });
+
+        // Dispatch event to notify other components of settings update
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('settingsUpdated', {
+            detail: { design: designSettings }
+          }));
+        }
+
         setOpen(false);
       } else {
         toast({
@@ -119,7 +133,7 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
         variant: "destructive",
       });
     }
-  }, [stylusSettings, fileSettings, appSettings, toast]);
+  }, [stylusSettings, fileSettings, appSettings, designSettings, toast]);
 
   const handleStylusCalibration = () => {
     // Simulate calibration process
@@ -148,6 +162,9 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
       language: "fr",
       startWithWindows: false,
       minimizeToTray: true,
+    })
+    setDesignSettings({
+      backgroundImage: null,
     })
   }
 
@@ -205,7 +222,7 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
             <Settings className="h-5 w-5" />
             Configuration de l'application
           </DialogTitle>
-          <TabsList className="grid w-full grid-cols-5 py-2">
+          <TabsList className="grid w-full grid-cols-6 py-2">
               <TabsTrigger value="stylus" className="flex items-center gap-2">
                 <Pen className="h-4 w-4" /> Stylet
               </TabsTrigger>
@@ -214,6 +231,9 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
               </TabsTrigger>
               <TabsTrigger value="app" className="flex items-center gap-2">
                 <Monitor className="h-4 w-4" /> Application
+              </TabsTrigger>
+              <TabsTrigger value="design" className="flex items-center gap-2">
+                <Image className="h-4 w-4" /> Design
               </TabsTrigger>
               <TabsTrigger value="icons" className="flex items-center gap-2"><Palette className="h-4 w-4" /> Icônes</TabsTrigger>
               <TabsTrigger value="about">À propos</TabsTrigger>
@@ -345,6 +365,75 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
                       checked={appSettings.minimizeToTray}
                       onCheckedChange={(checked) => setAppSettings((prev) => ({ ...prev, minimizeToTray: checked }))}
                     />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="design" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Personnalisation du design</CardTitle>
+                  <CardDescription>Personnalisez l'apparence de l'application</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div>
+                    <Label>Image de fond de la page d'accueil</Label>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Téléchargez une image qui sera utilisée comme arrière-plan de la page d'accueil.
+                      Si aucune image n'est sélectionnée, l'arrière-plan animé par défaut sera utilisé.
+                      Vous pouvez supprimer l'image actuelle pour revenir à l'arrière-plan original.
+                    </p>
+                    
+                    <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+                      <p className="text-sm">
+                        <span className="font-medium">État actuel:</span>{' '}
+                        {designSettings.backgroundImage ? (
+                          <span className="text-green-600">Image personnalisée chargée</span>
+                        ) : (
+                          <span className="text-blue-600">Arrière-plan animé par défaut</span>
+                        )}
+                      </p>
+                    </div>
+                    
+                    <div className="flex items-center gap-4">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            // Convert file to base64 for storage
+                            const reader = new FileReader();
+                            reader.onload = (event) => {
+                              const base64 = event.target?.result as string;
+                              setDesignSettings((prev) => ({ ...prev, backgroundImage: base64 }));
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="flex-1"
+                      />
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setDesignSettings((prev) => ({ ...prev, backgroundImage: null }))}
+                        disabled={!designSettings.backgroundImage}
+                      >
+                        Retour à l'original
+                      </Button>
+                    </div>
+                    
+                    {designSettings.backgroundImage && (
+                      <div className="mt-4">
+                        <Label>Aperçu de l'image sélectionnée:</Label>
+                        <div className="mt-2 relative w-full h-32 border rounded-lg overflow-hidden">
+                          <img 
+                            src={designSettings.backgroundImage} 
+                            alt="Background preview" 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

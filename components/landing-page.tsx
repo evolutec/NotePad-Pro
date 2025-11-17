@@ -161,6 +161,7 @@ export function LandingPage({
   const [mounted, setMounted] = useState(false)
   const [recentFilesVersion, setRecentFilesVersion] = useState(0)
   const [iconMappings, setIconMappings] = useState<Record<string, { currentIcon: string; library: string; customization?: any }>>({})
+  const [designSettings, setDesignSettings] = useState<{ backgroundImage: string | null }>({ backgroundImage: null })
 
   useEffect(() => {
     setMounted(true)
@@ -198,6 +199,11 @@ export function LandingPage({
             })
             if (mounted) setIconMappings(map)
 
+            // Load design settings
+            if (s.design) {
+              setDesignSettings(s.design)
+            }
+
             // Preload libraries used in mappings
             const usedLibraries = new Set(s.icons.mappings.map((m: any) => m.library))
             const preloadPromises = []
@@ -230,6 +236,11 @@ export function LandingPage({
         const map: Record<string, any> = {}
         mappings.forEach((m: any) => { if (m && m.key) map[m.key] = { currentIcon: String(m.currentIcon || ''), library: String(m.library || 'Lucide'), customization: m.customization || undefined } })
         if (mounted) setIconMappings(map)
+
+        // Update design settings if provided
+        if (e?.detail?.design) {
+          setDesignSettings(e.detail.design)
+        }
       } catch (err) {
         // ignore
       }
@@ -237,6 +248,26 @@ export function LandingPage({
 
     window.addEventListener('iconMappingsUpdated', handler as EventListener)
     return () => { mounted = false; window.removeEventListener('iconMappingsUpdated', handler as EventListener) }
+  }, [])
+
+  // Listen for design settings updates
+  useEffect(() => {
+    const handleSettingsUpdate = (e: any) => {
+      try {
+        if (e?.detail?.design) {
+          setDesignSettings(e.detail.design)
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('settingsUpdated', handleSettingsUpdate)
+      return () => {
+        window.removeEventListener('settingsUpdated', handleSettingsUpdate)
+      }
+    }
   }, [])
 
   // Render an icon element using mapping customization (size, color, bg, shape, border)
@@ -522,34 +553,46 @@ export function LandingPage({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/20">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        {[...Array(20)].map((_, i) => (
-          <motion.div
-            key={i}
-            className={cn(
-              "absolute rounded-full opacity-10",
-              colorThemes[i % colorThemes.length].accent
-            )}
-            style={{
-              width: Math.random() * 200 + 50,
-              height: Math.random() * 200 + 50,
-              left: Math.random() * 100 + '%',
-              top: Math.random() * 100 + '%',
-            }}
-            animate={{
-              x: [0, Math.random() * 100 - 50],
-              y: [0, Math.random() * 100 - 50],
-              scale: [1, 1.2, 1],
-            }}
-            transition={{
-              duration: Math.random() * 10 + 10,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          />
-        ))}
-      </div>
+      {/* Custom Background Image or Default Animated Background */}
+      {designSettings.backgroundImage ? (
+        <div 
+          className="fixed inset-0 bg-cover bg-center bg-no-repeat z-0"
+          style={{ 
+            backgroundImage: `url(${designSettings.backgroundImage})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
+          }}
+        />
+      ) : (
+        <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+          {[...Array(20)].map((_, i) => (
+            <motion.div
+              key={i}
+              className={cn(
+                "absolute rounded-full opacity-10",
+                colorThemes[i % colorThemes.length].accent
+              )}
+              style={{
+                width: Math.random() * 200 + 50,
+                height: Math.random() * 200 + 50,
+                left: Math.random() * 100 + '%',
+                top: Math.random() * 100 + '%',
+              }}
+              animate={{
+                x: [0, Math.random() * 100 - 50],
+                y: [0, Math.random() * 100 - 50],
+                scale: [1, 1.2, 1],
+              }}
+              transition={{
+                duration: Math.random() * 10 + 10,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       <div className="relative z-10">
         {/* Header - Optimisé pour utiliser toute la largeur */}
