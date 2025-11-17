@@ -255,12 +255,15 @@ function getMappedIconComponent(key: string) {
   }
 
   // Return a wrapper component that applies customization
-  return ({ className }: { className?: string }) => {
+  return ({ className, size }: { className?: string; size?: number }) => {
     const customization = (m as any).customization as any | undefined
     const bg = customization?.bgColor || 'transparent'
     const iconColor = customization?.iconColor || undefined
     const shape = customization?.shape || 'rounded'
-    const pxSize = customization?.size || 16
+    // Allow callers to pass a size prop (preferred) so specific UI contexts can cap icon size.
+    const innerIconSize = size || customization?.size || 16
+    // Outer wrapper (pastille) size
+    const wrapperPx = (customization && typeof customization.wrapperSize === 'number') ? customization.wrapperSize : (innerIconSize + (customization?.padding ?? 0) * 2)
     const borderWidth = customization?.borderWidth ?? 0
     const borderColor = customization?.borderColor || 'transparent'
     const opacity = customization?.opacity ?? 100
@@ -285,8 +288,8 @@ function getMappedIconComponent(key: string) {
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
-      width: pxSize,
-      height: pxSize,
+      width: wrapperPx,
+      height: wrapperPx,
       background: backgroundStyle,
       borderRadius: borderRadius,
       borderWidth: borderWidth,
@@ -298,8 +301,14 @@ function getMappedIconComponent(key: string) {
       boxShadow: boxShadow
     }
 
-    const iconProps: any = { className: className || undefined, width: pxSize - (paddingVal || 0), height: pxSize - (paddingVal || 0) }
-    if (iconColor) iconProps.color = iconColor
+    // Prefer inline styles for svg sizing so pixel sizes override Tailwind classes
+    const iconInnerSize = Math.max(4, wrapperPx - (paddingVal || 0) * 2)
+    const iconProps: any = { style: { width: iconInnerSize, height: iconInnerSize } }
+    if (iconColor) iconProps.style.color = iconColor
+    // Only apply className if no custom size provided
+    if (className && !customization?.size) {
+      iconProps.className = className
+    }
 
     return (
       <span style={wrapperStyle}>
@@ -742,7 +751,7 @@ const TreeItem = React.memo(({
 
                 if (mappedComp) {
                   try {
-                    return React.createElement(mappedComp, { className: 'w-4 h-4' })
+                    return React.createElement(mappedComp)
                   } catch (err) {
                     // fallback below
                   }
@@ -761,14 +770,7 @@ const TreeItem = React.memo(({
           {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className={cn(
-                "font-medium text-sm truncate",
-                isSelected ? "text-primary" :
-                isNoteSelected ? "text-blue-600 dark:text-blue-400" :
-                fileType === 'note' ? "text-blue-600 dark:text-blue-400" :
-                fileType === 'draw' ? "text-purple-600 dark:text-purple-400" :
-                "text-foreground"
-              )}>
+              <span className="font-medium text-sm truncate text-white">
                 {node.name}
               </span>
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react"
+import { normalizeIconForThumbnail } from '@/lib/utils'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -13,6 +14,7 @@ export type IconCustomization = {
   bgColor: string
   iconColor: string
   size: number // px
+  wrapperSize?: number // total outer size of the background shape (pastille)
   borderWidth?: number
   borderColor?: string
   opacity?: number // 0-100
@@ -44,7 +46,8 @@ const defaultCustomization: IconCustomization = {
   shape: "rounded",
   bgColor: "#2B6CB0", // blue by default
   iconColor: "#ffffff",
-  size: 40,
+  size: 12,
+  wrapperSize: 24,
   opacity: 100,
   shadowEnabled: false,
   shadowColor: "#000000",
@@ -85,6 +88,18 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
   const [bgColor, setBgColor] = useState<string>(initial?.bgColor || defaultCustomization.bgColor)
   const [iconColor, setIconColor] = useState<string>(initial?.iconColor || defaultCustomization.iconColor)
   const [size, setSize] = useState<number>(initial?.size || defaultCustomization.size)
+  const computeWrapperSize = (src?: Partial<IconCustomization>): number => {
+    if (src) {
+      if (typeof src.wrapperSize === 'number') return src.wrapperSize
+      if (typeof src.size === 'number') {
+        const pad = typeof src.padding === 'number' ? src.padding : (defaultCustomization.padding ?? 6)
+        return src.size + pad * 2
+      }
+    }
+    return defaultCustomization.wrapperSize ?? 24
+  }
+
+  const [wrapperSize, setWrapperSize] = useState<number>(() => computeWrapperSize(initial))
   const [showBgPicker, setShowBgPicker] = useState(false)
   const [showIconPicker, setShowIconPicker] = useState(false)
   const [showBorderPicker, setShowBorderPicker] = useState(false)
@@ -112,14 +127,15 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
   const [showGradientToPicker, setShowGradientToPicker] = useState(false)
   const [showShadowPicker, setShowShadowPicker] = useState(false)
   const [previewState, setPreviewState] = useState<"normal" | "hover" | "active">("normal")
-  const [previewSizePreset, setPreviewSizePreset] = useState<"sm" | "md" | "lg" | "xl">("md")
+  const [previewSizePreset, setPreviewSizePreset] = useState<"sm" | "md" | "lg" | "xl" | "custom">("md")
 
   useEffect(() => {
     if (open) {
       setShape(initial?.shape || defaultCustomization.shape)
       setBgColor(initial?.bgColor || defaultCustomization.bgColor)
       setIconColor(initial?.iconColor || defaultCustomization.iconColor)
-      setSize(initial?.size || defaultCustomization.size)
+  setSize(initial?.size || defaultCustomization.size)
+  setWrapperSize(computeWrapperSize(initial))
       setBorderWidth(initial?.borderWidth ?? 0)
       setBorderColor(initial?.borderColor || "transparent")
       setOpacity((initial?.opacity ?? defaultCustomization.opacity) as number)
@@ -143,6 +159,7 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
       bgColor,
       iconColor,
       size,
+        wrapperSize,
       borderWidth: Number(borderWidth || 0),
       borderColor: borderColor || "transparent",
       opacity: Number(opacity || 100),
@@ -158,6 +175,25 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
       gradientTo: gradientTo || bgColor,
       gradientAngle: Number(gradientAngle || 90),
     }
+
+    // When shape is "none", remove background-related properties from config
+    if (shape === "none") {
+      cfg.bgColor = "transparent"
+      cfg.borderWidth = 0
+      cfg.borderColor = "transparent"
+      cfg.shadowEnabled = false
+      cfg.shadowColor = "#000"
+      cfg.shadowBlur = 0
+      cfg.shadowOffsetY = 0
+      cfg.shadowSpread = 0
+      cfg.padding = 0
+      cfg.wrapperSize = size
+      cfg.gradientEnabled = false
+      cfg.gradientFrom = "transparent"
+      cfg.gradientTo = "transparent"
+      cfg.gradientAngle = 90
+    }
+
     onSave(mappingKey, cfg)
     onOpenChange(false)
   }
@@ -182,14 +218,15 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
     setGradientFrom((src.gradientFrom || defaultCustomization.gradientFrom) as string)
     setGradientTo((src.gradientTo || defaultCustomization.gradientTo) as string)
     setGradientAngle((src.gradientAngle ?? defaultCustomization.gradientAngle) as number)
+    setWrapperSize(computeWrapperSize(src))
   }
 
   // Presets: quick-apply visual styles
   const PRESETS: Array<{ id: string; label: string; cfg: Partial<IconCustomization> }> = [
-    { id: "preset-blue", label: "Pastille bleue", cfg: { shape: "rounded", bgColor: "#2B6CB0", iconColor: "#fff", size: 40, padding: 6 } },
-    { id: "preset-neutral", label: "Pastille neutre", cfg: { shape: "rounded", bgColor: "#F3F4F6", iconColor: "#111827", size: 36, padding: 6 } },
-    { id: "preset-ghost", label: "Sans pastille", cfg: { shape: "none", bgColor: "transparent", iconColor: "#111827", size: 28, padding: 0 } },
-    { id: "preset-gradient", label: "Gradient", cfg: { shape: "circle", gradientEnabled: true, gradientFrom: "#7F7FD5", gradientTo: "#86A8E7", gradientAngle: 120, iconColor: "#fff", size: 44 } },
+    { id: "preset-blue", label: "Pastille bleue", cfg: { shape: "rounded", bgColor: "#2B6CB0", iconColor: "#fff", size: 40, padding: 6, wrapperSize: 52 } },
+    { id: "preset-neutral", label: "Pastille neutre", cfg: { shape: "rounded", bgColor: "#F3F4F6", iconColor: "#111827", size: 36, padding: 6, wrapperSize: 48 } },
+    { id: "preset-ghost", label: "Sans pastille", cfg: { shape: "none", bgColor: "transparent", iconColor: "#111827", size: 28, padding: 0, wrapperSize: 28 } },
+    { id: "preset-gradient", label: "Gradient", cfg: { shape: "circle", gradientEnabled: true, gradientFrom: "#7F7FD5", gradientTo: "#86A8E7", gradientAngle: 120, iconColor: "#fff", size: 44, wrapperSize: 56 } },
   ]
 
   const applyPreset = (p: typeof PRESETS[number]) => {
@@ -212,10 +249,12 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
     setGradientFrom((src.gradientFrom ?? defaultCustomization.gradientFrom) as string)
     setGradientTo((src.gradientTo ?? defaultCustomization.gradientTo) as string)
     setGradientAngle(Number(src.gradientAngle ?? defaultCustomization.gradientAngle))
+    setWrapperSize(computeWrapperSize(src))
+    setPreviewSizePreset("md") // Reset to default preview size when applying preset
   }
 
   const basePreviewSize = Math.max(24, Math.min(80, size))
-  const previewSizeMap: Record<string, number> = { sm: 24, md: 40, lg: 64, xl: 96 }
+  const previewSizeMap: Record<string, number> = { sm: 24, md: 40, lg: 64, xl: 96, custom: size }
   const previewSize = previewSizeMap[previewSizePreset] || basePreviewSize
 
   // ---- DESIGN ONLY: Frosted Dark Option B layout ----
@@ -320,15 +359,30 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
                 <div>
                   <Label className="text-white/90">Taille</Label>
                   <div className="flex items-center gap-3 mt-2">
-                    <Button variant="ghost" size="sm" onClick={() => setSize(Math.max(24, size - 1))} className="p-1 h-8 w-8">
+                    <Button variant="ghost" size="sm" onClick={() => { setSize(Math.max(12, size - 1)); setPreviewSizePreset("custom"); }} className="p-1 h-8 w-8">
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    <input type="range" min={24} max={96} value={size} onChange={(e) => setSize(Number(e.target.value))} className="flex-1" />
-                    <Button variant="ghost" size="sm" onClick={() => setSize(Math.min(96, size + 1))} className="p-1 h-8 w-8">
+                        <input type="range" min={12} max={96} value={size} onChange={(e) => { setSize(Number(e.target.value)); setPreviewSizePreset("custom"); }} className="flex-1" />
+                    <Button variant="ghost" size="sm" onClick={() => { setSize(Math.min(96, size + 1)); setPreviewSizePreset("custom"); }} className="p-1 h-8 w-8">
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                     <div className="w-12 text-right text-white/80">{size}px</div>
                   </div>
+                  {shape !== 'none' && (
+                    <div className="mt-3">
+                      <Label className="text-white/90">Taille pastille</Label>
+                      <div className="flex items-center gap-3 mt-2">
+                          <Button variant="ghost" size="sm" onClick={() => { setWrapperSize(Math.max(12, wrapperSize - 1)); }} className="p-1 h-8 w-8">
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                          <input type="range" min={12} max={160} value={wrapperSize} onChange={(e) => { setWrapperSize(Number(e.target.value)); }} className="flex-1" />
+                          <Button variant="ghost" size="sm" onClick={() => { setWrapperSize(Math.min(160, wrapperSize + 1)); }} className="p-1 h-8 w-8">
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                        <div className="w-12 text-right text-white/80">{wrapperSize}px</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* BORDURE */}
@@ -403,6 +457,7 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
                       <option value="md">MD</option>
                       <option value="lg">LG</option>
                       <option value="xl">XL</option>
+                      <option value="custom">Personnalisé</option>
                     </select>
                     {/* Preview background color control */}
                     <div className="ml-2 flex items-center gap-2">
@@ -459,10 +514,43 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
                           }
                         : { transform: `rotate(${rotate}deg)`, boxShadow: baseBoxShadow }
 
+                    // When the preview is in "custom" mode we want to show the *actual*
+                    // sizes the user is editing (icon size and wrapper size) so the
+                    // two sliders feel independent. For other preview presets we use
+                    // the shared normalization that also matches sidebar thumbnails.
+                    let wrapperOuterSize: number
+                    let innerIconSize: number
+                    let paddingScaled: number
+
+                    if (previewSizePreset === 'custom') {
+                      // show raw values (no scaling) so changing icon size does not
+                      // implicitly change the shown wrapper size
+                      if (shape === 'none') {
+                        wrapperOuterSize = size
+                        innerIconSize = size
+                        paddingScaled = 0
+                      } else {
+                        wrapperOuterSize = wrapperSize
+                        innerIconSize = size
+                        paddingScaled = paddingVal
+                      }
+                    } else {
+                      // use normalization function so preview and sidebar thumbnails
+                      // remain visually consistent for small/large presets
+                      const normalized = normalizeIconForThumbnail(
+                        shape === 'none' ? { size } : { size, wrapperSize, padding: paddingVal },
+                        previewSize,
+                        { respectIconSize: true }
+                      )
+                      wrapperOuterSize = normalized.wrapperPx
+                      innerIconSize = normalized.iconInnerSize
+                      paddingScaled = normalized.padding
+                    }
+
                     const wrapperStyle: React.CSSProperties = {
                       background: bg,
-                      width: previewSize + paddingVal * 2 + 48,
-                      height: previewSize + paddingVal * 2 + 48,
+                      width: wrapperOuterSize,
+                      height: wrapperOuterSize,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -470,7 +558,7 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
                       color: iconColor,
                       border: bw,
                       opacity: (opacity ?? 100) / 100,
-                      padding: paddingVal,
+                      padding: paddingScaled,
                       transition: "transform 180ms ease, box-shadow 180ms ease, opacity 120ms",
                       ...stateAdjustments,
                     }
@@ -478,8 +566,8 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
                     if (shape === "none") {
                       return (
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <div style={{ width: previewSize, height: previewSize, display: "flex", alignItems: "center", justifyContent: "center", color: iconColor }}>
-                            {iconComp ? renderIconLocal(iconComp, previewSize, iconColor) : <div style={{ width: previewSize, height: previewSize, background: "rgba(0,0,0,0.06)" }} />}
+                          <div style={{ width: innerIconSize, height: innerIconSize, display: "flex", alignItems: "center", justifyContent: "center", color: iconColor }}>
+                            {iconComp ? renderIconLocal(iconComp, innerIconSize, iconColor) : <div style={{ width: innerIconSize, height: innerIconSize, background: "rgba(0,0,0,0.06)" }} />}
                           </div>
                         </div>
                       )
@@ -487,8 +575,8 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
 
                     return (
                       <div style={wrapperStyle as any}>
-                        <div style={{ width: previewSize, height: previewSize, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          {iconComp ? renderIconLocal(iconComp, previewSize, iconColor) : <div style={{ width: previewSize, height: previewSize, background: "rgba(255,255,255,0.12)", borderRadius: 6 }} />}
+                        <div style={{ width: innerIconSize, height: innerIconSize, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          {iconComp ? renderIconLocal(iconComp, innerIconSize, iconColor) : <div style={{ width: innerIconSize, height: innerIconSize, background: "rgba(255,255,255,0.12)", borderRadius: 6 }} />}
                         </div>
                       </div>
                     )

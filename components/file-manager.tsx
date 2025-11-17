@@ -13,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Archive, Copy, Download, Edit, Eye, File, FileCode, FileText, FileWarning, Folder, FolderOpen, ImageIcon, Link, MoreHorizontal, Move, Music, NotebookText, Palette, Plus, Scissors, Search, SearchX, Share, Trash, Upload, UploadCloud, Video, FilePlus, ChevronLeft, ChevronRight, Home, FileImage, FileVideo, FileAudio, Sheet, Presentation, List, LayoutGrid } from "lucide-react"
+import * as LucideIcons from "lucide-react"
 import { FileConflictDialog } from "./file-conflict-dialog"
 
 // Custom PDF icon component
@@ -31,6 +32,15 @@ import { AddPdfDocumentDialog } from "./add-pdf-document_dialog"
 import { AddDrawDialog } from "./add-draw_dialog"
 
 import { RenameDialog } from "./rename-dialog"
+
+// Icon mapping types
+type IconMapping = {
+  key: string
+  label: string
+  currentIcon: string
+  library: string
+  customization?: any
+}
 
 interface FileManagerProps {
   selectedFolder: string | null
@@ -108,13 +118,16 @@ const FileListRow = React.memo(({
   handleFileClick, 
   handleDeleteFile,
   setRenameFileState,
-  setFileConflict
+  setFileConflict,
+  viewMode,
+  getMappedIconComponent,
+  renderMappedIcon
 }: {
   file: FileItem;
   handleFileClick: (file: FileItem) => void;
   handleDeleteFile: (file: FileItem) => void;
   setRenameFileState: (state: { file: FileItem; isOpen: boolean } | null) => void;
-  setFileConflict: (state: { 
+  setFileConflict: (state: {
     fileName: string; 
     sourcePath: string; 
     targetFolder: string;
@@ -122,6 +135,9 @@ const FileListRow = React.memo(({
     oldPath?: string;
     newPath?: string;
   } | null) => void;
+  viewMode: "grid" | "list";
+  getMappedIconComponent: (key: string, fallback?: any) => any;
+  renderMappedIcon: (mappingKey: string, fallbackIcon: any, defaultSize?: number) => any;
 }) => {
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
@@ -138,6 +154,12 @@ const FileListRow = React.memo(({
 
   const { Icon, color } = getFileIconAndColor(file.name);
 
+  // Use mapped icon for folders in list view
+  const IconComponent = file.isDirectory ? getMappedIconComponent('fm_folder_list', Folder) : Icon;
+  console.log('FileListRow: rendering icon for', file.name, 'isDirectory:', file.isDirectory, 'viewMode:', viewMode);
+  console.log('FileListRow: IconComponent for folder:', IconComponent);
+  const displayColor = file.isDirectory ? '' : color;
+
   return (
     <div
       className="flex items-center gap-4 p-3 hover:bg-muted/50 cursor-pointer border-b border-border/50 group"
@@ -145,7 +167,7 @@ const FileListRow = React.memo(({
     >
       {/* Icon */}
       <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center">
-        <Icon className={`w-6 h-6 ${color}`} />
+        {file.isDirectory ? renderMappedIcon('fm_folder_list', Folder, 24) : <IconComponent className={`w-6 h-6 ${displayColor}`} />}
       </div>
 
       {/* Name */}
@@ -248,7 +270,10 @@ const FileCard = React.memo(({
   handleDeleteFile,
   setRenameFileState,
   uploadProgress,
-  setFileConflict
+  setFileConflict,
+  viewMode,
+  getMappedIconComponent,
+  renderMappedIcon
 }: {
   file: FileItem;
   handleFileClick: (file: FileItem) => void;
@@ -263,6 +288,9 @@ const FileCard = React.memo(({
     oldPath?: string;
     newPath?: string;
   } | null) => void;
+  viewMode: "grid" | "list";
+  getMappedIconComponent: (key: string, fallback?: any) => any;
+  renderMappedIcon: (mappingKey: string, fallbackIcon: any, defaultSize?: number) => any;
 }) => {
   const [isDragOver, setIsDragOver] = React.useState(false);
   
@@ -374,7 +402,10 @@ const FileCard = React.memo(({
       {file.isDirectory ? (
         /* Folder with icon */
         <div className="relative flex flex-col items-center p-4">
-          <Folder className="w-20 h-20 text-orange-500" />
+          {(() => {
+            console.log('FileCard: rendering folder icon for', file.name, 'viewMode:', viewMode);
+            return renderMappedIcon('fm_folder_grid', Folder, 80);
+          })()}
           <span className="text-xs font-medium text-center truncate max-w-full px-1 mt-2">
             {file.name}
           </span>
@@ -490,6 +521,7 @@ export function FileManager({
   viewMode: externalViewMode = "grid",
 }: FileManagerProps) {
   console.log("FileManager: Component re-rendered with selectedNote", selectedNote);
+  console.log("FileManager: externalViewMode =", externalViewMode);
   // Buffer pour copier/couper/coller
   const [clipboard, setClipboard] = useState<{ action: "cut" | "copy"; folder: any } | null>(null);
 
@@ -509,6 +541,126 @@ export function FileManager({
   const [selectedFileContent, setSelectedFileContent] = useState<string | null>(null);
   const [selectedFileForView, setSelectedFileForView] = useState<FileItem | null>(null);
   const [existingFolders, setExistingFolders] = useState<any[]>([]);
+
+  // Icon mappings state
+  const [iconMappings, setIconMappings] = useState<IconMapping[]>([]);
+
+  // Load icon mappings from config.json
+  useEffect(() => {
+    const loadIconMappings = async () => {
+      try {
+        if (window.electronAPI?.loadSettings) {
+          const settings = await window.electronAPI.loadSettings();
+          console.log('file-manager: loaded settings from config.json:', settings);
+          if (settings?.icons?.mappings) {
+            console.log('file-manager: loaded icon mappings from config.json:', settings.icons.mappings.length, 'mappings');
+            console.log('file-manager: mappings details:', settings.icons.mappings);
+            setIconMappings(settings.icons.mappings);
+          } else {
+            console.log('file-manager: no icon mappings found in config.json');
+          }
+        } else {
+          console.log('file-manager: window.electronAPI.loadSettings not available');
+        }
+      } catch (error) {
+        console.warn('file-manager: Failed to load icon mappings:', error);
+      }
+    };
+
+    loadIconMappings();
+
+    // Listen for icon mapping updates
+    const handleIconMappingsUpdate = (event: any) => {
+      console.log('file-manager: received iconMappingsUpdated event:', event.detail);
+      if (event.detail?.mappings) {
+        setIconMappings(event.detail.mappings);
+      }
+    };
+
+    window.addEventListener('iconMappingsUpdated', handleIconMappingsUpdate);
+
+    return () => {
+      window.removeEventListener('iconMappingsUpdated', handleIconMappingsUpdate);
+    };
+  }, []);
+
+  // Function to get mapped icon component
+  const getMappedIconComponent = useCallback((mappingKey: string, fallbackIcon: any = Folder) => {
+    const mapping = iconMappings.find(m => m.key === mappingKey);
+    if (!mapping) {
+      console.log(`file-manager: no mapping found for key '${mappingKey}', using fallback`);
+      return fallbackIcon;
+    }
+
+    try {
+      // Load icon from appropriate library
+      if (mapping.library === 'Lucide') {
+        const icon = (LucideIcons as any)[mapping.currentIcon];
+        console.log(`file-manager: using Lucide icon '${mapping.currentIcon}' for key '${mappingKey}'`);
+        return icon || fallbackIcon;
+      }
+      // For now, only support Lucide icons in file-manager
+      // Could be extended to support other libraries later
+      console.log(`file-manager: unsupported library '${mapping.library}' for key '${mappingKey}', using fallback`);
+      return (LucideIcons as any)[mapping.currentIcon] || fallbackIcon;
+    } catch (error) {
+      console.warn(`file-manager: Failed to load icon for mapping '${mappingKey}':`, error);
+      return fallbackIcon;
+    }
+  }, [iconMappings]);
+
+  // Return the full mapping object for a key
+  const getMappingForKey = useCallback((mappingKey: string) => {
+    return iconMappings.find(m => m.key === mappingKey) || null
+  }, [iconMappings])
+
+  // Render an icon element using mapping customization (size, color, bg, shape, border)
+  const renderMappedIcon = useCallback((mappingKey: string, fallbackIcon: any = Folder, defaultSize = 48) => {
+    const mapping = getMappingForKey(mappingKey)
+    const Comp: any = getMappedIconComponent(mappingKey, fallbackIcon)
+
+    const customization = mapping?.customization || {}
+    const size = customization.size || defaultSize
+    const iconColor = customization.iconColor || 'currentColor'
+    const bg = customization.bgColor || 'transparent'
+    const shape = customization.shape || 'rounded'
+    const borderWidth = customization.borderWidth ?? 0
+    const borderColor = customization.borderColor || 'transparent'
+
+    const wrapperStyle: React.CSSProperties = {
+      background: bg,
+      width: size,
+      height: size,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: shape === 'circle' ? 9999 : shape === 'rounded' ? 10 : 4,
+      color: iconColor,
+      border: borderWidth ? `${borderWidth}px solid ${borderColor}` : undefined,
+      padding: customization.padding || 0
+    }
+
+    // Compute inline size for the svg inside the wrapper
+    const svgSize = Math.max(4, Math.round(size * 0.6))
+
+    try {
+      if (!Comp) return React.createElement(fallbackIcon, { className: `w-8 h-8`, style: { color: iconColor } })
+      // Only pass Tailwind classes when no explicit size is configured
+      const svgProps: any = { style: { color: iconColor, width: svgSize, height: svgSize } }
+      if (!customization.size) {
+        // best-effort tailwind class for default sizes when no customization exists
+        svgProps.className = `w-${Math.max(4, Math.round(svgSize / 4))} h-${Math.max(4, Math.round(svgSize / 4))}`
+      }
+      return (
+        <div style={wrapperStyle} className="flex-shrink-0">
+          {React.createElement(Comp, svgProps)}
+        </div>
+      )
+    } catch (e) {
+      console.warn('file-manager: renderMappedIcon error for', mappingKey, e)
+      return React.createElement(fallbackIcon, { className: `w-8 h-8`, style: { color: iconColor } })
+    }
+  }, [getMappingForKey, getMappedIconComponent])
 
   useEffect(() => {
     console.log("FileManager: useEffect for selectedNote triggered", selectedNote);
@@ -1372,6 +1524,9 @@ export function FileManager({
                   handleDeleteFile={handleDeleteFile}
                   setRenameFileState={setRenameFileState}
                   setFileConflict={setFileConflict}
+                  viewMode={externalViewMode}
+                  getMappedIconComponent={getMappedIconComponent}
+                  renderMappedIcon={renderMappedIcon}
                 />
               ))}
             </div>
@@ -1392,6 +1547,9 @@ export function FileManager({
                 setRenameFileState={setRenameFileState}
                 uploadProgress={uploadProgress}
                 setFileConflict={setFileConflict}
+                viewMode={externalViewMode}
+                getMappedIconComponent={getMappedIconComponent}
+                renderMappedIcon={renderMappedIcon}
               />
             ))}
           </div>

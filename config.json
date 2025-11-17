@@ -30,108 +30,389 @@
         "library": "Lucide",
         "customization": {
           "shape": "none",
-          "bgColor": "#101010",
-          "iconColor": "#fef4f4",
-          "size": 40,
+          "bgColor": "transparent",
+          "iconColor": "#d4ab0a",
+          "size": 30,
+          "wrapperSize": 30,
           "borderWidth": 0,
           "borderColor": "transparent",
           "opacity": 100,
           "shadowEnabled": false,
-          "shadowColor": "#000000",
-          "shadowBlur": 8,
-          "shadowOffsetY": 2,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
           "shadowSpread": 0,
-          "padding": 4,
+          "padding": 0,
           "rotate": -1,
           "gradientEnabled": false,
-          "gradientFrom": "#2B6CB0",
-          "gradientTo": "#2C7A7B",
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
           "gradientAngle": 90
-        }
+        },
+        "context": "expanded"
       },
       {
         "key": "folder_open",
         "label": "Dossier (ouvert)",
         "currentIcon": "FolderOpen",
-        "library": "Lucide"
+        "library": "Lucide",
+        "customization": {
+          "shape": "none",
+          "bgColor": "transparent",
+          "iconColor": "#d4ab0a",
+          "size": 30,
+          "wrapperSize": 30,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
+          "shadowSpread": 0,
+          "padding": 0,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
+          "gradientAngle": 90
+        },
+        "context": "expanded"
+      },
+      {
+        "key": "fm_folder_grid",
+        "label": "Dossier (vue grille)",
+        "currentIcon": "Folder",
+        "library": "Lucide",
+        "customization": {
+          "shape": "none",
+          "bgColor": "transparent",
+          "iconColor": "#d4ab0a",
+          "size": 96,
+          "wrapperSize": 96,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
+          "shadowSpread": 0,
+          "padding": 0,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
+          "gradientAngle": 90
+        },
+        "context": "expanded"
+      },
+      {
+        "key": "fm_folder_list",
+        "label": "Dossier (vue liste)",
+        "currentIcon": "Folder",
+        "library": "Lucide",
+        "customization": {
+          "shape": "none",
+          "bgColor": "transparent",
+          "iconColor": "#d4ab0a",
+          "size": 40,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
+          "shadowSpread": 0,
+          "padding": 0,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
+          "gradientAngle": 90
+        },
+        "context": "expanded"
       },
       {
         "key": "add_folder",
         "label": "Ajouter dossier",
         "currentIcon": "FolderPlus",
-        "library": "Lucide"
+        "library": "Lucide",
+        "customization": {
+          "shape": "square",
+          "bgColor": "#cd9511",
+          "iconColor": "#ffffff",
+          "size": 30,
+          "wrapperSize": 30,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
+          "shadowSpread": 0,
+          "padding": 0,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
+          "gradientAngle": 90
+        },
+        "context": "expanded"
       },
       {
         "key": "add_note",
         "label": "Ajouter note",
         "currentIcon": "NotePencil",
-        "library": "Phosphor"
+        "library": "Phosphor",
+        "customization": {
+          "shape": "square",
+          "bgColor": "#e80202",
+          "iconColor": "#ffffff",
+          "size": 30,
+          "wrapperSize": 30,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
+          "shadowSpread": 0,
+          "padding": 0,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
+          "gradientAngle": 90
+        },
+        "context": "expanded"
       },
       {
         "key": "add_draw",
         "label": "Ajouter dessin",
         "currentIcon": "Palette",
-        "library": "Lucide"
+        "library": "Lucide",
+        "customization": {
+          "shape": "square",
+          "bgColor": "#8819c7",
+          "iconColor": "#ffffff",
+          "size": 30,
+          "wrapperSize": 30,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
+          "shadowSpread": 0,
+          "padding": 0,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
+          "gradientAngle": 90
+        },
+        "context": "expanded"
       },
       {
         "key": "add_excel",
         "label": "Ajouter tableur",
         "currentIcon": "Table",
-        "library": "Lucide"
+        "library": "Lucide",
+        "customization": {
+          "shape": "square",
+          "bgColor": "#1b7412",
+          "iconColor": "#ffffff",
+          "size": 30,
+          "wrapperSize": 30,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
+          "shadowSpread": 0,
+          "padding": 0,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
+          "gradientAngle": 90
+        },
+        "context": "expanded"
       },
       {
         "key": "add_powerpoint",
         "label": "Ajouter présentation",
         "currentIcon": "Presentation",
-        "library": "Lucide"
+        "library": "Lucide",
+        "customization": {
+          "shape": "square",
+          "bgColor": "#fa970c",
+          "iconColor": "#ffffff",
+          "size": 30,
+          "wrapperSize": 33,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
+          "shadowSpread": 0,
+          "padding": 0,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
+          "gradientAngle": 90
+        },
+        "context": "expanded"
       },
       {
         "key": "add_pdf",
         "label": "Ajouter PDF",
         "currentIcon": "FaFilePdf",
-        "library": "ReactIcons"
+        "library": "ReactIcons",
+        "customization": {
+          "shape": "square",
+          "bgColor": "#e81212",
+          "iconColor": "#ffffff",
+          "size": 30,
+          "wrapperSize": 30,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
+          "shadowSpread": 0,
+          "padding": 0,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
+          "gradientAngle": 90
+        },
+        "context": "expanded"
       },
       {
         "key": "add_image",
         "label": "Ajouter image",
         "currentIcon": "FaImages",
-        "library": "ReactIcons"
+        "library": "ReactIcons",
+        "customization": {
+          "shape": "square",
+          "bgColor": "#d1cc14",
+          "iconColor": "#ffffff",
+          "size": 30,
+          "wrapperSize": 30,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
+          "shadowSpread": 0,
+          "padding": 0,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
+          "gradientAngle": 90
+        },
+        "context": "expanded"
       },
       {
         "key": "add_video",
         "label": "Ajouter vidéo",
         "currentIcon": "Video",
-        "library": "Lucide"
+        "library": "Lucide",
+        "customization": {
+          "shape": "square",
+          "bgColor": "#363535",
+          "iconColor": "#ffffff",
+          "size": 30,
+          "wrapperSize": 30,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
+          "shadowSpread": 0,
+          "padding": 0,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
+          "gradientAngle": 90
+        },
+        "context": "expanded"
       },
       {
         "key": "add_audio",
         "label": "Ajouter audio",
         "currentIcon": "MdAudiotrack",
-        "library": "ReactIcons"
+        "library": "ReactIcons",
+        "customization": {
+          "shape": "square",
+          "bgColor": "#c62bb8",
+          "iconColor": "#ffffff",
+          "size": 30,
+          "wrapperSize": 30,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
+          "shadowSpread": 0,
+          "padding": 0,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
+          "gradientAngle": 90
+        },
+        "context": "expanded"
       },
       {
         "key": "ext_pdf",
         "label": "Fichier PDF",
         "currentIcon": "FileText",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_md",
         "label": "Fichier Markdown",
         "currentIcon": "FileText",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_txt",
         "label": "Fichier texte",
         "currentIcon": "FileText",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_doc",
         "label": "Document Word",
         "currentIcon": "FileText",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_docx",
@@ -142,7 +423,7 @@
           "shape": "rounded",
           "bgColor": "#2873c2fc",
           "iconColor": "#ffffff",
-          "size": 41,
+          "size": 60,
           "borderWidth": 0,
           "borderColor": "#fcfcfc",
           "opacity": 99,
@@ -152,330 +433,617 @@
           "shadowOffsetY": 2,
           "shadowSpread": 0,
           "padding": 2,
-          "rotate": 2,
+          "rotate": 0,
           "gradientEnabled": false,
           "gradientFrom": "#0a7cea",
           "gradientTo": "#171616",
           "gradientAngle": 125
-        }
+        },
+        "context": "expanded"
       },
       {
         "key": "ext_xls",
         "label": "Feuille Excel",
         "currentIcon": "AiOutlineFileExcel",
-        "library": "ReactIcons"
+        "library": "ReactIcons",
+        "context": "expanded"
       },
       {
         "key": "ext_xlsx",
         "label": "Feuille Excel",
         "currentIcon": "AiOutlineFileExcel",
-        "library": "ReactIcons"
+        "library": "ReactIcons",
+        "context": "expanded"
       },
       {
         "key": "ext_ppt",
         "label": "Présentation PowerPoint",
         "currentIcon": "Presentation",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_pptx",
         "label": "Présentation PowerPoint",
         "currentIcon": "Presentation",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_image",
         "label": "Image (jpg/png)",
         "currentIcon": "FileImage",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_jpg",
         "label": "Image JPG",
         "currentIcon": "FileImage",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_jpeg",
         "label": "Image JPEG",
         "currentIcon": "FileImage",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_png",
         "label": "Image PNG",
         "currentIcon": "FileImage",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_gif",
         "label": "Image GIF",
         "currentIcon": "FileImage",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_svg",
         "label": "Image SVG",
         "currentIcon": "FileImage",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_video",
         "label": "Vidéo",
         "currentIcon": "FileVideo",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_mp4",
         "label": "Vidéo MP4",
         "currentIcon": "FileVideo",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_avi",
         "label": "Vidéo AVI",
         "currentIcon": "FileVideo",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_mov",
         "label": "Vidéo MOV",
         "currentIcon": "FileVideo",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_audio",
         "label": "Audio",
         "currentIcon": "FileAudio",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_mp3",
         "label": "Audio MP3",
         "currentIcon": "FileAudio",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_wav",
         "label": "Audio WAV",
         "currentIcon": "FileAudio",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_zip",
         "label": "Archive ZIP",
         "currentIcon": "Archive",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_rar",
         "label": "Archive RAR",
         "currentIcon": "Archive",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_csv",
         "label": "Fichier CSV",
         "currentIcon": "FileSpreadsheet",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_json",
         "label": "Fichier JSON",
         "currentIcon": "FileCode",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_js",
         "label": "Fichier JavaScript",
         "currentIcon": "FileCode",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_jsx",
         "label": "Fichier JSX",
         "currentIcon": "FileCode",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_ts",
         "label": "Fichier TypeScript",
         "currentIcon": "FileCode",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_tsx",
         "label": "Fichier TSX",
         "currentIcon": "FileCode",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_py",
         "label": "Fichier Python",
         "currentIcon": "FileCode",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_rb",
         "label": "Fichier Ruby",
         "currentIcon": "FileCode",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_go",
         "label": "Fichier Go",
         "currentIcon": "FileCode",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_rs",
         "label": "Fichier Rust",
         "currentIcon": "FileCode",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_c",
         "label": "Fichier C",
         "currentIcon": "FileCode",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_cpp",
         "label": "Fichier C++",
         "currentIcon": "FileCode",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_cs",
         "label": "Fichier C#",
         "currentIcon": "FileCode",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_java",
         "label": "Fichier Java",
         "currentIcon": "FileCode",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_yaml",
         "label": "Fichier YAML",
         "currentIcon": "FileCode",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_yml",
         "label": "Fichier YAML",
         "currentIcon": "FileCode",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_toml",
         "label": "Fichier TOML",
         "currentIcon": "FileCode",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_ini",
         "label": "Fichier INI",
         "currentIcon": "FileCode",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_lock",
         "label": "Fichier lock",
         "currentIcon": "Lock",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_rtf",
         "label": "Fichier RTF",
         "currentIcon": "FileText",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_odt",
         "label": "OpenDocument Texte (ODT)",
         "currentIcon": "FileText",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_ods",
         "label": "OpenDocument Feuille (ODS)",
         "currentIcon": "FileSpreadsheet",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_odp",
         "label": "OpenDocument Présentation (ODP)",
         "currentIcon": "Presentation",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_epub",
         "label": "EPUB",
         "currentIcon": "FileText",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_mobi",
         "label": "MOBI",
         "currentIcon": "FileText",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_psd",
         "label": "Fichier Photoshop (PSD)",
         "currentIcon": "FileImage",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_exe",
         "label": "Exécutable (EXE)",
         "currentIcon": "Package",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_dmg",
         "label": "Image macOS (DMG)",
         "currentIcon": "HardDrive",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_iso",
         "label": "Image ISO",
         "currentIcon": "HardDrive",
-        "library": "Lucide"
-      },
-      {
-        "key": "ext_json",
-        "label": "Fichier JSON",
-        "currentIcon": "FileCode",
-        "library": "Lucide"
-      },
-      {
-        "key": "ext_js",
-        "label": "Fichier JavaScript",
-        "currentIcon": "FileCode",
-        "library": "Lucide"
-      },
-      {
-        "key": "ext_ts",
-        "label": "Fichier TypeScript",
-        "currentIcon": "FileCode",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_html",
         "label": "Fichier HTML",
         "currentIcon": "FileCode",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
       },
       {
         "key": "ext_css",
         "label": "Fichier CSS",
         "currentIcon": "FileCode",
-        "library": "Lucide"
+        "library": "Lucide",
+        "context": "expanded"
+      }
+    ],
+    "collapsedMappings": [
+      {
+        "key": "add_folder",
+        "label": "Ajouter dossier (réduit)",
+        "currentIcon": "FolderPlus",
+        "library": "Lucide",
+        "context": "collapsed",
+        "customization": {
+          "shape": "none",
+          "bgColor": "transparent",
+          "iconColor": "#ffffff",
+          "size": 30,
+          "wrapperSize": 30,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
+          "shadowSpread": 0,
+          "padding": 0,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
+          "gradientAngle": 90
+        }
+      },
+      {
+        "key": "add_note",
+        "label": "Ajouter note (réduit)",
+        "currentIcon": "NotePencil",
+        "library": "Phosphor",
+        "context": "collapsed",
+        "customization": {
+          "shape": "none",
+          "bgColor": "transparent",
+          "iconColor": "#ffffff",
+          "size": 30,
+          "wrapperSize": 30,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
+          "shadowSpread": 0,
+          "padding": 0,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
+          "gradientAngle": 90
+        }
+      },
+      {
+        "key": "add_draw",
+        "label": "Ajouter dessin (réduit)",
+        "currentIcon": "Palette",
+        "library": "Lucide",
+        "context": "collapsed",
+        "customization": {
+          "shape": "none",
+          "bgColor": "transparent",
+          "iconColor": "#ffffff",
+          "size": 30,
+          "wrapperSize": 30,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
+          "shadowSpread": 0,
+          "padding": 0,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
+          "gradientAngle": 90
+        }
+      },
+      {
+        "key": "add_excel",
+        "label": "Ajouter tableur (réduit)",
+        "currentIcon": "Table",
+        "library": "Lucide",
+        "context": "collapsed",
+        "customization": {
+          "shape": "none",
+          "bgColor": "transparent",
+          "iconColor": "#ffffff",
+          "size": 30,
+          "wrapperSize": 30,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
+          "shadowSpread": 0,
+          "padding": 0,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
+          "gradientAngle": 90
+        }
+      },
+      {
+        "key": "add_powerpoint",
+        "label": "Ajouter présentation (réduit)",
+        "currentIcon": "Presentation",
+        "library": "Lucide",
+        "context": "collapsed",
+        "customization": {
+          "shape": "none",
+          "bgColor": "transparent",
+          "iconColor": "#ffffff",
+          "size": 30,
+          "wrapperSize": 30,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
+          "shadowSpread": 0,
+          "padding": 0,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
+          "gradientAngle": 90
+        }
+      },
+      {
+        "key": "add_pdf",
+        "label": "Ajouter PDF (réduit)",
+        "currentIcon": "FaFilePdf",
+        "library": "ReactIcons",
+        "context": "collapsed",
+        "customization": {
+          "shape": "none",
+          "bgColor": "transparent",
+          "iconColor": "#ffffff",
+          "size": 30,
+          "wrapperSize": 30,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
+          "shadowSpread": 0,
+          "padding": 0,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
+          "gradientAngle": 90
+        }
+      },
+      {
+        "key": "add_image",
+        "label": "Ajouter image (réduit)",
+        "currentIcon": "FaImages",
+        "library": "ReactIcons",
+        "context": "collapsed",
+        "customization": {
+          "shape": "none",
+          "bgColor": "transparent",
+          "iconColor": "#ffffff",
+          "size": 30,
+          "wrapperSize": 30,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
+          "shadowSpread": 0,
+          "padding": 0,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
+          "gradientAngle": 90
+        }
+      },
+      {
+        "key": "add_video",
+        "label": "Ajouter vidéo (réduit)",
+        "currentIcon": "Video",
+        "library": "Lucide",
+        "context": "collapsed",
+        "customization": {
+          "shape": "none",
+          "bgColor": "transparent",
+          "iconColor": "#ffffff",
+          "size": 30,
+          "wrapperSize": 30,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
+          "shadowSpread": 0,
+          "padding": 0,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
+          "gradientAngle": 90
+        }
+      },
+      {
+        "key": "add_audio",
+        "label": "Ajouter audio (réduit)",
+        "currentIcon": "MdAudiotrack",
+        "library": "ReactIcons",
+        "context": "collapsed",
+        "customization": {
+          "shape": "none",
+          "bgColor": "transparent",
+          "iconColor": "#ffffff",
+          "size": 30,
+          "wrapperSize": 30,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
+          "shadowSpread": 0,
+          "padding": 0,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
+          "gradientAngle": 90
+        }
       }
     ]
   }

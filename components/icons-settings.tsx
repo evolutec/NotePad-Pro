@@ -17,6 +17,8 @@ type MappingItem = {
   currentIcon: string
   library: string // 'Lucide' | 'Material UI'
   customization?: IconCustomization
+  // optional context: 'expanded' | 'collapsed' | undefined (undefined === expanded/general)
+  context?: 'expanded' | 'collapsed'
 }
 
 type IconSection = {
@@ -35,6 +37,14 @@ const DEFAULT_SECTIONS: IconSection[] = [
     ]
   },
   {
+    title: "Icônes de dossiers (FileManager)",
+    description: "Icônes utilisées pour les dossiers dans le gestionnaire de fichiers",
+    mappings: [
+      { key: "fm_folder_grid", label: "Dossier (vue grille)", currentIcon: "Folder", library: "Lucide" },
+      { key: "fm_folder_list", label: "Dossier (vue liste)", currentIcon: "Folder", library: "Lucide" }
+    ]
+  },
+  {
     title: "Icônes d'ajout (Sidebar)",
     description: "Icônes des boutons d'ajout dans la barre latérale",
     mappings: [
@@ -47,6 +57,22 @@ const DEFAULT_SECTIONS: IconSection[] = [
       { key: "add_image", label: "Ajouter image", currentIcon: "FileImage", library: "Lucide" },
       { key: "add_video", label: "Ajouter vidéo", currentIcon: "FileVideo", library: "Lucide" },
       { key: "add_audio", label: "Ajouter audio", currentIcon: "FileAudio", library: "Lucide" }
+    ]
+  },
+  // Collapsed sidebar specific mappings — users can override the compact icons independently
+  {
+    title: "Icônes d'ajout (Sidebar — réduit)",
+    description: "Icônes utilisées lorsque la barre latérale est réduite (collapsed)",
+    mappings: [
+      { key: "add_folder", label: "Ajouter dossier (réduit)", currentIcon: "FolderPlus", library: "Lucide", context: 'collapsed' },
+      { key: "add_note", label: "Ajouter note (réduit)", currentIcon: "FilePlus", library: "Lucide", context: 'collapsed' },
+      { key: "add_draw", label: "Ajouter dessin (réduit)", currentIcon: "Palette", library: "Lucide", context: 'collapsed' },
+      { key: "add_excel", label: "Ajouter tableur (réduit)", currentIcon: "Table", library: "Lucide", context: 'collapsed' },
+      { key: "add_powerpoint", label: "Ajouter présentation (réduit)", currentIcon: "Presentation", library: "Lucide", context: 'collapsed' },
+      { key: "add_pdf", label: "Ajouter PDF (réduit)", currentIcon: "FileText", library: "Lucide", context: 'collapsed' },
+      { key: "add_image", label: "Ajouter image (réduit)", currentIcon: "FileImage", library: "Lucide", context: 'collapsed' },
+      { key: "add_video", label: "Ajouter vidéo (réduit)", currentIcon: "FileVideo", library: "Lucide", context: 'collapsed' },
+      { key: "add_audio", label: "Ajouter audio (réduit)", currentIcon: "FileAudio", library: "Lucide", context: 'collapsed' }
     ]
   },
   {
@@ -133,29 +159,36 @@ const isRenderableExport = (c: any) => {
   return false
 }
 
-const renderIcon = (iconComp: any, className = "w-8 h-8") => {
+const renderIcon = (iconComp: any, className = "w-8 h-8", sizePx?: number) => {
   if (!iconComp) return null
   try {
-    // If it's already a valid React element, clone it to apply classes/styles
+    // If it's already a valid React element, clone it to apply classes/styles and optional sizing
     if (React.isValidElement(iconComp)) {
       const el = iconComp as React.ReactElement<any>
+      const style = { ...(el.props?.style || {}), color: 'currentColor' } as React.CSSProperties
+      if (sizePx) {
+        style.width = sizePx
+        style.height = sizePx
+      }
       return React.cloneElement(el, {
         className: (el.props?.className ? el.props.className + ' ' : '') + className + ' text-black dark:text-white',
-        style: { ...(el.props?.style || {}), color: 'currentColor' }
+        style
       })
     }
 
-    // Many icon libraries export forwardRef objects (typeof === 'object'), functions, or module default exports.
-    // React.createElement handles function components and forwardRef objects uniformly.
     const Comp = iconComp?.default || iconComp
-
-    if (!isRenderableExport(Comp)) {
-      return null
-    }
+    if (!isRenderableExport(Comp)) return null
 
     try {
-      // Pass a size prop as many icon libraries accept it (Phosphor, etc.)
-      return React.createElement(Comp, { className: className + ' text-black dark:text-white', style: { color: 'currentColor' }, size: 20 })
+      // Provide both a size prop (for icon libraries that accept it) and inline width/height
+      const style: React.CSSProperties = { color: 'currentColor' }
+      if (sizePx) {
+        style.width = sizePx
+        style.height = sizePx
+        // When sizePx is provided, don't use Tailwind width/height classes that might conflict
+        className = className.replace(/w-\d+\s*h-\d+/g, '').trim() || 'text-black dark:text-white'
+      }
+      return React.createElement(Comp, { className: className + (sizePx ? '' : ' text-black dark:text-white'), style, size: sizePx || 20 })
     } catch (renderError) {
       return null
     }
@@ -166,8 +199,8 @@ const renderIcon = (iconComp: any, className = "w-8 h-8") => {
 
 export const IconsSettings: React.FC = () => {
   const [sections, setSections] = useState<IconSection[]>(DEFAULT_SECTIONS)
-  // Keep the important sections open by default so file extensions are visible
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set(["Icônes de dossiers (FolderTree)", "Icônes de fichiers (Extensions)"]))
+  // By default keep all sections collapsed when opening the Icons tab
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set())
   const [openPicker, setOpenPicker] = useState(false)
   const [selected, setSelected] = useState<MappingItem | null>(null)
   const lastOpenedMappingKeyRef = React.useRef<string | null>(null)
@@ -303,6 +336,8 @@ export const IconsSettings: React.FC = () => {
         if (window.electronAPI?.loadSettings) {
           const s = await window.electronAPI.loadSettings()
           if (s && s.icons && Array.isArray(s.icons.mappings)) {
+            // collapsedMappings is optional and contains overrides used when sidebar is collapsed
+            const collapsedSaved = Array.isArray(s.icons.collapsedMappings) ? s.icons.collapsedMappings : []
             // Check which libraries are used in saved mappings and preload them
             const usedLibraries = new Set(s.icons.mappings.map((it: any) => String(it.library || "Lucide")))
             const preloadPromises = []
@@ -334,15 +369,39 @@ export const IconsSettings: React.FC = () => {
               label: String(it.label || it.key || ""),
               currentIcon: String(it.currentIcon || "Folder"),
               library: String(it.library || "Lucide"),
-              customization: it.customization
+              customization: it.customization,
+              context: it.context || 'expanded'
+            }))
+            const savedCollapsed = collapsedSaved.map((it: any) => ({
+              key: String(it.key || ""),
+              label: String(it.label || it.key || ""),
+              currentIcon: String(it.currentIcon || "Folder"),
+              library: String(it.library || "Lucide"),
+              customization: it.customization,
+              context: 'collapsed'
             }))
             // merge: keep default structure but apply saved overrides
             const mergedSections = DEFAULT_SECTIONS.map(section => ({
               ...section,
               mappings: section.mappings.map(defaultMapping => {
-                const savedMapping = saved.find((x: any) => x.key === defaultMapping.key)
+                // Prefer collapsed saved mapping when this defaultMapping is a collapsed context
+                const savedMappingCollapsed = savedCollapsed.find((x: any) => x.key === defaultMapping.key)
+                if (savedMappingCollapsed && defaultMapping.context === 'collapsed') {
+                  const lib = savedMappingCollapsed.library || 'Lucide'
+                  const exists = iconExistsInLibrary(lib, savedMappingCollapsed.currentIcon)
+                  if (exists) {
+                    return {
+                      ...defaultMapping,
+                      currentIcon: savedMappingCollapsed.currentIcon,
+                      library: lib,
+                      customization: savedMappingCollapsed.customization || undefined,
+                      context: 'collapsed'
+                    }
+                  }
+                }
+
+                const savedMapping = saved.find((x: any) => x.key === defaultMapping.key && (x.context === undefined || x.context === 'expanded'))
                 if (savedMapping) {
-                  // Verify icon exists in the saved library. If not, fallback to the default mapping.
                   const lib = savedMapping.library || 'Lucide'
                   const exists = iconExistsInLibrary(lib, savedMapping.currentIcon)
                   if (exists) {
@@ -350,10 +409,10 @@ export const IconsSettings: React.FC = () => {
                       ...defaultMapping,
                       currentIcon: savedMapping.currentIcon,
                       library: lib,
-                      customization: savedMapping.customization || undefined
+                      customization: savedMapping.customization || undefined,
+                      context: savedMapping.context || 'expanded'
                     }
                   }
-                  // fallback: try to preserve name if exists in Lucide as a last resort
                   if (iconExistsInLibrary('Lucide', savedMapping.currentIcon)) {
                     return { ...defaultMapping, currentIcon: savedMapping.currentIcon, library: 'Lucide', customization: savedMapping.customization || undefined }
                   }
@@ -397,14 +456,57 @@ export const IconsSettings: React.FC = () => {
       const existingSettings = window.electronAPI?.loadSettings ? await window.electronAPI.loadSettings() : {}
       console.log('icons-settings: loaded existing settings', existingSettings)
 
-      // Flatten all mappings from sections (guard in case a section has no mappings)
+      // Flatten mappings and split into expanded vs collapsed with robust classification.
       const allMappings = nextSections.flatMap(section => section.mappings || [])
-      console.log('icons-settings: flattened mappings', allMappings.length, 'mappings')
+      const expandedMappings: any[] = []
+      const collapsedMappings: any[] = []
 
-      // Add/update icons section
+      // Helper to determine if a mapping label hints it's the reduced/collapsed version
+      const looksLikeCollapsed = (m: any) => {
+        try {
+          return typeof m.label === 'string' && /réduit|reduit|collapsed|compact/i.test(m.label)
+        } catch (e) { return false }
+      }
+
+      // Group by key to handle duplicates (expanded + collapsed entries sharing same key)
+      const byKey: Record<string, any[]> = {}
+      allMappings.forEach(m => {
+        if (!m || !m.key) return
+        byKey[m.key] = byKey[m.key] || []
+        byKey[m.key].push(m)
+      })
+
+      Object.keys(byKey).forEach(key => {
+        const group = byKey[key]
+        // Prefer explicit context markers
+        const explicitCollapsed = group.find(g => (g as any).context === 'collapsed')
+        const explicitExpanded = group.find(g => (g as any).context === 'expanded' || !(g as any).context)
+
+        if (explicitCollapsed) {
+          collapsedMappings.push({ ...explicitCollapsed, context: 'collapsed' })
+        } else {
+          // fallback: find by label hint
+          const hinted = group.find(g => looksLikeCollapsed(g))
+          if (hinted) {
+            collapsedMappings.push({ ...hinted, context: 'collapsed' })
+          }
+        }
+
+        if (explicitExpanded) {
+          expandedMappings.push({ ...explicitExpanded, context: 'expanded' })
+        } else {
+          // choose first non-collapsed as expanded
+          const nonCollapsed = group.find(g => ((g as any).context || 'expanded') !== 'collapsed')
+          if (nonCollapsed) expandedMappings.push({ ...nonCollapsed, context: 'expanded' })
+        }
+      })
+
+      console.log('icons-settings: flattened mappings', allMappings.length, 'mappings', { expanded: expandedMappings.length, collapsed: collapsedMappings.length })
+
+      // Add/update icons section: keep backward-compatible `mappings` for expanded/general
       const newSettings = {
         ...existingSettings,
-        icons: { mappings: allMappings }
+        icons: { mappings: expandedMappings, collapsedMappings }
       }
       console.log('icons-settings: new settings to save', newSettings)
 
@@ -426,15 +528,18 @@ export const IconsSettings: React.FC = () => {
     }
 
     try {
-      // notify other parts of the app
+      // notify other parts of the app with both expanded and collapsed lists
       const allMappings = nextSections.flatMap(section => section.mappings || [])
-      console.log('icons-settings: dispatching iconMappingsUpdated event with', allMappings.length, 'mappings')
-      const evt = new CustomEvent("iconMappingsUpdated", { detail: { mappings: allMappings } })
+      const expandedMappings = allMappings.filter(m => !(m as any).context || (m as any).context === 'expanded')
+      const collapsedMappings = allMappings.filter(m => (m as any).context === 'collapsed')
+      console.log('icons-settings: dispatching iconMappingsUpdated event with', { expanded: expandedMappings.length, collapsed: collapsedMappings.length })
+      const evt = new CustomEvent("iconMappingsUpdated", { detail: { mappings: expandedMappings, collapsedMappings } })
       window.dispatchEvent(evt)
     } catch (err) {
       console.warn('icons-settings: failed to dispatch event', err)
       const allMappings = nextSections.flatMap(section => section.mappings || [])
-      ;(window as any).__lastIconMappings = allMappings
+      ;(window as any).__lastIconMappings = allMappings.filter(m => !(m as any).context || (m as any).context === 'expanded')
+      ;(window as any).__lastIconMappingsCollapsed = allMappings.filter(m => (m as any).context === 'collapsed')
       window.dispatchEvent(new Event("iconMappingsUpdated"))
     }
   }
@@ -459,9 +564,17 @@ export const IconsSettings: React.FC = () => {
     }
     const lib = library || selected?.library || 'Lucide'
     console.log('setIconForSelected:', { key, name, lib, selectedKey: selected?.key, lastOpened: lastOpenedMappingKeyRef.current })
+    // Determine target context: prefer selected.context if available, otherwise default to 'expanded'
+    const targetContext = (selected as any)?.context || 'expanded'
     const updatedSections = sections.map(section => ({
       ...section,
-      mappings: (section.mappings || []).map(m => (m.key === key ? { ...m, currentIcon: name, library: lib } : m))
+      mappings: (section.mappings || []).map(m => {
+        const mContext = (m as any).context || 'expanded'
+        if (m.key === key && mContext === targetContext) {
+          return { ...m, currentIcon: name, library: lib }
+        }
+        return m
+      })
     }))
     setSections(updatedSections)
     try {
@@ -482,9 +595,17 @@ export const IconsSettings: React.FC = () => {
 
   const handleSaveCustomization = (key: string | undefined, customization: IconCustomization) => {
     if (!key) return
+    // Only update the mapping entry that matches both key and the context (expanded vs collapsed)
+    const targetContext = (customizationTarget as any)?.context || 'expanded'
     const updatedSections = sections.map(section => ({
       ...section,
-      mappings: (section.mappings || []).map(m => (m.key === key ? { ...m, customization } : m))
+      mappings: (section.mappings || []).map(m => {
+        const mContext = (m as any).context || 'expanded'
+        if (m.key === key && mContext === targetContext) {
+          return { ...m, customization }
+        }
+        return m
+      })
     }))
     setSections(updatedSections)
     saveMappings(updatedSections)
@@ -636,12 +757,13 @@ export const IconsSettings: React.FC = () => {
               </div>
             )}
             
-            {sections.map(section => (
-              <Collapsible
-                key={section.title}
-                open={openSections.has(section.title)}
-                onOpenChange={() => toggleSection(section.title)}
-              >
+            {sections.map((section, idx) => (
+              <div key={section.title}>
+                {idx > 0 && <div className="my-3 border-t border-white/6" />}
+                <Collapsible
+                  open={openSections.has(section.title)}
+                  onOpenChange={() => toggleSection(section.title)}
+                >
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" className="w-full justify-between p-4 h-auto">
                     <div className="text-left">
@@ -675,30 +797,77 @@ export const IconsSettings: React.FC = () => {
                       const size = customization?.size || 32
                       const borderWidth = customization?.borderWidth ?? 0
                       const borderColor = customization?.borderColor || 'transparent'
+                      const opacity = customization?.opacity ?? 100
+                      const shadowEnabled = customization?.shadowEnabled ?? false
+                      const shadowColor = customization?.shadowColor || '#000000'
+                      const shadowBlur = customization?.shadowBlur ?? 8
+                      const shadowOffsetY = customization?.shadowOffsetY ?? 2
+                      const shadowSpread = customization?.shadowSpread ?? 0
+                      const padding = customization?.padding ?? 6
+                      const rotate = customization?.rotate ?? 0
+                      const gradientEnabled = customization?.gradientEnabled ?? false
+                      const gradientFrom = customization?.gradientFrom || bg
+                      const gradientTo = customization?.gradientTo || bg
+                      const gradientAngle = customization?.gradientAngle ?? 90
 
+                      // Calculate background with gradient if enabled
+                      const finalBg = gradientEnabled
+                        ? `linear-gradient(${gradientAngle}deg, ${gradientFrom}, ${gradientTo})`
+                        : bg
+
+                      // Calculate box shadow if enabled
+                      const boxShadow = shadowEnabled
+                        ? `${shadowOffsetY}px ${shadowOffsetY}px ${shadowBlur}px ${shadowSpread}px ${shadowColor}`
+                        : undefined
+
+                      // Make the preview wrapper match the configured size so the preview is accurate.
+                      // Account for padding when sizing the wrapper so the inner SVG fits as expected.
+                      // Use explicit wrapperSize when provided to match customization modal preview
+                      const wrapperOuterSize = customization?.wrapperSize ?? Math.max(12, size + (padding * 2))
                       const wrapperStyle: React.CSSProperties = {
-                        background: bg,
-                        width: 48,
-                        height: 48,
+                        background: finalBg,
+                        width: wrapperOuterSize,
+                        height: wrapperOuterSize,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        borderRadius: shape === 'circle' ? 9999 : shape === 'rounded' ? 10 : 4,
+                        borderRadius: shape === 'circle' ? 9999 : shape === 'rounded' ? 18 : 6,
                         color: iconColor,
-                        border: borderWidth ? `${borderWidth}px solid ${borderColor}` : undefined
+                        border: borderWidth ? `${borderWidth}px solid ${borderColor}` : undefined,
+                        opacity: opacity / 100,
+                        boxShadow,
+                        padding: shape === 'none' ? 0 : padding,
+                        transform: `rotate(${rotate}deg)`
                       }
 
-                      const iconClass = `w-${Math.max(6, Math.round(size / 4))} h-${Math.max(6, Math.round(size / 4))}`
+                      // When sizePx is provided to renderIcon, it will handle sizing via inline styles
+                      // Don't pass conflicting Tailwind width/height classes
+                      const iconSizePx = size
 
                       return (
                         <div key={m.key} className="flex items-center gap-3 p-3 border rounded-md hover:bg-muted/50 transition-colors">
                           {shape === 'none' ? (
-                            <div className="flex-shrink-0" style={{ color: iconColor, border: borderWidth ? `${borderWidth}px solid ${borderColor}` : undefined, borderRadius: 4, padding: borderWidth ? 4 : 0 }}>
-                              {renderIcon(comp, iconClass) || renderIcon((LucideIcons as any).Folder, "w-8 h-8")}
+                            <div
+                              className="flex-shrink-0"
+                              style={{
+                                width: wrapperOuterSize,
+                                height: wrapperOuterSize,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: iconColor,
+                                opacity: opacity / 100,
+                                transform: `rotate(${rotate}deg)`,
+                                border: borderWidth ? `${borderWidth}px solid ${borderColor}` : undefined,
+                                borderRadius: 4,
+                                padding: borderWidth ? 4 : 0
+                              }}
+                            >
+                              {renderIcon(comp, "text-black dark:text-white", iconSizePx) || renderIcon((LucideIcons as any).Folder, "w-8 h-8", iconSizePx)}
                             </div>
                           ) : (
                             <div style={wrapperStyle} className="flex-shrink-0">
-                              {renderIcon(comp, iconClass) || renderIcon((LucideIcons as any).Folder, "w-8 h-8")}
+                              {renderIcon(comp, "text-black dark:text-white", iconSizePx) || renderIcon((LucideIcons as any).Folder, "w-8 h-8", iconSizePx)}
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
@@ -732,7 +901,8 @@ export const IconsSettings: React.FC = () => {
                     })}
                   </div>
                 </CollapsibleContent>
-              </Collapsible>
+                </Collapsible>
+              </div>
             ))}
           </div>
         </CardContent>
