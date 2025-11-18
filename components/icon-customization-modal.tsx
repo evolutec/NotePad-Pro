@@ -260,7 +260,7 @@ const IconCustomizationModal: React.FC<Props> = ({ open, onOpenChange, mappingKe
   // ---- DESIGN ONLY: Frosted Dark Option B layout ----
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="h-[90vh] w-[120rem] max-w-[96vw] flex flex-col overflow-hidden" style={{ height: '90vh', width: '120rem', maxWidth: '96vw' }}>
+      <DialogContent className="h-[90vh] max-w-[96vw] sm:max-w-4xl flex flex-col overflow-hidden">
         <div className="flex flex-col h-full bg-[rgba(10,11,13,0.6)] backdrop-blur-sm border border-white/6">
           <div className="px-6 py-4 border-b border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(0,0,0,0.2))]">
             <div className="flex items-center justify-between">

@@ -18,12 +18,16 @@ import { Settings, Folder, Pen, Monitor, Palette, Image } from "lucide-react"
 import IconsSettings from "@/components/icons-settings"
 import { Switch } from "@/components/ui/switch"
 import { useCallback } from "react"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { BackgroundConfigModal } from './background-config-modal'
+import { GPUFluidBackground } from './gpu-fluid-background'
 
 interface SettingsDialogProps {
   children: React.ReactNode
+  onBackgroundSaved?: () => void
 }
 
-export function SettingsDialog({ children }: SettingsDialogProps) {
+export function SettingsDialog({ children, onBackgroundSaved }: SettingsDialogProps) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const [stylusSettings, setStylusSettings] = useState({
@@ -46,6 +50,9 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
 
   const [designSettings, setDesignSettings] = useState({
     backgroundImage: null as string | null,
+    fixedImage: null as string | null,
+    animatedIndex: 0,
+    elements: {} as Record<string, any>
   })
 
   const [appSettings, setAppSettings] = useState({
@@ -117,6 +124,9 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
         }
 
         setOpen(false);
+        if (onBackgroundSaved) {
+          onBackgroundSaved();
+        }
       } else {
         toast({
           title: "Erreur de sauvegarde",
@@ -165,6 +175,9 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
     })
     setDesignSettings({
       backgroundImage: null,
+      fixedImage: null,
+      animatedIndex: 0,
+      elements: {}
     })
   }
 
@@ -210,12 +223,26 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
     setShowFolderPicker(false);
   }
 
+  // Background modal state only
+  const [backgroundModalOpen, setBackgroundModalOpen] = useState(false)
+
+  const handleSaveBackground = (settings: { backgroundImage?: string | null; fixedImage?: string | null; animatedIndex?: number; backgroundParams?: any }) => {
+    setDesignSettings(prev => {
+      const updated = { ...prev, ...settings } as any
+      // Notify other components immediately so previews update without saving the whole dialog
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { design: updated } }))
+      }
+      return updated
+    })
+  }
+
   
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="h-[90vh] w-[120rem] max-w-[96vw] flex flex-col overflow-hidden" style={{ height: '90vh', width: '120rem', maxWidth: '96vw' }}>
+      <DialogContent className="h-[90vh] max-w-[96vw] sm:max-w-4xl flex flex-col overflow-hidden">
       <Tabs defaultValue="stylus" className="w-full flex flex-col flex-1 min-h-0">
         <DialogHeader className="sticky top-0 z-30 bg-background/80 backdrop-blur-sm">
           <DialogTitle className="flex items-center gap-2">
@@ -370,73 +397,100 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
               </Card>
             </TabsContent>
             <TabsContent value="design" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Personnalisation du design</CardTitle>
-                  <CardDescription>Personnalisez l'apparence de l'application</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div>
-                    <Label>Image de fond de la page d'accueil</Label>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Téléchargez une image qui sera utilisée comme arrière-plan de la page d'accueil.
-                      Si aucune image n'est sélectionnée, l'arrière-plan animé par défaut sera utilisé.
-                      Vous pouvez supprimer l'image actuelle pour revenir à l'arrière-plan original.
-                    </p>
-                    
-                    <div className="mb-4 p-3 bg-muted/50 rounded-lg">
-                      <p className="text-sm">
-                        <span className="font-medium">État actuel:</span>{' '}
-                        {designSettings.backgroundImage ? (
-                          <span className="text-green-600">Image personnalisée chargée</span>
-                        ) : (
-                          <span className="text-blue-600">Arrière-plan animé par défaut</span>
-                        )}
-                      </p>
-                    </div>
-                    
-                    <div className="flex items-center gap-4">
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            // Convert file to base64 for storage
-                            const reader = new FileReader();
-                            reader.onload = (event) => {
-                              const base64 = event.target?.result as string;
-                              setDesignSettings((prev) => ({ ...prev, backgroundImage: base64 }));
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }}
-                        className="flex-1"
-                      />
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setDesignSettings((prev) => ({ ...prev, backgroundImage: null }))}
-                        disabled={!designSettings.backgroundImage}
-                      >
-                        Retour à l'original
-                      </Button>
-                    </div>
-                    
-                    {designSettings.backgroundImage && (
-                      <div className="mt-4">
-                        <Label>Aperçu de l'image sélectionnée:</Label>
-                        <div className="mt-2 relative w-full h-32 border rounded-lg overflow-hidden">
-                          <img 
-                            src={designSettings.backgroundImage} 
-                            alt="Background preview" 
-                            className="w-full h-full object-cover"
-                          />
+              <Accordion type="multiple" defaultValue={["landing-page", "elements"]} className="w-full">
+                <AccordionItem value="landing-page">
+                  <AccordionTrigger>Page d'accueil</AccordionTrigger>
+                  <AccordionContent>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Aperçu de la page d'accueil</CardTitle>
+                        <CardDescription>Cliquez sur l'arrière-plan pour changer l'image de fond, ou sur les éléments pour les configurer.</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          <div className="relative border rounded-lg overflow-hidden bg-muted/30 mx-auto" style={{ width: '533px', height: '300px' }}>
+                            <div className="absolute inset-0">
+                              {designSettings.backgroundImage === "__gpu_fluid_background__" ? (
+                                <div className="w-full h-full cursor-pointer" onClick={() => setBackgroundModalOpen(true)}>
+                                  <GPUFluidBackground className="w-full h-full" />
+                                </div>
+                              ) : (
+                                <img 
+                                  src={designSettings.backgroundImage || designSettings.fixedImage || `/backgrounds/bg${(designSettings.animatedIndex % 5) + 1}.svg`} 
+                                  alt="landing preview" 
+                                  className="w-full h-full object-cover cursor-pointer" 
+                                  onClick={() => setBackgroundModalOpen(true)}
+                                />
+                              )}
+
+                              {/* Logo, Folder, Recents, Create are now static, no modal */}
+                              <div className="absolute" style={{ left: '3%', top: '4%', width: '9%', height: '18%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.8)', borderRadius: 8, boxShadow: '0 2px 6px rgba(0,0,0,0.12)', opacity: designSettings.elements?.logo?.visible === false ? 0.25 : 1 }}>
+                                <img src="/icon-512.png" alt="logo" style={{ width: '70%', height: '70%' }} />
+                              </div>
+
+                              <div className="absolute" style={{ left: '5%', bottom: '10%', width: '25%', height: '35%', background: 'rgba(255,255,255,0.9)', borderRadius: 8, padding: 8, opacity: designSettings.elements?.folder?.visible === false ? 0.25 : 1 }}>
+                                <div className="font-medium text-xs">Arborescence</div>
+                                <div className="text-xs text-muted-foreground">Aperçu structure</div>
+                              </div>
+
+                              <div className="absolute" style={{ left: '37.5%', bottom: '10%', width: '25%', height: '35%', background: 'rgba(255,255,255,0.9)', borderRadius: 8, padding: 8, opacity: designSettings.elements?.recents?.visible === false ? 0.25 : 1 }}>
+                                <div className="font-medium text-sm">Fichiers Récents</div>
+                                <div className="text-xs text-muted-foreground">Aperçu</div>
+                              </div>
+
+                              <div className="absolute" style={{ right: '5%', bottom: '10%', width: '25%', height: '35%', background: 'rgba(255,255,255,0.9)', borderRadius: 8, padding: 8, opacity: designSettings.elements?.create?.visible === false ? 0.25 : 1 }}>
+                                <div className="font-medium text-sm">Créer</div>
+                                <div className="text-xs text-muted-foreground">Boutons rapides</div>
+                              </div>
+
+                              {/* Plus de bouton settings (⚙️) car plus de modal d'élément */}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                      </CardContent>
+                    </Card>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="elements">
+                  <AccordionTrigger>Éléments</AccordionTrigger>
+                  <AccordionContent>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Visibilité des éléments</CardTitle>
+                        <CardDescription>Contrôlez quels éléments sont affichés sur la page d'accueil.</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {[
+                          { id: 'logo', name: 'Logo' },
+                          { id: 'folder', name: 'Arborescence' },
+                          { id: 'recents', name: 'Fichiers Récents' },
+                          { id: 'create', name: 'Boutons Créer' }
+                        ].map(element => (
+                          <div key={element.id} className="flex items-center justify-between">
+                            <Label>{element.name}</Label>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={designSettings.elements?.[element.id]?.visible !== false}
+                                onCheckedChange={(checked) => setDesignSettings(prev => ({
+                                  ...prev,
+                                  elements: {
+                                    ...(prev.elements || {}),
+                                    [element.id]: {
+                                      ...(prev.elements?.[element.id] || {}),
+                                      visible: checked
+                                    }
+                                  }
+                                }))}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </TabsContent>
             <TabsContent value="icons" className="space-y-4">
               <IconsSettings />
@@ -469,6 +523,20 @@ export function SettingsDialog({ children }: SettingsDialogProps) {
             Sauvegarder les paramètres
           </Button>
         </div>
+
+        {/* Plus de modal d'élément, uniquement le modal de fond */}
+        <BackgroundConfigModal
+          open={backgroundModalOpen}
+          onOpenChange={setBackgroundModalOpen}
+          currentSettings={{
+            backgroundImage: designSettings.backgroundImage,
+            fixedImage: designSettings.fixedImage,
+            animatedIndex: designSettings.animatedIndex,
+            backgroundParams: (designSettings as any).backgroundParams || null
+          }}
+          onSave={handleSaveBackground}
+        />
+
       </DialogContent>
     </Dialog>
   );

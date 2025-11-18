@@ -912,7 +912,7 @@ export const IconsSettings: React.FC = () => {
       </Card>
 
       <Dialog open={openPicker} onOpenChange={setOpenPicker}>
-  <DialogContent className="h-[90vh] w-[120rem] max-w-[96vw] flex flex-col overflow-hidden" style={{ height: '90vh', width: '120rem', maxWidth: '96vw' }}>
+  <DialogContent className="h-[90vh] max-w-[96vw] sm:max-w-4xl flex flex-col overflow-hidden">
           <DialogHeader className="sticky top-0 z-30 bg-background/80 backdrop-blur-sm">
             <DialogTitle>Choisir une icône pour {selected?.label}</DialogTitle>
           </DialogHeader>

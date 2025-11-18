@@ -161,7 +161,7 @@ export function LandingPage({
   const [mounted, setMounted] = useState(false)
   const [recentFilesVersion, setRecentFilesVersion] = useState(0)
   const [iconMappings, setIconMappings] = useState<Record<string, { currentIcon: string; library: string; customization?: any }>>({})
-  const [designSettings, setDesignSettings] = useState<{ backgroundImage: string | null }>({ backgroundImage: null })
+  const [designSettings, setDesignSettings] = useState<{ backgroundImage: string | null; fixedImage?: string | null; animatedIndex?: number; elements?: Record<string, any> }>({ backgroundImage: null, fixedImage: null, animatedIndex: 0, elements: {} })
 
   useEffect(() => {
     setMounted(true)
@@ -201,7 +201,7 @@ export function LandingPage({
 
             // Load design settings
             if (s.design) {
-              setDesignSettings(s.design)
+              setDesignSettings({ animatedIndex: s.design.animatedIndex ?? 0, backgroundImage: s.design.backgroundImage ?? null, fixedImage: s.design.fixedImage ?? null, elements: s.design.elements ?? {} })
             }
 
             // Preload libraries used in mappings
@@ -239,7 +239,7 @@ export function LandingPage({
 
         // Update design settings if provided
         if (e?.detail?.design) {
-          setDesignSettings(e.detail.design)
+          setDesignSettings({ animatedIndex: e.detail.design.animatedIndex ?? 0, backgroundImage: e.detail.design.backgroundImage ?? null, fixedImage: e.detail.design.fixedImage ?? null, elements: e.detail.design.elements ?? {} })
         }
       } catch (err) {
         // ignore
@@ -255,7 +255,7 @@ export function LandingPage({
     const handleSettingsUpdate = (e: any) => {
       try {
         if (e?.detail?.design) {
-          setDesignSettings(e.detail.design)
+          setDesignSettings({ animatedIndex: e.detail.design.animatedIndex ?? 0, backgroundImage: e.detail.design.backgroundImage ?? null, fixedImage: e.detail.design.fixedImage ?? null, elements: e.detail.design.elements ?? {} })
         }
       } catch (err) {
         // ignore
@@ -551,9 +551,130 @@ export function LandingPage({
     return null
   }
 
+  const renderAnimatedBackground = (variant = 0) => {
+    // several simple variants — keep them lightweight
+    const count = 18
+    if (variant === 1) {
+      return (
+        <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+          {[...Array(count)].map((_, i) => (
+            <motion.div
+              key={`v1-${i}`}
+              className={cn("absolute rounded-full opacity-10", colorThemes[i % colorThemes.length].accent)}
+              style={{
+                width: 80 + (i % 5) * 30,
+                height: 80 + (i % 5) * 30,
+                left: `${(i * 37) % 100}%`,
+                top: `${(i * 23) % 100}%`,
+              }}
+              animate={{ x: [0, (i % 7) - 3], y: [0, (i % 5) - 2], scale: [1, 1.05, 1] }}
+              transition={{ duration: 8 + (i % 6), repeat: Infinity, ease: 'easeInOut' }}
+            />
+          ))}
+        </div>
+      )
+    }
+
+    if (variant === 2) {
+      return (
+        <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+          {[...Array(count)].map((_, i) => (
+            <motion.div
+              key={`v2-${i}`}
+              className={cn("absolute rounded-lg opacity-10", colorThemes[(i+2) % colorThemes.length].accent)}
+              style={{
+                width: 60 + (i % 6) * 28,
+                height: 40 + (i % 4) * 40,
+                left: `${(i * 41) % 100}%`,
+                top: `${(i * 29) % 100}%`,
+                borderRadius: 20 + (i % 3) * 10
+              }}
+              animate={{ x: [0, (i % 9) - 4], y: [0, (i % 6) - 3], rotate: [0, (i%10)-5, 0] }}
+              transition={{ duration: 10 + (i % 5), repeat: Infinity, ease: 'easeInOut' }}
+            />
+          ))}
+        </div>
+      )
+    }
+
+    if (variant === 3) {
+      return (
+        <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+          {[...Array(count)].map((_, i) => (
+            <motion.div
+              key={`v3-${i}`}
+              className={cn("absolute opacity-8", colorThemes[i % colorThemes.length].accent)}
+              style={{
+                width: 140 + (i % 4) * 60,
+                height: 140 + (i % 4) * 60,
+                left: `${(i * 33) % 100}%`,
+                top: `${(i * 21) % 100}%`,
+                borderRadius: '50%'
+              }}
+              animate={{ x: [0, (i % 11) - 5], y: [0, (i % 7) - 3], scale: [1, 1.15, 1] }}
+              transition={{ duration: 12 + (i % 6), repeat: Infinity, ease: 'easeInOut' }}
+            />
+          ))}
+        </div>
+      )
+    }
+
+    if (variant === 4) {
+      return (
+        <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+          {[...Array(count)].map((_, i) => (
+            <motion.div
+              key={`v4-${i}`}
+              className={cn("absolute rounded-full opacity-8", colorThemes[(i+3) % colorThemes.length].accent)}
+              style={{
+                width: 40 + (i % 7) * 20,
+                height: 40 + (i % 7) * 20,
+                left: `${(i * 47) % 100}%`,
+                top: `${(i * 19) % 100}%`,
+              }}
+              animate={{ x: [0, (i % 5) - 2], y: [0, (i % 6) - 3], scale: [1, 0.95, 1] }}
+              transition={{ duration: 6 + (i % 4), repeat: Infinity, ease: 'easeInOut' }}
+            />
+          ))}
+        </div>
+      )
+    }
+
+    // default variant 0 (original circles)
+    return (
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        {[...Array(20)].map((_, i) => (
+          <motion.div
+            key={i}
+            className={cn(
+              "absolute rounded-full opacity-10",
+              colorThemes[i % colorThemes.length].accent
+            )}
+            style={{
+              width: Math.random() * 200 + 50,
+              height: Math.random() * 200 + 50,
+              left: Math.random() * 100 + '%',
+              top: Math.random() * 100 + '%',
+            }}
+            animate={{
+              x: [0, Math.random() * 100 - 50],
+              y: [0, Math.random() * 100 - 50],
+              scale: [1, 1.2, 1],
+            }}
+            transition={{
+              duration: Math.random() * 10 + 10,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          />
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/20">
-      {/* Custom Background Image or Default Animated Background */}
+      {/* Custom Background Image or Fixed or Animated Background */}
       {designSettings.backgroundImage ? (
         <div 
           className="fixed inset-0 bg-cover bg-center bg-no-repeat z-0"
@@ -564,137 +685,34 @@ export function LandingPage({
             backgroundRepeat: 'no-repeat'
           }}
         />
+      ) : designSettings.fixedImage ? (
+        <div 
+          className="fixed inset-0 bg-cover bg-center bg-no-repeat z-0"
+          style={{ backgroundImage: `url(${designSettings.fixedImage})` }}
+        />
       ) : (
-        <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-          {[...Array(20)].map((_, i) => (
-            <motion.div
-              key={i}
-              className={cn(
-                "absolute rounded-full opacity-10",
-                colorThemes[i % colorThemes.length].accent
-              )}
-              style={{
-                width: Math.random() * 200 + 50,
-                height: Math.random() * 200 + 50,
-                left: Math.random() * 100 + '%',
-                top: Math.random() * 100 + '%',
-              }}
-              animate={{
-                x: [0, Math.random() * 100 - 50],
-                y: [0, Math.random() * 100 - 50],
-                scale: [1, 1.2, 1],
-              }}
-              transition={{
-                duration: Math.random() * 10 + 10,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
-            />
-          ))}
-        </div>
+        <motion.div 
+          className="fixed inset-0 bg-cover bg-center bg-no-repeat z-0"
+          style={{ backgroundImage: `url(/backgrounds/bg${((designSettings.animatedIndex ?? 0) % 5) + 1}.svg)` }}
+          animate={{ scale: [1, 1.05, 1] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+        />
       )}
 
+      {/* Header déplacé dans le layout principal (pages/index.tsx) */}
       <div className="relative z-10">
-        {/* Header - Optimisé pour utiliser toute la largeur */}
-        <motion.header
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="py-6 px-8"
-        >
-          <div className="max-w-7xl mx-auto">
-            {/* Layout horizontal : Logo à gauche, texte au centre/droite */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-              
-              {/* Logo - Colonne gauche */}
-              <motion.div 
-                className="lg:col-span-3 flex justify-center lg:justify-start"
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.5 }}
-              >
-                <motion.img 
-                  src="/icon-512.png" 
-                  alt="Fusion Logo" 
-                  className="w-32 h-32 lg:w-40 lg:h-40 drop-shadow-2xl"
-                  animate={{ rotate: 360 }}
-                  transition={{ 
-                    duration: 20, 
-                    repeat: Infinity, 
-                    ease: "linear" 
-                  }}
-                  whileHover={{ scale: 1.1 }}
-                />
-              </motion.div>
-
-              {/* Texte principal - Colonnes centrales et droite */}
-              <div className="lg:col-span-9 space-y-3 text-center lg:text-left">
-                <motion.h1
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="text-3xl lg:text-4xl font-bold"
-                >
-                  Bienvenue dans FUSION
-                </motion.h1>
-
-                <motion.p
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="text-lg lg:text-xl text-muted-foreground"
-                >
-                  Votre espace de travail créatif vous attend
-                </motion.p>
-
-                {/* FUSION = FOCUS - Inline pour économiser l'espace vertical */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="space-y-1"
-                >
-                  <div className="text-base lg:text-lg font-semibold text-primary">
-                    FUSION = FOCUS
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Fichiers • Organisation • Création • Utilisation Systémique
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Tous vos fichiers dans une interface cohérente et universelle
-                  </div>
-                </motion.div>
-
-                {/* Bouton */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 }}
-                  className="pt-2 flex justify-center lg:justify-start"
-                >
-                  <Button
-                    onClick={onNavigateToFiles}
-                    size="lg"
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                  >
-                    <Home className="w-5 h-5 mr-2" />
-                    Explorer mes fichiers
-                  </Button>
-                </motion.div>
-              </div>
-            </div>
-          </div>
-        </motion.header>
 
         {/* Main Content Grid */}
         <div className="max-w-7xl mx-auto px-8 pb-12">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
             {/* Folder Tree Section */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.8 }}
-            >
+            { (designSettings.elements?.folder?.visible !== false) && (
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.8 }}
+              >
               <Card className="h-[500px] bg-card/80 backdrop-blur-sm border-2 border-border/50">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -709,14 +727,16 @@ export function LandingPage({
                   {renderFolderTree()}
                 </CardContent>
               </Card>
-            </motion.div>
+              </motion.div>
+            )}
 
             {/* Recent Files Section */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.0 }}
-            >
+            { (designSettings.elements?.recents?.visible !== false) && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.0 }}
+              >
               <Card className="h-[500px] bg-card/80 backdrop-blur-sm border-2 border-border/50">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -750,14 +770,16 @@ export function LandingPage({
                   </ScrollArea>
                 </CardContent>
               </Card>
-            </motion.div>
+              </motion.div>
+            )}
 
             {/* Add Buttons Section */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 1.2 }}
-            >
+            { (designSettings.elements?.create?.visible !== false) && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 1.2 }}
+              >
               <Card className="h-[500px] bg-card/80 backdrop-blur-sm border-2 border-border/50">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -797,7 +819,8 @@ export function LandingPage({
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
+              </motion.div>
+            )}
           </div>
 
           {/* Copyright */}

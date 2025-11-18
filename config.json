@@ -88,8 +88,8 @@
           "shape": "none",
           "bgColor": "transparent",
           "iconColor": "#d4ab0a",
-          "size": 96,
-          "wrapperSize": 96,
+          "size": 94,
+          "wrapperSize": 94,
           "borderWidth": 0,
           "borderColor": "transparent",
           "opacity": 100,
@@ -1427,6 +1427,22 @@
     ]
   },
   "design": {
-    "backgroundImage": null
+    "backgroundImage": "__gpu_fluid_background__",
+    "fixedImage": null,
+    "animatedIndex": 0,
+    "elements": {
+      "recents": {
+        "visible": true
+      },
+      "logo": {
+        "visible": true
+      }
+    },
+    "backgroundParams": {
+      "speed": 1,
+      "scale": 1,
+      "tint": "#360fc2",
+      "opacity": 0.8
+    }
   }
 }

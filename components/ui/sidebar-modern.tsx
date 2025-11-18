@@ -747,25 +747,18 @@ export function ModernSidebar({
 
   return (
     <aside className={cn(
-      "h-screen flex flex-col bg-card border-r border-border transition-all duration-300 overflow-hidden",
+      "relative h-screen flex flex-col bg-card border-r border-border transition-all duration-300 overflow-hidden z-10",
       isCollapsed ? "w-12 min-w-[3rem]" : "w-80 min-w-[20rem] max-w-[30rem]",
       className
     )}>
       {/* Header */}
       <div className="p-4 border-b border-border/50 flex-shrink-0">
         <div className="flex items-center justify-end mb-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="p-1 h-8 w-8"
-            onClick={handleToggleCollapse}
-          >
-            <ChevronLeft className={`w-4 h-4 transition-transform ${isCollapsed ? 'rotate-180' : ''}`} />
-          </Button>
+          {/* Header area left intentionally minimal; toggle moved to bottom */}
         </div>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className={cn("flex items-center gap-2", isCollapsed ? "flex-col" : "flex-col")}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className={cn("flex items-center gap-2 mt-8", isCollapsed ? "flex-col" : "flex-col")}>
               {/* Collapsed layout - only essential buttons */}
               {isCollapsed ? (
                 <>
@@ -923,6 +916,7 @@ export function ModernSidebar({
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
+                  {/* toggle removed from collapsed add-buttons - now at bottom */}
                 </>
               ) : (
                 /* Expanded layout - original horizontal arrangement */
@@ -946,6 +940,7 @@ export function ModernSidebar({
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
+                    {/* toggle removed from expanded add-buttons - now at bottom */}
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -1461,6 +1456,26 @@ export function ModernSidebar({
           onNewFile?.('root', 'pdf');
         }}
       />
+      {/* Bottom toggle placed here so it stays at the bottom of the sidebar */}
+      <div className="mt-auto p-3 flex-shrink-0 flex justify-center">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleToggleCollapse}
+                className={cn(isCollapsed ? 'h-7 w-7 p-1' : 'h-12 w-12 p-0')}
+              >
+                <ChevronLeft className={`w-4 h-4 transition-transform ${isCollapsed ? 'rotate-180' : ''}`} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              {isCollapsed ? 'Ouvrir la barre' : 'Fermer la barre'}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
     </aside>
   );
 }

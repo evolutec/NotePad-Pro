@@ -1,6 +1,7 @@
 import { OnlyOfficeEditor } from "@/components/onlyoffice-editor"
 
 import React, { useState, useEffect, useCallback } from "react"
+import { motion } from "framer-motion"
 import dynamic from "next/dynamic"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { ModernSidebar } from "@/components/ui/sidebar-modern"
@@ -10,7 +11,7 @@ import { SettingsDialog } from "@/components/settings-dialog"
 import { FirstRunSetup } from "@/components/first-run-setup"
 import { toast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
-import { Settings, X, ExternalLink, List, LayoutGrid } from "lucide-react"
+import { Settings, X, ExternalLink, List, LayoutGrid, Home } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { BrightnessControl } from "@/components/brightness-control"
 import type { EnhancedFolderNode } from "@/components/ui/FolderTree-modern"
@@ -30,6 +31,9 @@ import { AudioViewer } from "@/components/audio-viewer"
 // Charger dynamiquement les composants qui utilisent RecordRTC et navigator.mediaDevices
 const AddAudioDialog = dynamic(() => import("@/components/add-audio_dialog").then(m => ({ default: m.AddAudioDialog })), { ssr: false })
 const AddVideoDialog = dynamic(() => import("@/components/add-video_dialog").then(m => ({ default: m.AddVideoDialog })), { ssr: false })
+
+// Import GPU Fluid Background
+import { GPUFluidBackground } from "@/components/gpu-fluid-background"
 
 export default function NoteTakingApp() {
   const [showFirstRunSetup, setShowFirstRunSetup] = useState(false)
@@ -69,6 +73,8 @@ export default function NoteTakingApp() {
   const [currentDocumentTitle, setCurrentDocumentTitle] = useState<string>("")
   const [currentDocumentPath, setCurrentDocumentPath] = useState<string>("")
   const [fileManagerViewMode, setFileManagerViewMode] = useState<"grid" | "list">("grid")
+  const [isGPUFluidBackground, setIsGPUFluidBackground] = useState(false)
+  const [gpuBackgroundParams, setGpuBackgroundParams] = useState<{ speed?: number; scale?: number; tint?: string; opacity?: number } | null>(null)
   const handleAudioRename = useCallback(() => {
     if (audioViewerPath && audioViewerName) {
       const renameNodeForDialog = {
@@ -343,7 +349,20 @@ export default function NoteTakingApp() {
           console.log('Checking for existing configuration...');
           
           const config = await window.electronAPI.loadSettings();
-          
+
+          // If design settings specify the GPU fluid background, enable it on startup
+          try {
+            if (config && config.design && config.design.backgroundImage === "__gpu_fluid_background__") {
+              console.log('📱 Detected GPU fluid background in config, enabling on startup');
+              setIsGPUFluidBackground(true);
+              if (config.design.backgroundParams) {
+                setGpuBackgroundParams(config.design.backgroundParams)
+              }
+            }
+          } catch (err) {
+            console.warn('Error checking design background in config', err);
+          }
+
           if (!config || !config.files || !config.files.rootPath) {
             console.log('No configuration found, showing first-run setup');
             setShowFirstRunSetup(true);
@@ -396,6 +415,15 @@ export default function NoteTakingApp() {
             }
 
             const config = JSON.parse(configString);
+            try {
+              if (config && config.design && config.design.backgroundImage === "__gpu_fluid_background__") {
+                console.log('📱 Detected GPU fluid background in config.json, enabling on startup');
+                setIsGPUFluidBackground(true);
+                if (config.design.backgroundParams) setGpuBackgroundParams(config.design.backgroundParams)
+              }
+            } catch (err) {
+              console.warn('Error checking design background in config.json', err);
+            }
             console.log('📱 Config loaded:', config);
             
             // Set selectedFolder to the root path from config
@@ -504,15 +532,31 @@ export default function NoteTakingApp() {
       setTreeVersion(prev => prev + 1);
     };
 
+    const handleSettingsUpdate = (event: CustomEvent) => {
+      console.log('📱 Settings update event received:', event.detail);
+      const { design } = event.detail;
+      if (design?.backgroundImage === "__gpu_fluid_background__") {
+        console.log('📱 GPU fluid background detected, enabling GPU fluid background');
+        setIsGPUFluidBackground(true);
+        if (design.backgroundParams) setGpuBackgroundParams(design.backgroundParams)
+      } else {
+        console.log('📱 Non-GPU fluid background detected, disabling GPU fluid background');
+        setIsGPUFluidBackground(false);
+        setGpuBackgroundParams(null)
+      }
+    };
+
     if (typeof window !== 'undefined') {
       window.addEventListener('fileMoved', handleFileMoved as EventListener);
       window.addEventListener('folderTreeRefresh', handleFolderTreeRefresh as EventListener);
       window.addEventListener('fileManagerRefresh', handleFileManagerRefresh as EventListener);
+      window.addEventListener('settingsUpdated', handleSettingsUpdate as EventListener);
 
       return () => {
         window.removeEventListener('fileMoved', handleFileMoved as EventListener);
         window.removeEventListener('folderTreeRefresh', handleFolderTreeRefresh as EventListener);
         window.removeEventListener('fileManagerRefresh', handleFileManagerRefresh as EventListener);
+        window.removeEventListener('settingsUpdated', handleSettingsUpdate as EventListener);
       };
     }
   }, []);
@@ -638,6 +682,15 @@ export default function NoteTakingApp() {
   
   return (
     <div className="flex h-screen bg-background">
+      {isGPUFluidBackground && activeView === "landing" && (
+        <GPUFluidBackground
+          fullscreen
+          speed={gpuBackgroundParams?.speed ?? 1.0}
+          scale={gpuBackgroundParams?.scale ?? 1.0}
+          tint={gpuBackgroundParams?.tint ?? '#2463ff'}
+          opacity={gpuBackgroundParams?.opacity ?? 0.8}
+        />
+      )}
       {activeView !== "landing" && (
         <ModernSidebar
           key={`sidebar-${treeVersion}`}
@@ -967,7 +1020,7 @@ export default function NoteTakingApp() {
         />
       )}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b border-border bg-card flex items-center px-4">
+        <header className="fixed top-0 left-0 right-0 z-50 h-14 border-b border-border bg-card backdrop-blur-sm flex items-center px-4">
           <div className="flex items-center min-w-[120px]">
           <img src="/icon.ico" alt="Fusion Icon" style={{ width: 28, height: 28, marginRight: 8 }} />
           <h1 className="text-lg font-semibold text-card-foreground">FUSION</h1>
@@ -1032,66 +1085,153 @@ export default function NoteTakingApp() {
             )}
             <ThemeToggle />
             <BrightnessControl />
-            <SettingsDialog>
+            <SettingsDialog onBackgroundSaved={() => setActiveView("landing") }>
               <Button variant="ghost" size="icon" className="h-8 w-8" title="Paramètres">
                 <Settings className="h-4 w-4" />
               </Button>
             </SettingsDialog>
           </div>
         </header>
-        <main className="flex-1 overflow-hidden px-2 py-2 min-w-0 flex flex-col">
+        <main className="flex-1 overflow-hidden px-2 py-2 pt-14 min-w-0 flex flex-col">
           {activeView === "landing" && (
-            <LandingPage
-              onNavigateToFiles={() => {
-                if (folderTree) {
-                  setSelectedFolder(folderTree.path);
-                }
-                setActiveView("files");
-              }}
-              onNavigateToEditor={(filePath) => {
-                setSelectedNote(filePath);
-                setActiveView("editor");
-              }}
-              onNoteSelect={handleNoteSelect}
-              onCreateNew={(type) => {
-                console.log('Creating new file of type:', type);
-                // Ouvrir le dialogue approprié selon le type de fichier
-                switch(type) {
-                  case 'folder':
-                    setIsAddFolderOpen(true);
-                    break;
-                  case 'note':
-                    setIsAddNoteOpen(true);
-                    break;
-                  case 'draw':
-                    setIsAddDrawOpen(true);
-                    break;
-                  case 'pdf':
-                  case 'document':
-                    setIsAddDocumentOpen(true);
-                    break;
-                  case 'excel':
-                  case 'powerpoint':
-                    setIsAddGenericDocumentOpen(true);
-                    break;
-                  case 'image':
-                    setIsAddImageOpen(true);
-                    break;
-                  case 'video':
-                    setIsAddVideoOpen(true);
-                    break;
-                  case 'audio':
-                    setIsAddAudioOpen(true);
-                    break;
-                  case 'code':
-                    setIsAddCodeOpen(true);
-                    break;
-                  default:
-                    console.log('Unknown file type:', type);
-                }
-              }}
-              folderTree={folderTree}
-            />
+            <>
+              {/* Header landing-page déplacé ici pour être toujours visible */}
+              <motion.header
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="py-6 px-8 relative z-20"
+              >
+                <div className="max-w-7xl mx-auto">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                    {/* Logo - Colonne gauche */}
+                    <motion.div 
+                      className="lg:col-span-3 flex justify-center lg:justify-start"
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ duration: 0.5 }}
+                    >
+                      <motion.img 
+                        src="/icon-512.png" 
+                        alt="Fusion Logo" 
+                        className="w-32 h-32 lg:w-40 lg:h-40 drop-shadow-2xl"
+                        animate={{ rotate: 360 }}
+                        transition={{ 
+                          duration: 20, 
+                          repeat: Infinity, 
+                          ease: "linear" 
+                        }}
+                        whileHover={{ scale: 1.1 }}
+                      />
+                    </motion.div>
+                    {/* Texte principal - Colonnes centrales et droite */}
+                    <div className="lg:col-span-9 space-y-3 text-center lg:text-left">
+                      <motion.h1
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="text-3xl lg:text-4xl font-bold"
+                      >
+                        Bienvenue dans FUSION
+                      </motion.h1>
+                      <motion.p
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                        className="text-lg lg:text-xl text-muted-foreground"
+                      >
+                        Votre espace de travail créatif vous attend
+                      </motion.p>
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}
+                        className="space-y-1"
+                      >
+                        <div className="text-base lg:text-lg font-semibold text-primary">
+                          FUSION = FOCUS
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Fichiers • Organisation • Création • Utilisation Systémique
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Tous vos fichiers dans une interface cohérente et universelle
+                        </div>
+                      </motion.div>
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5 }}
+                        className="pt-2 flex justify-center lg:justify-start"
+                      >
+                        <Button
+                          onClick={() => {
+                            if (folderTree) {
+                              setSelectedFolder(folderTree.path);
+                            }
+                            setActiveView("files");
+                          }}
+                          size="lg"
+                          className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                        >
+                          <Home className="w-5 h-5 mr-2" />
+                          Explorer mes fichiers
+                        </Button>
+                      </motion.div>
+                    </div>
+                  </div>
+                </div>
+              </motion.header>
+              <LandingPage
+                onNavigateToFiles={() => {
+                  if (folderTree) {
+                    setSelectedFolder(folderTree.path);
+                  }
+                  setActiveView("files");
+                }}
+                onNavigateToEditor={(filePath) => {
+                  setSelectedNote(filePath);
+                  setActiveView("editor");
+                }}
+                onNoteSelect={handleNoteSelect}
+                onCreateNew={(type) => {
+                  console.log('Creating new file of type:', type);
+                  switch(type) {
+                    case 'folder':
+                      setIsAddFolderOpen(true);
+                      break;
+                    case 'note':
+                      setIsAddNoteOpen(true);
+                      break;
+                    case 'draw':
+                      setIsAddDrawOpen(true);
+                      break;
+                    case 'pdf':
+                    case 'document':
+                      setIsAddDocumentOpen(true);
+                      break;
+                    case 'excel':
+                    case 'powerpoint':
+                      setIsAddGenericDocumentOpen(true);
+                      break;
+                    case 'image':
+                      setIsAddImageOpen(true);
+                      break;
+                    case 'video':
+                      setIsAddVideoOpen(true);
+                      break;
+                    case 'audio':
+                      setIsAddAudioOpen(true);
+                      break;
+                    case 'code':
+                      setIsAddCodeOpen(true);
+                      break;
+                    default:
+                      console.log('Unknown file type:', type);
+                  }
+                }}
+                folderTree={folderTree}
+              />
+            </>
           )}
           {activeView === "canvas" && <DrawingCanvas selectedNote={selectedNote || null} selectedFolder={selectedFolder} />}
           {activeView === "image_viewer" && (
