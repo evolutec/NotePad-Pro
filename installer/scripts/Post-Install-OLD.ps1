@@ -142,7 +142,6 @@ function Create-ConfigFile {
             rootPath = $NotesPath
             autoSave = $true
             autoSaveInterval = 30
-            backupEnabled = $true
             maxFileSize = 50
         }
         app = @{

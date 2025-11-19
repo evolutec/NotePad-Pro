@@ -12,8 +12,8 @@
     "rootPath": "C:\\Users\\evolu\\Documents\\Notes",
     "autoSave": true,
     "autoSaveInterval": 30,
-    "backupEnabled": true,
-    "maxFileSize": 50
+    "maxFileSize": 50,
+    "backupEnabled": true
   },
   "app": {
     "theme": "system",
@@ -22,10 +22,20 @@
     "minimizeToTray": true
   },
   "design": {
-    "backgroundImage": "__gpu_fluid_background__",
+    "backgroundImage": null,
     "fixedImage": null,
-    "animatedIndex": 0,
-    "elements": {},
+    "animatedIndex": 14,
+    "elements": {
+      "recents": {
+        "visible": true
+      },
+      "logo": {
+        "visible": true
+      },
+      "create": {
+        "visible": true
+      }
+    },
     "backgroundParams": {
       "brightness": 100,
       "contrast": 100,
@@ -33,12 +43,12 @@
       "hue": 0,
       "blur": 0,
       "gradientEnabled": false,
-      "gradientColor1": "#ff6b35",
-      "gradientColor2": "#ff6b35",
-      "gradientDirection": "to right",
+      "gradientColor1": "#808080",
+      "gradientColor2": "#808080",
+      "gradientDirection": "to top right",
       "speed": 1,
       "scale": 1,
-      "tint": "#2463ff",
+      "tint": "#0f1b38",
       "opacity": 0.8
     }
   },
@@ -159,8 +169,29 @@
       {
         "key": "ext_pdf",
         "label": "Fichier PDF",
-        "currentIcon": "FileText",
-        "library": "Lucide",
+        "currentIcon": "FaFilePdf",
+        "library": "ReactIcons",
+        "customization": {
+          "shape": "square",
+          "bgColor": "#f30f2e",
+          "iconColor": "#ffffff",
+          "size": 30,
+          "wrapperSize": 37,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000000",
+          "shadowBlur": 8,
+          "shadowOffsetY": 2,
+          "shadowSpread": 0,
+          "padding": 6,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "#2B6CB0",
+          "gradientTo": "#2C7A7B",
+          "gradientAngle": 90
+        },
         "context": "expanded"
       },
       {
@@ -180,8 +211,29 @@
       {
         "key": "ext_doc",
         "label": "Document Word",
-        "currentIcon": "FileText",
-        "library": "Lucide",
+        "currentIcon": "FaFileWord",
+        "library": "ReactIcons",
+        "customization": {
+          "shape": "square",
+          "bgColor": "#2B6CB0",
+          "iconColor": "#ffffff",
+          "size": 30,
+          "wrapperSize": 40,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000000",
+          "shadowBlur": 8,
+          "shadowOffsetY": 2,
+          "shadowSpread": 0,
+          "padding": 6,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "#2B6CB0",
+          "gradientTo": "#2C7A7B",
+          "gradientAngle": 90
+        },
         "context": "expanded"
       },
       {

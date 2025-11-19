@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="g15" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0a0a0a" />
+      <stop offset="100%" stop-color="#181a1c" />
+    </linearGradient>
+    <filter id="softGlow15" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="12" />
+    </filter>
+  </defs>
+
+  <rect width="100%" height="100%" fill="url(#g15)" />
+
+  <!-- interlaced fine curves (same color scheme as bg12/bg13) -->
+  <g filter="url(#softGlow15)" stroke="#fff" stroke-width="1.2" fill="none" opacity="0.11">
+    <path d="M-100 600 C150 420 450 760 700 600 C920 470 1100 800 1300 640" />
+    <path d="M-100 700 C200 520 520 840 760 700 C980 580 1120 860 1300 720" />
+    <path d="M-100 500 C160 320 480 660 720 500 C940 380 1080 700 1300 560" />
+    <path d="M-100 400 C140 220 460 560 680 400 C900 280 1060 600 1300 460" />
+    <path d="M-100 300 C120 120 440 460 640 300 C860 180 1040 500 1300 360" />
+    <path d="M-100 200 C100 40 420 380 600 200 C820 80 1020 420 1300 280" />
+  </g>
+</svg>

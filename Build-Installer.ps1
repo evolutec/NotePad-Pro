@@ -111,9 +111,9 @@ foreach ($script in $requiredScripts) {
 if (-not $SkipBuild) {
     Write-Step "Build de l'application Next.js"
     
-    Write-Info "Exécution de: pnpm run build"
+    Write-Info "Exécution de: npm run build"
     try {
-        & pnpm run build
+        & npm run build
         if ($LASTEXITCODE -ne 0) {
             throw "Le build Next.js a échoué"
         }
@@ -129,7 +129,7 @@ if (-not $SkipBuild) {
 # Étape 5: Build Electron
 Write-Step "Build de l'installateur Electron"
 
-Write-Info "Exécution de: pnpm run build:electron"
+Write-Info "Exécution de: npm run build:electron"
 Write-Info "Cela peut prendre plusieurs minutes..."
 
 try {

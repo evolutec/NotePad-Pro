@@ -6,28 +6,36 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import path from "path"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Settings, Folder, Pen, Monitor, Palette, Image, X, ChevronDown, ChevronRight, Home } from "lucide-react"
 import { TrianglePatternGenerator } from "./triangle-pattern-generator"
 import { GPUFluidBackground } from "./gpu-fluid-background"
+
+interface BackgroundItem {
+  id: string
+  name: string
+  src?: string
+  color?: string
+}
 
 interface BackgroundConfigModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   currentSettings: {
-    backgroundImage: string | null
-    fixedImage: string | null
-    animatedIndex: number
+    backgroundImage?: string | null
+    fixedImage?: string | null
+    animatedIndex?: number
     backgroundParams?: any
   }
   onSave: (settings: { backgroundImage?: string | null; fixedImage?: string | null; animatedIndex?: number; backgroundParams?: any }) => void
-}
+};
 
-export function BackgroundConfigModal({ open, onOpenChange, currentSettings, onSave }: BackgroundConfigModalProps) {
+export function BackgroundConfigModal(props: BackgroundConfigModalProps) {
+  const { open, onOpenChange, currentSettings, onSave } = props
   const [selectedAnimated, setSelectedAnimated] = useState(currentSettings.animatedIndex)
   const [selectedFixed, setSelectedFixed] = useState(currentSettings.fixedImage)
   const [uploadedImage, setUploadedImage] = useState<string | null>(
-    currentSettings.backgroundImage === "__gpu_fluid_background__" ? null : currentSettings.backgroundImage
+    currentSettings.backgroundImage === "__gpu_fluid_background__" ? null : (currentSettings.backgroundImage ?? null)
   )
   // On ne garde que le générateur triangle
   const [selectedGenerator] = useState<string>("triangle")
@@ -143,13 +151,6 @@ export function BackgroundConfigModal({ open, onOpenChange, currentSettings, onS
     }
   }
 
-interface BackgroundItem {
-  id: string
-  name: string
-  src?: string
-  color?: string
-}
-
   const fixedBackgrounds: BackgroundItem[] = [
     { id: 'orange', color: '#ff6b35', name: 'Orange' },
     { id: 'fixed-bg2', src: '/backgrounds/fixed-bg2.svg', name: 'Purple Blue' },
@@ -174,21 +175,51 @@ interface BackgroundItem {
     { id: 7, src: '/backgrounds/bg8.svg', name: 'Animated 8' },
     { id: 8, src: '/backgrounds/bg9.svg', name: 'Animated 9' },
     { id: 9, src: '/backgrounds/bg10.svg', name: 'Animated 10' },
+    { id: 10, src: '/backgrounds/bg11.svg', name: 'Animated 11' },
+    { id: 11, src: '/backgrounds/bg12.svg', name: 'Animated 12' },
+    { id: 12, src: '/backgrounds/bg13.svg', name: 'Animated 13' },
+    { id: 13, src: '/backgrounds/bg14.svg', name: 'Animated 14' },
+    { id: 14, src: '/backgrounds/bg15.svg', name: 'Animated 15' },
+    { id: 15, src: '/backgrounds/bg16.svg', name: 'Animated 16' },
+    { id: 16, src: '/backgrounds/bg17.svg', name: 'Animated 17' },
+    { id: 17, src: '/backgrounds/bg18.svg', name: 'Animated 18' },
+    { id: 18, src: '/backgrounds/bg19.svg', name: 'Animated 19' },
+    { id: 19, src: '/backgrounds/bg20.svg', name: 'Animated 20' },
   ]
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Configurer l'arrière-plan</DialogTitle>
-        </DialogHeader>
-        <Tabs defaultValue="animated" className="w-full">
-          <TabsList className="flex w-full">
-            <TabsTrigger value="animated">Animé</TabsTrigger>
-            <TabsTrigger value="fixed">Fixe</TabsTrigger>
-            <TabsTrigger value="custom">Personnalisé</TabsTrigger>
-            <TabsTrigger value="advanced">Avancé</TabsTrigger>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      // Only allow opening, prevent closing from outside clicks
+      if (newOpen) {
+        onOpenChange(true);
+      }
+      // Ignore close requests (newOpen = false) to prevent outside click closing
+    }}>
+      <DialogContent className="fixed top-14 left-0 right-0 bottom-0 w-screen h-[calc(100vh-3.5rem)] m-0 p-0 flex flex-col overflow-hidden" showCloseButton={false}>
+        <Tabs defaultValue="animated" className="w-full flex flex-col flex-1 min-h-0">
+        <DialogHeader className="sticky top-0 z-30 bg-background/80 backdrop-blur-sm items-center gap-0 py-6">
+          <div className="relative w-full mb-4">
+            <DialogTitle className="text-lg leading-none font-semibold text-center">
+              <Image className="h-5 w-5 inline-block mr-2" />
+              Configurer l'arrière-plan
+            </DialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onOpenChange(false)}
+              className="absolute right-0 top-0 h-8 w-8 hover:bg-muted"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <TabsList className="grid w-full grid-cols-4 py-1">
+            <TabsTrigger value="animated" className="flex items-center gap-2 data-[state=active]:underline data-[state=active]:underline-offset-4 data-[state=active]:decoration-2 data-[state=active]:decoration-white hover:underline hover:decoration-white">Animé</TabsTrigger>
+            <TabsTrigger value="fixed" className="flex items-center gap-2 data-[state=active]:underline data-[state=active]:underline-offset-4 data-[state=active]:decoration-2 data-[state=active]:decoration-white hover:underline hover:decoration-white">Fixe</TabsTrigger>
+            <TabsTrigger value="custom" className="flex items-center gap-2 data-[state=active]:underline data-[state=active]:underline-offset-4 data-[state=active]:decoration-2 data-[state=active]:decoration-white hover:underline hover:decoration-white">Personnalisé</TabsTrigger>
+            <TabsTrigger value="advanced" className="flex items-center gap-2 data-[state=active]:underline data-[state=active]:underline-offset-4 data-[state=active]:decoration-2 data-[state=active]:decoration-white hover:underline hover:decoration-white">Avancé</TabsTrigger>
           </TabsList>
+        </DialogHeader>
+          <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar p-6">
 
           <TabsContent value="animated" className="space-y-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
@@ -460,9 +491,10 @@ interface BackgroundItem {
               </div>
             )}
           </TabsContent>
+        </div>
         </Tabs>
 
-        <div className="flex justify-end gap-2 pt-4">
+        <div className="pt-4 border-t flex justify-end gap-2 px-6 pb-6">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
           <Button onClick={handleSave}>Selectionner</Button>
         </div>

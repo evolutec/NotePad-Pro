@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="g7" cx="30%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#1e3c72" />
+      <stop offset="45%" stop-color="#2a5298" />
+      <stop offset="100%" stop-color="#2a5298" stop-opacity="0.3" />
+    </radialGradient>
+    <filter id="blur7">
+      <feGaussianBlur stdDeviation="60" />
+    </filter>
+  </defs>
+
+  <rect width="100%" height="100%" fill="url(#g7)" />
+
+  <!-- soft blurred blobs to match aesthetic of bg6/bg9 -->
+  <g fill-opacity="0.12" filter="url(#blur7)">
+    <circle cx="220" cy="200" r="260" fill="#7b2ff7" />
+    <circle cx="900" cy="180" r="220" fill="#00d2ff" />
+    <circle cx="640" cy="540" r="320" fill="#ff6b6b" />
+  </g>
+
+  <!-- gentle overlay -->
+  <rect width="100%" height="100%" fill="white" opacity="0.015" />
+</svg>

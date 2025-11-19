@@ -1109,7 +1109,7 @@ export default function NoteTakingApp() {
         />
       )}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="fixed top-0 left-0 right-0 z-50 h-14 border-b border-border bg-card backdrop-blur-sm flex items-center px-4">
+        <header className="fixed top-0 left-0 right-0 z-[60] h-14 border-b border-border bg-card backdrop-blur-sm flex items-center px-4" onClick={(e) => e.stopPropagation()}>
           <div className="flex items-center min-w-[120px]">
           <img src="/icon.ico" alt="Fusion Icon" style={{ width: 28, height: 28, marginRight: 8 }} />
           <h1 className="text-lg font-semibold text-card-foreground">FUSION</h1>

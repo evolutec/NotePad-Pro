@@ -700,7 +700,7 @@ export function LandingPage({
       ) : (
         <motion.div 
           className="fixed inset-0 bg-cover bg-center bg-no-repeat z-0"
-          style={{ backgroundImage: `url(/backgrounds/bg${((designSettings.animatedIndex ?? 0) % 5) + 1}.svg)` }}
+          style={{ backgroundImage: `url(/backgrounds/bg${((designSettings.animatedIndex ?? 0) % 20) + 1}.svg)` }}
           animate={{ scale: [1, 1.05, 1] }}
           transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
         />

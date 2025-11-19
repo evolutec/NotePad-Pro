@@ -14,7 +14,7 @@ import FolderPicker from "./folder-picker"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Settings, Folder, Pen, Monitor, Palette, Image } from "lucide-react"
+import { Settings, Folder, Pen, Monitor, Palette, Image, X, ChevronDown, ChevronRight, Home } from "lucide-react"
 import IconsSettings from "@/components/icons-settings"
 import { Switch } from "@/components/ui/switch"
 import { useCallback } from "react"
@@ -46,7 +46,6 @@ export function SettingsDialog({ children, onBackgroundSaved }: SettingsDialogPr
     rootPath: "C:\\Users\\Documents\\NotesApp",
     autoSave: true,
     autoSaveInterval: 30,
-    backupEnabled: true,
     maxFileSize: 50,
   });
 
@@ -139,7 +138,6 @@ export function SettingsDialog({ children, onBackgroundSaved }: SettingsDialogPr
       rootPath: "C:\\Users\\Documents\\NotesApp",
       autoSave: true,
       autoSaveInterval: 30,
-      backupEnabled: true,
       maxFileSize: 50,
     })
     setAppSettings({
@@ -215,15 +213,31 @@ export function SettingsDialog({ children, onBackgroundSaved }: SettingsDialogPr
   
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      // Only allow opening, prevent closing from outside clicks
+      if (newOpen) {
+        setOpen(true);
+      }
+      // Ignore close requests (newOpen = false) to prevent outside click closing
+    }}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="fixed inset-0 w-screen h-screen m-0 p-0 flex flex-col overflow-hidden">
+        <DialogContent className="fixed top-14 left-0 right-0 bottom-0 w-screen h-[calc(100vh-3.5rem)] m-0 p-0 flex flex-col overflow-hidden" showCloseButton={false}>
       <Tabs defaultValue="stylus" className="w-full flex flex-col flex-1 min-h-0">
         <DialogHeader className="sticky top-0 z-30 bg-background/80 backdrop-blur-sm items-center gap-0 py-6">
-          <DialogTitle className="text-lg leading-none font-semibold w-full text-center mb-4">
-            <Settings className="h-5 w-5 inline-block mr-2" />
-            Configuration de l'application
-          </DialogTitle>
+          <div className="relative w-full mb-4">
+            <DialogTitle className="text-lg leading-none font-semibold text-center">
+              <Settings className="h-5 w-5 inline-block mr-2" />
+              Configuration de l'application
+            </DialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setOpen(false)}
+              className="absolute right-0 top-0 h-8 w-8 hover:bg-muted"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
           <TabsList className="grid w-full grid-cols-6 py-1">
               <TabsTrigger value="stylus" className="flex items-center gap-2 data-[state=active]:underline data-[state=active]:underline-offset-4 data-[state=active]:decoration-2 data-[state=active]:decoration-white hover:underline hover:decoration-white">
                 <Pen className="h-4 w-4" /> Stylet
@@ -315,17 +329,6 @@ export function SettingsDialog({ children, onBackgroundSaved }: SettingsDialogPr
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Sauvegarde de sécurité</Label>
-                      <p className="text-sm text-muted-foreground">Crée des copies de sauvegarde</p>
-                    </div>
-                    <Switch
-                      checked={fileSettings.backupEnabled}
-                      onCheckedChange={(checked) => setFileSettings((prev) => ({ ...prev, backupEnabled: checked }))}
-                    />
-                  </div>
-
                   <div>
                     <Label>Taille maximale des fichiers: {fileSettings.maxFileSize} MB</Label>
                     <Slider
@@ -373,8 +376,18 @@ export function SettingsDialog({ children, onBackgroundSaved }: SettingsDialogPr
             </TabsContent>
             <TabsContent value="design" className="space-y-4">
               <Accordion type="multiple" defaultValue={["landing-page"]} className="w-full">
-                <AccordionItem value="landing-page">
-                  <AccordionTrigger>Page d'accueil</AccordionTrigger>
+                <AccordionItem value="landing-page" className="border border-border rounded-lg bg-card/50 backdrop-blur-sm">
+                  <AccordionTrigger className="px-4 py-3 hover:bg-muted/50 transition-colors duration-200 [&[data-state=open]>svg]:rotate-180 [&>svg]:h-6 [&>svg]:w-6">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-primary/10 rounded-lg">
+                        <Home className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="text-left">
+                        <div className="font-semibold text-foreground">Page d'accueil</div>
+                        <div className="text-sm text-muted-foreground">Personnalisez l'apparence et les éléments de la page d'accueil</div>
+                      </div>
+                    </div>
+                  </AccordionTrigger>
                   <AccordionContent>
                     <Card>
                       <CardHeader>
@@ -412,7 +425,7 @@ export function SettingsDialog({ children, onBackgroundSaved }: SettingsDialogPr
                                     />
                                   ) : (
                                     <img 
-                                      src={designSettings.backgroundImage || designSettings.fixedImage || `/backgrounds/bg${(designSettings.animatedIndex % 5) + 1}.svg`} 
+                                      src={designSettings.backgroundImage || designSettings.fixedImage || `/backgrounds/bg${((designSettings.animatedIndex ?? 0) % 20) + 1}.svg`} 
                                       alt="landing preview" 
                                       className="w-full h-full object-cover cursor-pointer" 
                                       style={{

@@ -23,6 +23,21 @@ const BUILT_IN_BACKGROUNDS = [
   '/backgrounds/bg3.svg',
   '/backgrounds/bg4.svg',
   '/backgrounds/bg5.svg',
+  '/backgrounds/bg6.svg',
+  '/backgrounds/bg7.svg',
+  '/backgrounds/bg8.svg',
+  '/backgrounds/bg9.svg',
+  '/backgrounds/bg10.svg',
+  '/backgrounds/bg11.svg',
+  '/backgrounds/bg12.svg',
+  '/backgrounds/bg13.svg',
+  '/backgrounds/bg14.svg',
+  '/backgrounds/bg15.svg',
+  '/backgrounds/bg16.svg',
+  '/backgrounds/bg17.svg',
+  '/backgrounds/bg18.svg',
+  '/backgrounds/bg19.svg',
+  '/backgrounds/bg20.svg',
 ]
 
 export default function ElementConfigModal({ open, onOpenChange, elementId, elementSettings, onSave }: ElementConfigModalProps) {
@@ -94,8 +109,8 @@ export default function ElementConfigModal({ open, onOpenChange, elementId, elem
           setFixedImage(design.fixedImage)
           setBackgroundImage(null)
         } else if (typeof design.animatedIndex === 'number') {
-          // map animated index to one of the built-in backgrounds for preview
-          const idx = (design.animatedIndex % 5) + 1
+          // map animated index to one of the built-in backgrounds for preview (support up to 20 presets)
+          const idx = (design.animatedIndex % 20) + 1
           const path = `/backgrounds/bg${idx}.svg`
           setBackgroundMode('builtin')
           setFixedImage(path)

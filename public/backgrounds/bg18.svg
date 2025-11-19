@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="n18" cx="50%" cy="50%" r="80%">
+      <stop offset="0%" stop-color="#0a1a2f" />
+      <stop offset="100%" stop-color="#061024" />
+    </radialGradient>
+    <filter id="glow18">
+      <feGaussianBlur stdDeviation="14" result="b" />
+      <feMerge>
+        <feMergeNode in="b" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="100%" height="100%" fill="url(#n18)" />
+
+  <!-- concentric neon arcs (radar/vortex) -->
+  <g filter="url(#glow18)" opacity="0.97">
+    <circle cx="600" cy="400" r="320" stroke="#00eaff" stroke-width="18" fill="none" />
+    <circle cx="600" cy="400" r="220" stroke="#a04bff" stroke-width="10" fill="none" />
+    <circle cx="600" cy="400" r="120" stroke="#2fd0ff" stroke-width="6" fill="none" />
+    <path d="M600 400 m 0 -320 a 320 320 0 0 1 320 320" stroke="#00eaff" stroke-width="10" fill="none" />
+    <path d="M600 400 m 0 -220 a 220 220 0 0 1 220 220" stroke="#a04bff" stroke-width="6" fill="none" />
+    <path d="M600 400 m 0 -120 a 120 120 0 0 1 120 120" stroke="#2fd0ff" stroke-width="3" fill="none" />
+  </g>
+
+  <!-- neon dots for depth -->
+  <g fill="#7be6ff" fill-opacity="0.08">
+    <circle cx="600" cy="80" r="3.2" />
+    <circle cx="920" cy="400" r="2.8" />
+    <circle cx="600" cy="720" r="2.2" />
+    <circle cx="280" cy="400" r="2.6" />
+  </g>
+</svg>

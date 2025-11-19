@@ -27,8 +27,8 @@ L'installateur créé effectue automatiquement :
 # Installer electron-builder
 npm install --save-dev electron-builder
 
-# Ou avec pnpm
-pnpm add -D electron-builder
+# Ou avec npm
+npm install --save-dev electron-builder
 ```
 
 ## 📦 Structure de l'installateur

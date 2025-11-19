@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="6" result="b" />
+      <feMerge>
+        <feMergeNode in="b" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <linearGradient id="bgGrad" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#000000" />
+      <stop offset="100%" stop-color="#050505" />
+    </linearGradient>
+  </defs>
+
+  <rect width="100%" height="100%" fill="url(#bgGrad)" />
+
+  <!-- Vertical streaks with moving luminous heads -->
+  <g filter="url(#glow)" fill="#fff" opacity="0.92">
+    <!-- Streak template groups, staggered timings -->
+    <g>
+      <rect x="120" y="-540" width="2.4" height="720" fill="#bfbfbf" opacity="0.85">
+        <animate attributeName="y" from="-720" to="1200" dur="3.8s" repeatCount="indefinite" begin="0s" />
+      </rect>
+      <circle cx="121.2" cy="-40" r="4.6" fill="#ffffff" opacity="0.98">
+        <animate attributeName="cy" from="-120" to="1120" dur="3.8s" repeatCount="indefinite" begin="0s" />
+        <animate attributeName="opacity" values="0;1;0" dur="3.8s" repeatCount="indefinite" begin="0s" />
+      </circle>
+    </g>
+
+    <g>
+      <rect x="260" y="-720" width="1.6" height="920" fill="#8f8f8f" opacity="0.7">
+        <animate attributeName="y" from="-920" to="1160" dur="5.0s" repeatCount="indefinite" begin="-0.6s" />
+      </rect>
+      <circle cx="261" cy="-80" r="2.8" fill="#eaeaea" opacity="0.9">
+        <animate attributeName="cy" from="-200" to="1160" dur="5.0s" repeatCount="indefinite" begin="-0.6s" />
+      </circle>
+    </g>
+
+    <g>
+      <rect x="430" y="-600" width="1.8" height="760" fill="#a8a8a8" opacity="0.78">
+        <animate attributeName="y" from="-760" to="1180" dur="4.2s" repeatCount="indefinite" begin="-0.2s" />
+      </rect>
+      <circle cx="431" cy="-60" r="3" fill="#ffffff" opacity="0.95">
+        <animate attributeName="cy" from="-160" to="1120" dur="4.2s" repeatCount="indefinite" begin="-0.2s" />
+      </circle>
+    </g>
+
+    <g>
+      <rect x="600" y="-520" width="2.6" height="720" fill="#dcdcdc" opacity="0.9">
+        <animate attributeName="y" from="-760" to="1120" dur="3.6s" repeatCount="indefinite" begin="-0.4s" />
+      </rect>
+      <circle cx="601.3" cy="-40" r="3.6" fill="#ffffff" opacity="1">
+        <animate attributeName="cy" from="-140" to="1120" dur="3.6s" repeatCount="indefinite" begin="-0.4s" />
+      </circle>
+    </g>
+
+    <g>
+      <rect x="820" y="-640" width="1.6" height="880" fill="#9f9f9f" opacity="0.72">
+        <animate attributeName="y" from="-880" to="1180" dur="5.4s" repeatCount="indefinite" begin="-0.9s" />
+      </rect>
+      <circle cx="821" cy="-90" r="2.2" fill="#ffffff" opacity="0.88">
+        <animate attributeName="cy" from="-220" to="1180" dur="5.4s" repeatCount="indefinite" begin="-0.9s" />
+      </circle>
+    </g>
+
+    <g>
+      <rect x="1040" y="-480" width="2.2" height="680" fill="#cfcfcf" opacity="0.84">
+        <animate attributeName="y" from="-720" to="1120" dur="3.4s" repeatCount="indefinite" begin="-0.15s" />
+      </rect>
+      <circle cx="1041.1" cy="-50" r="3" fill="#ffffff" opacity="0.95">
+        <animate attributeName="cy" from="-160" to="1120" dur="3.4s" repeatCount="indefinite" begin="-0.15s" />
+      </circle>
+    </g>
+
+    <g>
+      <rect x="1260" y="-600" width="2" height="840" fill="#b3b3b3" opacity="0.7">
+        <animate attributeName="y" from="-840" to="1180" dur="4.8s" repeatCount="indefinite" begin="-1.1s" />
+      </rect>
+      <circle cx="1261" cy="-80" r="3.2" fill="#ffffff" opacity="0.9">
+        <animate attributeName="cy" from="-200" to="1160" dur="4.8s" repeatCount="indefinite" begin="-1.1s" />
+      </circle>
+    </g>
+
+    <g>
+      <rect x="1480" y="-520" width="1.8" height="720" fill="#e0e0e0" opacity="0.9">
+        <animate attributeName="y" from="-760" to="1120" dur="3.9s" repeatCount="indefinite" begin="-0.35s" />
+      </rect>
+      <circle cx="1481" cy="-40" r="2.8" fill="#ffffff" opacity="0.95">
+        <animate attributeName="cy" from="-160" to="1120" dur="3.9s" repeatCount="indefinite" begin="-0.35s" />
+      </circle>
+    </g>
+
+  </g>
+
+  <!-- faint thin vertical noise lines to increase density -->
+  <g opacity="0.06" fill="#ffffff">
+    <rect x="40" y="0" width="1" height="1080" />
+    <rect x="220" y="0" width="1" height="1080" />
+    <rect x="360" y="0" width="1" height="1080" />
+    <rect x="540" y="0" width="1" height="1080" />
+    <rect x="760" y="0" width="1" height="1080" />
+    <rect x="980" y="0" width="1" height="1080" />
+    <rect x="1200" y="0" width="1" height="1080" />
+    <rect x="1420" y="0" width="1" height="1080" />
+    <rect x="1640" y="0" width="1" height="1080" />
+  </g>
+
+</svg>

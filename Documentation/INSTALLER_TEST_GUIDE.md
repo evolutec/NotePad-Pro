@@ -34,7 +34,7 @@ Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue
 Remove-Item config.json -ErrorAction SilentlyContinue
 
 # Vérifier que toutes les dépendances sont à jour
-pnpm install
+npm install
 ```
 
 ### 3. Vérifier la structure des fichiers
@@ -60,7 +60,7 @@ Test-Path .\installer\docker\local.json
 
 ```powershell
 # Build de Next.js
-pnpm run build
+npm run build
 
 # Vérifier que le build est réussi
 Test-Path .\.next\BUILD_ID
@@ -75,10 +75,10 @@ Test-Path .\.next\BUILD_ID
 
 ```powershell
 # Créer l'installeur NSIS
-pnpm run electron:build
+npm run electron:build
 
 # Ou pour un build plus rapide en développement
-# pnpm run electron:build:dir
+# npm run electron:build:dir
 ```
 
 **Durée estimée :** 3-5 minutes

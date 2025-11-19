@@ -74,7 +74,6 @@ export function FirstRunSetup({ onComplete }: FirstRunSetupProps) {
           rootPath: rootPath,
           autoSave: true,
           autoSaveInterval: 30,
-          backupEnabled: true,
           maxFileSize: 50
         },
         app: {

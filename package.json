@@ -106,6 +106,7 @@
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "tesseract.js": "latest",
+    "three": "^0.181.2",
     "vaul": "^0.9.9",
     "video.js": "^8.23.4",
     "videojs-contrib-dash": "^5.1.1",

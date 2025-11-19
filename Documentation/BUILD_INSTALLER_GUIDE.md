@@ -5,7 +5,7 @@ Ce guide explique comment créer l'installateur Windows de NotePad-Pro avec Dock
 ## 🎯 Prérequis
 
 - Node.js 18+ installé
-- pnpm installé (`npm install -g pnpm`)
+- npm installé (inclus avec Node.js)
 - Windows 10/11
 - Droits administrateur
 
@@ -28,23 +28,23 @@ git clone https://github.com/evolutec/NotePad-Pro.git
 cd NotePad-Pro
 
 # Installer les dépendances
-pnpm install
+npm install
 ```
 
 ### 2. Build de l'application Next.js
 
 ```powershell
 # Build de l'application
-pnpm run build
+npm run build
 ```
 
 ### 3. Build de l'installateur Electron
 
 ```powershell
 # Créer l'installateur Windows
-pnpm run build:electron
+npm run build:electron
 
-# OU avec npm
+# OU avec npm (même commande)
 npm run build:electron
 ```
 

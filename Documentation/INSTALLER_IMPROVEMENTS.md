@@ -162,7 +162,6 @@ Interface charge le dossier de notes choisi
     "rootPath": "C:\\Users\\[USERNAME]\\Documents\\Notes",  // ← Personnalisé !
     "autoSave": true,
     "autoSaveInterval": 30,
-    "backupEnabled": true,
     "maxFileSize": 50
   },
   "app": {
@@ -391,13 +390,13 @@ Un guide complet de test a été créé : `INSTALLER_TEST_GUIDE.md`
 Remove-Item -Recurse -Force dist, .next -ErrorAction SilentlyContinue
 
 # 2. Installer les dépendances
-pnpm install
+npm install
 
 # 3. Build Next.js
-pnpm run build
+npm run build
 
 # 4. Créer l'installeur
-pnpm run electron:build
+npm run electron:build
 
 # 5. L'installeur est créé dans dist/
 # Fusion-Setup-1.0.0.exe
@@ -407,10 +406,10 @@ pnpm run electron:build
 
 ```powershell
 # Option 1 : Build sans compression (plus rapide)
-pnpm run electron:build:dir
+npm run electron:build:dir
 
 # Option 2 : Test en mode développement
-pnpm run electron
+npm run electron
 ```
 
 ---

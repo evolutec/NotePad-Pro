@@ -1,5 +1,0 @@
-ignoredBuiltDependencies:
-  - canvas
-  - core-js
-  - electron
-  - tesseract.js

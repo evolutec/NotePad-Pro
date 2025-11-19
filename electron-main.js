@@ -322,6 +322,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1920,
     height: 1080,
+    fullscreen: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -401,6 +402,8 @@ ipcMain.handle('config:save', async (_event, settings) => {
   try {
     const configPath = getConfigPath();
     console.log('[config:save] Saving config to:', configPath);
+    // NOTE: No backup function exists in config:save - backups may be created by external processes (VS Code, antivirus, etc.)
+    // The temp file + rename approach prevents filesystem-level backups
 
     // Load existing configuration (if any) and merge with incoming settings
     let existing = {};
@@ -480,8 +483,55 @@ ipcMain.handle('config:save', async (_event, settings) => {
       console.warn('[config:save] Could not create rootPath directory:', mkdirErr.message);
     }
 
-    fs.writeFileSync(configPath, JSON.stringify(merged, null, 2), 'utf-8');
-    console.log('[config:save] Configuration saved successfully (merged)');
+    // Defensive: remove any legacy config backups in the same directory so backups are not kept
+    try {
+      const cfgDir = path.dirname(configPath);
+      if (fs.existsSync(cfgDir)) {
+        const entries = fs.readdirSync(cfgDir);
+        for (const entry of entries) {
+          // Match files like config.json.bak or config.json.bak.12345
+          if (/^config\.json\.bak(\.|$)/.test(entry)) {
+            try {
+              fs.unlinkSync(path.join(cfgDir, entry));
+              console.log('[config:save] Removed legacy config backup:', entry);
+            } catch (rmErr) {
+              console.warn('[config:save] Failed to remove legacy backup', entry, rmErr && rmErr.message);
+            }
+          }
+        }
+      }
+    } catch (scanErr) {
+      console.warn('[config:save] Could not scan/remove legacy config backups:', scanErr && scanErr.message);
+    }
+    // Write to temp file then rename to prevent any backup creation
+    const tempPath = configPath + '.tmp';
+    fs.writeFileSync(tempPath, JSON.stringify(merged, null, 2), 'utf-8');
+    fs.renameSync(tempPath, configPath);
+    console.log('[config:save] Configuration saved successfully (merged) via temp file rename');
+    // After write: check for any new legacy backups and remove them, logging findings
+    try {
+      const cfgDir2 = path.dirname(configPath);
+      if (fs.existsSync(cfgDir2)) {
+        const afterEntries = fs.readdirSync(cfgDir2);
+        const bakFiles = afterEntries.filter(e => /^config\.json\.bak(\.|$)/.test(e));
+        if (bakFiles.length > 0) {
+          writeLog(`[config:save] Detected post-save backup files: ${JSON.stringify(bakFiles)}`);
+          for (const bf of bakFiles) {
+            const full = path.join(cfgDir2, bf);
+            try {
+              fs.unlinkSync(full);
+              writeLog(`[config:save] Removed post-save backup: ${bf}`);
+              console.log('[config:save] Removed post-save backup:', bf);
+            } catch (rmErr) {
+              writeLog(`[config:save] Failed to remove post-save backup ${bf}: ${rmErr && rmErr.message}`);
+              console.warn('[config:save] Failed to remove post-save backup', bf, rmErr && rmErr.message);
+            }
+          }
+        }
+      }
+    } catch (postScanErr) {
+      console.warn('[config:save] Post-write backup scan failed', postScanErr && postScanErr.message);
+    }
     return true;
   } catch (err) {
     console.error('[config:save] Error:', err);
@@ -2216,4 +2266,45 @@ app.whenReady().then(async () => {
     console.log('[Electron] App activated');
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+
+  // Watch config directory for any creation of legacy backups and remove them immediately.
+  try {
+    const cfgPath = getConfigPath();
+    const cfgDir = path.dirname(cfgPath);
+    // Only set watcher if directory exists
+    if (fs.existsSync(cfgDir)) {
+      try {
+        const watcher = fs.watch(cfgDir, (eventType, filename) => {
+          if (!filename) return;
+          try {
+            // Match files like config.json.bak or config.json.bak.12345
+            if (/^config\.json\.bak(\.|$)/.test(filename)) {
+              const full = path.join(cfgDir, filename);
+              try {
+                if (fs.existsSync(full)) {
+                  fs.unlinkSync(full);
+                  writeLog(`[config-watch] Removed detected backup: ${filename}`);
+                  console.log('[config-watch] Removed detected backup:', filename);
+                }
+              } catch (rmErr) {
+                writeLog(`[config-watch] Failed to remove detected backup: ${filename} - ${rmErr && rmErr.message}`);
+                console.warn('[config-watch] Failed to remove detected backup', filename, rmErr && rmErr.message);
+              }
+            }
+          } catch (inner) {
+            // swallow
+          }
+        });
+
+        // Keep reference so watcher remains active
+        global.__configWatcher = watcher;
+        writeLog('[config-watch] Config directory watcher established for backups');
+      } catch (watchErr) {
+        writeLog(`[config-watch] Could not establish watcher: ${watchErr && watchErr.message}`);
+        console.warn('[config-watch] Could not establish watcher for config dir', watchErr && watchErr.message);
+      }
+    }
+  } catch (err) {
+    console.warn('[config-watch] Error while setting up config watcher', err && err.message);
+  }
 });
