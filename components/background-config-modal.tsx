@@ -62,13 +62,29 @@ export function BackgroundConfigModal({ open, onOpenChange, currentSettings, onS
   const handleSave = () => {
     if (selectedFluidEffect === "gpu-fluid") {
       // Set special value for GPU fluid background
-      onSave({ backgroundImage: "__gpu_fluid_background__", fixedImage: null, animatedIndex: 0, backgroundParams: { speed: fluidSpeed, scale: fluidScale, tint: fluidTint, opacity: fluidOpacity } })
+      const payload = { backgroundImage: "__gpu_fluid_background__", fixedImage: null, animatedIndex: 0, backgroundParams: { speed: fluidSpeed, scale: fluidScale, tint: fluidTint, opacity: fluidOpacity } }
+      onSave(payload)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { design: payload } }))
+      }
     } else if (uploadedImage) {
-      onSave({ backgroundImage: uploadedImage, fixedImage: null, animatedIndex: 0 })
+      const payload = { backgroundImage: uploadedImage, fixedImage: null, animatedIndex: 0 }
+      onSave(payload)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { design: payload } }))
+      }
     } else if (selectedFixed) {
-      onSave({ backgroundImage: null, fixedImage: selectedFixed, animatedIndex: 0 })
+      const payload = { backgroundImage: null, fixedImage: selectedFixed, animatedIndex: 0 }
+      onSave(payload)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { design: payload } }))
+      }
     } else {
-      onSave({ backgroundImage: null, fixedImage: null, animatedIndex: selectedAnimated })
+      const payload = { backgroundImage: null, fixedImage: null, animatedIndex: selectedAnimated }
+      onSave(payload)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { design: payload } }))
+      }
     }
     onOpenChange(false)
   }
@@ -82,6 +98,7 @@ export function BackgroundConfigModal({ open, onOpenChange, currentSettings, onS
         setUploadedImage(result)
         setSelectedFixed(null)
         setSelectedAnimated(0)
+        setSelectedFluidEffect('')
       }
       reader.readAsDataURL(file)
     }
@@ -98,6 +115,7 @@ export function BackgroundConfigModal({ open, onOpenChange, currentSettings, onS
         setUploadedImage(result)
         setSelectedFixed(null)
         setSelectedAnimated(0)
+        setSelectedFluidEffect('')
       }
       reader.readAsDataURL(file)
     }
@@ -143,6 +161,7 @@ export function BackgroundConfigModal({ open, onOpenChange, currentSettings, onS
                     setSelectedAnimated(bg.id)
                     setSelectedFixed(null)
                     setUploadedImage(null)
+                    setSelectedFluidEffect('')
                   }}
                 >
                   <CardContent className="p-2">
@@ -164,6 +183,7 @@ export function BackgroundConfigModal({ open, onOpenChange, currentSettings, onS
                     setSelectedFixed(bg.src)
                     setSelectedAnimated(0)
                     setUploadedImage(null)
+                    setSelectedFluidEffect('')
                   }}
                 >
                   <CardContent className="p-2">
@@ -212,6 +232,7 @@ export function BackgroundConfigModal({ open, onOpenChange, currentSettings, onS
                 setUploadedImage(pattern)
                 setSelectedFixed(null)
                 setSelectedAnimated(0)
+                setSelectedFluidEffect('')
               }} />
             )}
             {selectedFluidEffect === "gpu-fluid" && (

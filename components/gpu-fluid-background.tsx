@@ -14,66 +14,69 @@ interface GPUFluidBackgroundProps {
 export function GPUFluidBackground({ className = "", speed = 1.0, scale = 1.0, tint = '#2463ff', opacity = 0.8, fullscreen = false }: GPUFluidBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
+  // Refs to keep GL resources and current uniform values accessible across renders
+  const glRef = useRef<WebGLRenderingContext | null>(null)
+  const programRef = useRef<WebGLProgram | null>(null)
+  const timeLocRef = useRef<WebGLUniformLocation | null>(null)
+  const resolutionLocRef = useRef<WebGLUniformLocation | null>(null)
+  const speedLocRef = useRef<WebGLUniformLocation | null>(null)
+  const scaleLocRef = useRef<WebGLUniformLocation | null>(null)
+  const tintLocRef = useRef<WebGLUniformLocation | null>(null)
+  const opacityLocRef = useRef<WebGLUniformLocation | null>(null)
+  const animationIdRef = useRef<number | null>(null)
+  const resizeObserverRef = useRef<ResizeObserver | null>(null)
+  const startTimeRef = useRef<number | null>(null)
+
+  const speedRef = useRef<number>(speed)
+  const scaleRef = useRef<number>(scale)
+  const tintRef = useRef<string>(tint)
+  const opacityRef = useRef<number>(opacity)
+
+  // Initialize GL and shaders once
   useEffect(() => {
     if (!canvasRef.current) return
-
     const canvas = canvasRef.current
-    let animationId: number
-    let resizeObserver: ResizeObserver
 
-    const initCanvas = () => {
-      // Use requestAnimationFrame to ensure DOM is ready
-      requestAnimationFrame(() => {
-        if (!canvasRef.current) return
+    const init = () => {
+      const rect = canvas.getBoundingClientRect()
+      const dpr = typeof window !== 'undefined' && window.devicePixelRatio ? window.devicePixelRatio : 1
+      const displayWidth = Math.max(Math.round(rect.width), 1)
+      const displayHeight = Math.max(Math.round(rect.height), 1)
+      canvas.style.width = displayWidth + 'px'
+      canvas.style.height = displayHeight + 'px'
+      canvas.width = Math.max(displayWidth * dpr, 1)
+      canvas.height = Math.max(displayHeight * dpr, 1)
 
-        const canvas = canvasRef.current
-        const rect = canvas.getBoundingClientRect()
-        const dpr = typeof window !== 'undefined' && window.devicePixelRatio ? window.devicePixelRatio : 1
+      if (canvas.width <= 1 || canvas.height <= 1) {
+        const fallbackH = 224
+        canvas.style.width = '320px'
+        canvas.style.height = `${fallbackH}px`
+        canvas.width = 320 * dpr
+        canvas.height = fallbackH * dpr
+      }
 
-        // Set canvas drawing buffer size based on container size and devicePixelRatio
-        const displayWidth = Math.max(Math.round(rect.width), 1)
-        const displayHeight = Math.max(Math.round(rect.height), 1)
-        canvas.style.width = displayWidth + 'px'
-        canvas.style.height = displayHeight + 'px'
-        canvas.width = Math.max(displayWidth * dpr, 1)
-        canvas.height = Math.max(displayHeight * dpr, 1)
-
-        // If dimensions are still tiny, use fallback values matching triangle preview
-        if (canvas.width <= 1 || canvas.height <= 1) {
-          const fallbackH = 224 // h-56
-          canvas.style.width = '320px'
-          canvas.style.height = `${fallbackH}px`
-          canvas.width = 320 * dpr
-          canvas.height = fallbackH * dpr
-        }
-
-        const ctx = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
-
-        if (!ctx) {
-          console.warn('WebGL not supported, falling back to CSS animation')
-          // Fallback: simple CSS-based fluid effect
-          canvas.style.background = 'linear-gradient(45deg, #1a1a2e, #16213e, #0f3460, #16213e, #1a1a2e)'
-          canvas.style.backgroundSize = '100% 100%'
-          canvas.style.animation = 'fluidMove 6s ease-in-out infinite'
-          const style = document.createElement('style')
-          style.textContent = `
-            @keyframes fluidMove {
-              0%, 100% { background-position: 0% 50%; }
-              50% { background-position: 100% 50%; }
-            }
-          `
-          if (!document.getElementById('gpu-fluid-fallback-style')) {
-            style.id = 'gpu-fluid-fallback-style'
-            document.head.appendChild(style)
+      const ctx = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
+      if (!ctx) {
+        console.warn('WebGL not supported, falling back to CSS animation')
+        canvas.style.background = 'linear-gradient(45deg, #1a1a2e, #16213e, #0f3460, #16213e, #1a1a2e)'
+        canvas.style.backgroundSize = '100% 100%'
+        canvas.style.animation = 'fluidMove 6s ease-in-out infinite'
+        const style = document.createElement('style')
+        style.textContent = `
+          @keyframes fluidMove {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
           }
-          return
+        `
+        if (!document.getElementById('gpu-fluid-fallback-style')) {
+          style.id = 'gpu-fluid-fallback-style'
+          document.head.appendChild(style)
         }
-
-      // Basic fluid simulation setup
-      // This is a simplified version - in a real implementation you'd want to
-      // implement proper fluid dynamics with shaders
+        return
+      }
 
       const gl = ctx as WebGLRenderingContext
+      glRef.current = gl
 
       // Vertex shader
       const vertexShaderSource = `
@@ -83,7 +86,6 @@ export function GPUFluidBackground({ className = "", speed = 1.0, scale = 1.0, t
         }
       `
 
-      // Fragment shader for fluid effect with customization uniforms
       const fragmentShaderSource = `
         precision mediump float;
         uniform float u_time;
@@ -95,8 +97,6 @@ export function GPUFluidBackground({ className = "", speed = 1.0, scale = 1.0, t
 
         void main() {
           vec2 st = gl_FragCoord.xy / u_resolution.xy;
-
-          // Simple fluid-like animation using speed/scale uniforms
           float s = u_scale;
           float t = u_time * u_speed;
           float wave = sin((st.x * 10.0 * s) + t * 2.0) * cos((st.y * 8.0 * s) + t * 1.5);
@@ -107,110 +107,88 @@ export function GPUFluidBackground({ className = "", speed = 1.0, scale = 1.0, t
           base.g = 0.2 + 0.3 * (cos(wave * 2.0) * 0.5 + 0.5);
           base.b = 0.3 + 0.5 * (sin(wave * 1.5 + 1.0) * 0.5 + 0.5);
 
-          // Apply tint and opacity
           vec3 tinted = base * u_tint;
           gl_FragColor = vec4(tinted, u_opacity);
         }
       `
 
-      // Create and compile shaders
-      const vertexShader = gl.createShader(gl.VERTEX_SHADER)
-      const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER)
-
-      if (!vertexShader || !fragmentShader) {
-        console.error('Failed to create shaders')
-        return
+      const createShader = (type: number, source: string) => {
+        const shader = gl.createShader(type)
+        if (!shader) return null
+        gl.shaderSource(shader, source)
+        gl.compileShader(shader)
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          console.error('Shader compile error', gl.getShaderInfoLog(shader))
+          return null
+        }
+        return shader
       }
 
-      gl.shaderSource(vertexShader, vertexShaderSource)
-      gl.shaderSource(fragmentShader, fragmentShaderSource)
+      const vshader = createShader(gl.VERTEX_SHADER, vertexShaderSource)
+      const fshader = createShader(gl.FRAGMENT_SHADER, fragmentShaderSource)
+      if (!vshader || !fshader) return
 
-      gl.compileShader(vertexShader)
-      if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
-        console.error('Vertex shader compilation failed:', gl.getShaderInfoLog(vertexShader))
-        return
-      }
-
-      gl.compileShader(fragmentShader)
-      if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
-        console.error('Fragment shader compilation failed:', gl.getShaderInfoLog(fragmentShader))
-        return
-      }
-
-      // Create program
       const program = gl.createProgram()
-      if (!program) {
-        console.error('Failed to create program')
-        return
-      }
-
-      gl.attachShader(program, vertexShader)
-      gl.attachShader(program, fragmentShader)
+      if (!program) return
+      gl.attachShader(program, vshader)
+      gl.attachShader(program, fshader)
       gl.linkProgram(program)
-
       if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
         console.error('Program linking failed:', gl.getProgramInfoLog(program))
         return
       }
-
+      programRef.current = program
       gl.useProgram(program)
 
-      // Create buffer
       const positionBuffer = gl.createBuffer()
       gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer)
-
-      // Quad vertices
-      const positions = [
-        -1, -1,
-         1, -1,
-        -1,  1,
-         1,  1,
-      ]
+      const positions = [-1, -1, 1, -1, -1, 1, 1, 1]
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW)
 
-      // Get attribute location
       const positionAttributeLocation = gl.getAttribLocation(program, 'a_position')
       gl.enableVertexAttribArray(positionAttributeLocation)
       gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0)
 
-      // Get uniform locations
-      const timeUniformLocation = gl.getUniformLocation(program, 'u_time')
-      const resolutionUniformLocation = gl.getUniformLocation(program, 'u_resolution')
-      const speedUniformLocation = gl.getUniformLocation(program, 'u_speed')
-      const scaleUniformLocation = gl.getUniformLocation(program, 'u_scale')
-      const tintUniformLocation = gl.getUniformLocation(program, 'u_tint')
-      const opacityUniformLocation = gl.getUniformLocation(program, 'u_opacity')
+      // Uniform locations
+      timeLocRef.current = gl.getUniformLocation(program, 'u_time')
+      resolutionLocRef.current = gl.getUniformLocation(program, 'u_resolution')
+      speedLocRef.current = gl.getUniformLocation(program, 'u_speed')
+      scaleLocRef.current = gl.getUniformLocation(program, 'u_scale')
+      tintLocRef.current = gl.getUniformLocation(program, 'u_tint')
+      opacityLocRef.current = gl.getUniformLocation(program, 'u_opacity')
 
-      let startTime = Date.now()
+      startTimeRef.current = Date.now()
 
       const render = () => {
-        const currentTime = (Date.now() - startTime) / 1000
+        if (!glRef.current || !programRef.current) return
+        const gl = glRef.current
+        const now = (Date.now() - (startTimeRef.current || Date.now())) / 1000
 
-        gl.uniform1f(timeUniformLocation, currentTime)
-        gl.uniform2f(resolutionUniformLocation, canvas.width, canvas.height)
-        if (speedUniformLocation) gl.uniform1f(speedUniformLocation, speed)
-        if (scaleUniformLocation) gl.uniform1f(scaleUniformLocation, scale)
+        if (timeLocRef.current) gl.uniform1f(timeLocRef.current, now)
+        if (resolutionLocRef.current) gl.uniform2f(resolutionLocRef.current, canvas.width, canvas.height)
+        if (speedLocRef.current) gl.uniform1f(speedLocRef.current, speedRef.current)
+        if (scaleLocRef.current) gl.uniform1f(scaleLocRef.current, scaleRef.current)
 
-        // Convert hex tint to normalized rgb
+        // Convert hex tint
         try {
-          const hex = tint.replace('#', '')
+          const hex = (tintRef.current || '#2463ff').replace('#', '')
           const r = parseInt(hex.substring(0, 2), 16) / 255
           const g = parseInt(hex.substring(2, 4), 16) / 255
           const b = parseInt(hex.substring(4, 6), 16) / 255
-          if (tintUniformLocation) gl.uniform3f(tintUniformLocation, r, g, b)
+          if (tintLocRef.current) gl.uniform3f(tintLocRef.current, r, g, b)
         } catch (e) {
-          if (tintUniformLocation) gl.uniform3f(tintUniformLocation, 0.14, 0.39, 1.0)
+          if (tintLocRef.current) gl.uniform3f(tintLocRef.current, 0.14, 0.39, 1.0)
         }
-        if (opacityUniformLocation) gl.uniform1f(opacityUniformLocation, opacity)
+        if (opacityLocRef.current) gl.uniform1f(opacityLocRef.current, opacityRef.current)
 
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
-        animationId = requestAnimationFrame(render)
+        animationIdRef.current = requestAnimationFrame(render)
       }
 
       render()
 
-      // Setup resize observer (updates drawing buffer respecting devicePixelRatio)
-      resizeObserver = new ResizeObserver(() => {
+      // Resize observer
+      resizeObserverRef.current = new ResizeObserver(() => {
         requestAnimationFrame(() => {
           if (!canvas) return
           const rect = canvas.getBoundingClientRect()
@@ -222,26 +200,47 @@ export function GPUFluidBackground({ className = "", speed = 1.0, scale = 1.0, t
           if (newW > 0 && newH > 0 && (canvas.width !== newW || canvas.height !== newH)) {
             canvas.width = newW
             canvas.height = newH
-            if (resolutionUniformLocation) gl.uniform2f(resolutionUniformLocation, canvas.width, canvas.height)
+            if (resolutionLocRef.current && glRef.current) glRef.current.uniform2f(resolutionLocRef.current, canvas.width, canvas.height)
           }
         })
       })
-      resizeObserver.observe(canvas)
-      })
+      if (resizeObserverRef.current) resizeObserverRef.current.observe(canvas)
     }
 
-    // Initialize canvas after DOM is ready
-    requestAnimationFrame(initCanvas)
+    // ensure DOM layout settled
+    const raf = requestAnimationFrame(init)
 
-    // Cleanup function
     return () => {
-      if (animationId) {
-        cancelAnimationFrame(animationId)
-      }
-      if (resizeObserver) {
-        resizeObserver.disconnect()
-      }
+      if (raf) cancelAnimationFrame(raf)
+      if (animationIdRef.current) cancelAnimationFrame(animationIdRef.current)
+      if (resizeObserverRef.current) resizeObserverRef.current.disconnect()
+      // Note: we don't explicitly delete GL program/shaders here for brevity
     }
+  }, [])
+
+  // Sync prop values into refs and update uniforms immediately when possible
+  useEffect(() => {
+    speedRef.current = speed
+    scaleRef.current = scale
+    tintRef.current = tint
+    opacityRef.current = opacity
+
+    const gl = glRef.current
+    if (!gl || !programRef.current) return
+    gl.useProgram(programRef.current)
+    if (speedLocRef.current) gl.uniform1f(speedLocRef.current, speedRef.current)
+    if (scaleLocRef.current) gl.uniform1f(scaleLocRef.current, scaleRef.current)
+    // update tint
+    try {
+      const hex = (tintRef.current || '#2463ff').replace('#', '')
+      const r = parseInt(hex.substring(0, 2), 16) / 255
+      const g = parseInt(hex.substring(2, 4), 16) / 255
+      const b = parseInt(hex.substring(4, 6), 16) / 255
+      if (tintLocRef.current) gl.uniform3f(tintLocRef.current, r, g, b)
+    } catch (e) {
+      if (tintLocRef.current) gl.uniform3f(tintLocRef.current, 0.14, 0.39, 1.0)
+    }
+    if (opacityLocRef.current) gl.uniform1f(opacityLocRef.current, opacityRef.current)
   }, [speed, scale, tint, opacity])
 
   if (fullscreen) {

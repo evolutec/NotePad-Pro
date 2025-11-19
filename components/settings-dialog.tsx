@@ -412,7 +412,13 @@ export function SettingsDialog({ children, onBackgroundSaved }: SettingsDialogPr
                             <div className="absolute inset-0">
                               {designSettings.backgroundImage === "__gpu_fluid_background__" ? (
                                 <div className="w-full h-full cursor-pointer" onClick={() => setBackgroundModalOpen(true)}>
-                                  <GPUFluidBackground className="w-full h-full" />
+                                  <GPUFluidBackground
+                                    className="w-full h-full"
+                                    speed={(designSettings as any).backgroundParams?.speed ?? 1.0}
+                                    scale={(designSettings as any).backgroundParams?.scale ?? 1.0}
+                                    tint={(designSettings as any).backgroundParams?.tint ?? '#2463ff'}
+                                    opacity={(designSettings as any).backgroundParams?.opacity ?? 0.8}
+                                  />
                                 </div>
                               ) : (
                                 <img 
