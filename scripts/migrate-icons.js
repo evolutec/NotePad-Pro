@@ -4,15 +4,7 @@ const path = require('path')
 
 const CONFIG_PATH = path.resolve(__dirname, '..', 'config.json')
 
-function backupConfig(origPath) {
-  try {
-    const dest = origPath + '.bak.' + Date.now()
-    fs.copyFileSync(origPath, dest)
-    console.log('Backup created at', dest)
-  } catch (e) {
-    console.warn('Could not create backup:', e.message)
-  }
-}
+// Backup creation removed: do not create backups of config.json in migration scripts
 
 function loadConfig() {
   if (!fs.existsSync(CONFIG_PATH)) return null
@@ -40,7 +32,7 @@ function migrate() {
     process.exit(1)
   }
 
-  backupConfig(CONFIG_PATH)
+  // Previously created a backup of config.json; removed per user request
 
   const icons = cfg.icons || {}
   const mappings = Array.isArray(icons.mappings) ? icons.mappings.slice() : []

@@ -687,8 +687,15 @@ export function LandingPage({
         />
       ) : designSettings.fixedImage ? (
         <div 
-          className="fixed inset-0 bg-cover bg-center bg-no-repeat z-0"
-          style={{ backgroundImage: `url(${designSettings.fixedImage})` }}
+          className="fixed inset-0 z-0"
+          style={{
+            ...(designSettings.fixedImage.startsWith('#') ? 
+              { backgroundColor: designSettings.fixedImage } : 
+              { backgroundImage: `url(${designSettings.fixedImage})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }
+            ),
+            filter: (designSettings as any).backgroundParams ? 
+              `brightness(${(designSettings as any).backgroundParams.brightness ?? 100}%) contrast(${(designSettings as any).backgroundParams.contrast ?? 100}%) saturate(${(designSettings as any).backgroundParams.saturation ?? 100}%) hue-rotate(${(designSettings as any).backgroundParams.hue ?? 0}deg) blur(${(designSettings as any).backgroundParams.blur ?? 0}px)` : undefined
+          }}
         />
       ) : (
         <motion.div 

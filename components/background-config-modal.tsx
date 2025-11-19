@@ -41,6 +41,18 @@ export function BackgroundConfigModal({ open, onOpenChange, currentSettings, onS
   const [fluidOpacity, setFluidOpacity] = useState<number>(0.8)
   const [fluidTint, setFluidTint] = useState<string>('#2463ff')
 
+  // Fixed background adjustment controls
+  const [fixedBrightness, setFixedBrightness] = useState<number>(100)
+  const [fixedContrast, setFixedContrast] = useState<number>(100)
+  const [fixedSaturation, setFixedSaturation] = useState<number>(100)
+  const [fixedHue, setFixedHue] = useState<number>(0)
+  const [fixedBlur, setFixedBlur] = useState<number>(0)
+  // Gradient controls
+  const [gradientEnabled, setGradientEnabled] = useState<boolean>(false)
+  const [gradientColor1, setGradientColor1] = useState<string>('#ff6b35')
+  const [gradientColor2, setGradientColor2] = useState<string>('#f7931e')
+  const [gradientDirection, setGradientDirection] = useState<string>('to right')
+
   // Initialize fluid params from currentSettings if provided
   React.useEffect(() => {
     try {
@@ -50,6 +62,16 @@ export function BackgroundConfigModal({ open, onOpenChange, currentSettings, onS
         if (typeof p.scale === 'number') setFluidScale(p.scale)
         if (typeof p.opacity === 'number') setFluidOpacity(p.opacity)
         if (typeof p.tint === 'string') setFluidTint(p.tint)
+        // Fixed params
+        if (typeof p.brightness === 'number') setFixedBrightness(p.brightness)
+        if (typeof p.contrast === 'number') setFixedContrast(p.contrast)
+        if (typeof p.saturation === 'number') setFixedSaturation(p.saturation)
+        if (typeof p.hue === 'number') setFixedHue(p.hue)
+        if (typeof p.blur === 'number') setFixedBlur(p.blur)
+        if (typeof p.gradientEnabled === 'boolean') setGradientEnabled(p.gradientEnabled)
+        if (typeof p.gradientColor1 === 'string') setGradientColor1(p.gradientColor1)
+        if (typeof p.gradientColor2 === 'string') setGradientColor2(p.gradientColor2)
+        if (typeof p.gradientDirection === 'string') setGradientDirection(p.gradientDirection)
       }
       if (currentSettings && currentSettings.backgroundImage === "__gpu_fluid_background__") {
         setSelectedFluidEffect('gpu-fluid')
@@ -74,7 +96,7 @@ export function BackgroundConfigModal({ open, onOpenChange, currentSettings, onS
         window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { design: payload } }))
       }
     } else if (selectedFixed) {
-      const payload = { backgroundImage: null, fixedImage: selectedFixed, animatedIndex: 0 }
+      const payload = { backgroundImage: null, fixedImage: selectedFixed, animatedIndex: 0, backgroundParams: { brightness: fixedBrightness, contrast: fixedContrast, saturation: fixedSaturation, hue: fixedHue, blur: fixedBlur, gradientEnabled, gradientColor1, gradientColor2, gradientDirection } }
       onSave(payload)
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { design: payload } }))
@@ -121,12 +143,24 @@ export function BackgroundConfigModal({ open, onOpenChange, currentSettings, onS
     }
   }
 
-  const fixedBackgrounds = [
-    { id: 'fixed-bg1', src: '/backgrounds/fixed-bg1.svg', name: 'Orange Gradient' },
+interface BackgroundItem {
+  id: string
+  name: string
+  src?: string
+  color?: string
+}
+
+  const fixedBackgrounds: BackgroundItem[] = [
+    { id: 'orange', color: '#ff6b35', name: 'Orange' },
     { id: 'fixed-bg2', src: '/backgrounds/fixed-bg2.svg', name: 'Purple Blue' },
     { id: 'fixed-bg3', src: '/backgrounds/fixed-bg3.svg', name: 'Pink Red' },
     { id: 'fixed-bg4', src: '/backgrounds/fixed-bg4.svg', name: 'Blue Cyan' },
     { id: 'fixed-bg5', src: '/backgrounds/fixed-bg5.svg', name: 'Green Cyan' },
+    { id: 'grey', color: '#808080', name: 'Grey' },
+    { id: 'black', color: '#000000', name: 'Black' },
+    { id: 'white', color: '#ffffff', name: 'White' },
+    { id: 'yellow', color: '#ffff00', name: 'Yellow' },
+    { id: 'red', color: '#ff0000', name: 'Red' },
   ]
 
   const animatedBackgrounds = [
@@ -135,11 +169,16 @@ export function BackgroundConfigModal({ open, onOpenChange, currentSettings, onS
     { id: 2, src: '/backgrounds/bg3.svg', name: 'Animated 3' },
     { id: 3, src: '/backgrounds/bg4.svg', name: 'Animated 4' },
     { id: 4, src: '/backgrounds/bg5.svg', name: 'Animated 5' },
+    { id: 5, src: '/backgrounds/bg6.svg', name: 'Animated 6' },
+    { id: 6, src: '/backgrounds/bg7.svg', name: 'Animated 7' },
+    { id: 7, src: '/backgrounds/bg8.svg', name: 'Animated 8' },
+    { id: 8, src: '/backgrounds/bg9.svg', name: 'Animated 9' },
+    { id: 9, src: '/backgrounds/bg10.svg', name: 'Animated 10' },
   ]
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Configurer l'arrière-plan</DialogTitle>
         </DialogHeader>
@@ -152,7 +191,7 @@ export function BackgroundConfigModal({ open, onOpenChange, currentSettings, onS
           </TabsList>
 
           <TabsContent value="animated" className="space-y-4">
-            <div className="grid grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {animatedBackgrounds.map((bg) => (
                 <Card
                   key={bg.id}
@@ -165,8 +204,8 @@ export function BackgroundConfigModal({ open, onOpenChange, currentSettings, onS
                   }}
                 >
                   <CardContent className="p-2">
-                    <img src={bg.src} alt={bg.name} className="w-full h-20 object-cover rounded" />
-                    <p className="text-xs text-center mt-1">{bg.name}</p>
+                    <img src={bg.src} alt={bg.name} className="w-full h-12 object-cover rounded" />
+                    <p className="text-xs text-center mt-1 truncate">{bg.name}</p>
                   </CardContent>
                 </Card>
               ))}
@@ -174,25 +213,137 @@ export function BackgroundConfigModal({ open, onOpenChange, currentSettings, onS
           </TabsContent>
 
           <TabsContent value="fixed" className="space-y-4">
-            <div className="grid grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {fixedBackgrounds.map((bg) => (
                 <Card
                   key={bg.id}
-                  className={`cursor-pointer ${selectedFixed === bg.src && !uploadedImage ? 'ring-2 ring-primary' : ''}`}
+                  className={`cursor-pointer ${selectedFixed === (bg.src || bg.color) && !uploadedImage ? 'ring-2 ring-primary' : ''}`}
                   onClick={() => {
-                    setSelectedFixed(bg.src)
+                    setSelectedFixed(bg.src || bg.color)
                     setSelectedAnimated(0)
                     setUploadedImage(null)
                     setSelectedFluidEffect('')
+                    // Set hue to 0 for pure preset color
+                    setFixedHue(0)
+                    // Set gradient colors to preset color
+                    if (bg.color) {
+                      setGradientColor1(bg.color)
+                      setGradientColor2(bg.color)
+                      setGradientEnabled(false)
+                    }
                   }}
                 >
                   <CardContent className="p-2">
-                    <img src={bg.src} alt={bg.name} className="w-full h-20 object-cover rounded" />
-                    <p className="text-xs text-center mt-1">{bg.name}</p>
+                    {bg.src ? (
+                      <img src={bg.src} alt={bg.name} className="w-full h-12 object-cover rounded" />
+                    ) : (
+                      <div 
+                        className="w-full h-12 rounded" 
+                        style={{ backgroundColor: bg.color }}
+                      />
+                    )}
+                    <p className="text-xs text-center mt-1 truncate">{bg.name}</p>
                   </CardContent>
                 </Card>
               ))}
             </div>
+
+            {selectedFixed && (
+              <div className="mt-4">
+                <Label className="text-sm font-medium">Aperçu avec ajustements</Label>
+                <div className="mt-2 border rounded overflow-hidden h-24 relative">
+                  {selectedFixed.startsWith('#') ? (
+                    <div 
+                      className="w-full h-full"
+                      style={{ 
+                        background: gradientEnabled ? `linear-gradient(${gradientDirection}, ${gradientColor1}, ${gradientColor2})` : selectedFixed,
+                        filter: `brightness(${fixedBrightness}%) contrast(${fixedContrast}%) saturate(${fixedSaturation}%) hue-rotate(${fixedHue}deg) blur(${fixedBlur}px)`
+                      }}
+                    />
+                  ) : (
+                    <img 
+                      src={selectedFixed} 
+                      alt="Fixed background preview" 
+                      className="w-full h-full object-cover"
+                      style={{ 
+                        filter: `brightness(${fixedBrightness}%) contrast(${fixedContrast}%) saturate(${fixedSaturation}%) hue-rotate(${fixedHue}deg) blur(${fixedBlur}px)`
+                      }}
+                    />
+                  )}
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <label className="w-28">Luminosité</label>
+                      <input type="range" min="0" max="200" step="1" value={fixedBrightness} onChange={e => setFixedBrightness(Number(e.target.value))} className="flex-1" />
+                      <span className="w-12 text-right text-xs">{fixedBrightness}%</span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <label className="w-28">Contraste</label>
+                      <input type="range" min="0" max="200" step="1" value={fixedContrast} onChange={e => setFixedContrast(Number(e.target.value))} className="flex-1" />
+                      <span className="w-12 text-right text-xs">{fixedContrast}%</span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <label className="w-28">Saturation</label>
+                      <input type="range" min="0" max="200" step="1" value={fixedSaturation} onChange={e => setFixedSaturation(Number(e.target.value))} className="flex-1" />
+                      <span className="w-12 text-right text-xs">{fixedSaturation}%</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <label className="w-28">Teinte</label>
+                      <input type="range" min="0" max="360" step="1" value={fixedHue} onChange={e => setFixedHue(Number(e.target.value))} className="flex-1" />
+                      <span className="w-12 text-right text-xs">{fixedHue}°</span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <label className="w-28">Flou</label>
+                      <input type="range" min="0" max="10" step="0.1" value={fixedBlur} onChange={e => setFixedBlur(Number(e.target.value))} className="flex-1" />
+                      <span className="w-12 text-right text-xs">{fixedBlur}px</span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <label className="w-28">Gradient</label>
+                      <input type="checkbox" checked={gradientEnabled} onChange={e => setGradientEnabled(e.target.checked)} />
+                    </div>
+                  </div>
+                </div>
+
+                {gradientEnabled && (
+                  <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <label className="w-28">Couleur 1</label>
+                        <input type="color" value={gradientColor1} onChange={e => setGradientColor1(e.target.value)} />
+                        <span className="text-xs ml-2">{gradientColor1}</span>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <label className="w-28">Couleur 2</label>
+                        <input type="color" value={gradientColor2} onChange={e => setGradientColor2(e.target.value)} />
+                        <span className="text-xs ml-2">{gradientColor2}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <label className="w-28">Direction</label>
+                        <select value={gradientDirection} onChange={e => setGradientDirection(e.target.value)} className="flex-1">
+                          <option value="to right">Horizontal</option>
+                          <option value="to bottom">Vertical</option>
+                          <option value="to bottom right">Diagonal</option>
+                          <option value="to top right">Diagonal inverse</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="custom" className="space-y-4">
@@ -206,7 +357,7 @@ export function BackgroundConfigModal({ open, onOpenChange, currentSettings, onS
                 {uploadedImage && (
                   <div className="mt-4">
                     <Label>Aperçu:</Label>
-                    <img src={uploadedImage} alt="Uploaded" className="w-full h-32 object-cover rounded mt-2" />
+                    <img src={uploadedImage} alt="Uploaded" className="w-full h-24 object-cover rounded mt-2" />
                   </div>
                 )}
               </CardContent>
@@ -240,7 +391,7 @@ export function BackgroundConfigModal({ open, onOpenChange, currentSettings, onS
                 <div className="mb-2 text-sm text-muted-foreground">
                   Aperçu du GPU Fluid - Sera appliqué comme arrière-plan réel
                 </div>
-                <div className="border rounded overflow-hidden h-56 relative bg-transparent">
+                <div className="border rounded overflow-hidden h-40 relative bg-transparent">
                   {/* GPU canvas as absolute background within the preview */}
                   <GPUFluidBackground
                     className="absolute inset-0 w-full h-full"
@@ -252,12 +403,12 @@ export function BackgroundConfigModal({ open, onOpenChange, currentSettings, onS
 
                   {/* Simple landing-page mock overlay to preview how content looks on top of the fluid */}
                   <div className="relative z-10 w-full h-full flex flex-col justify-center items-center text-center p-4">
-                    <img src="/icon-512.png" alt="Logo" className="w-10 h-10 mb-2 drop-shadow" />
-                    <div className="text-white text-lg font-bold">FUSION</div>
+                    <img src="/icon-512.png" alt="Logo" className="w-8 h-8 mb-2 drop-shadow" />
+                    <div className="text-white text-sm font-bold">FUSION</div>
                     <div className="text-white/80 text-xs mt-1">Votre espace de travail créatif</div>
-                    <div className="mt-3 flex gap-2">
-                      <button className="px-3 py-1 rounded bg-white/10 text-white text-xs">Explorer mes fichiers</button>
-                      <button className="px-3 py-1 rounded bg-white/6 text-white/90 text-xs">Créer une note</button>
+                    <div className="mt-2 flex gap-1">
+                      <button className="px-2 py-1 rounded bg-white/10 text-white text-xs">Explorer</button>
+                      <button className="px-2 py-1 rounded bg-white/6 text-white/90 text-xs">Créer</button>
                     </div>
                   </div>
                 </div>
@@ -299,7 +450,7 @@ export function BackgroundConfigModal({ open, onOpenChange, currentSettings, onS
                   src="http://www.csc.kth.se/~mathar/fluids-2d/"
                   title="Fluids-2D"
                   width="100%"
-                  height="400"
+                  height="300"
                   style={{ border: '1px solid #ccc', borderRadius: 8 }}
                   allowFullScreen
                 />

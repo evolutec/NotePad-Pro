@@ -401,17 +401,87 @@ ipcMain.handle('config:save', async (_event, settings) => {
   try {
     const configPath = getConfigPath();
     console.log('[config:save] Saving config to:', configPath);
-    
-    // Créer le dossier rootPath s'il n'existe pas
-    if (settings.files && settings.files.rootPath) {
-      if (!fs.existsSync(settings.files.rootPath)) {
-        fs.mkdirSync(settings.files.rootPath, { recursive: true });
-        console.log('[config:save] Created rootPath directory:', settings.files.rootPath);
+
+    // Load existing configuration (if any) and merge with incoming settings
+    let existing = {};
+    try {
+      if (fs.existsSync(configPath)) {
+        const raw = fs.readFileSync(configPath, 'utf-8');
+        existing = JSON.parse(raw || '{}');
       }
+    } catch (e) {
+      console.warn('[config:save] Could not parse existing config, proceeding with empty object', e.message);
+      existing = {};
     }
-    
-    fs.writeFileSync(configPath, JSON.stringify(settings, null, 2), 'utf-8');
-    console.log('[config:save] Configuration saved successfully');
+
+    // Normalize common renderer payload shapes to canonical keys
+    // e.g. stylusSettings -> stylus, fileSettings -> files, appSettings -> app, designSettings -> design
+    const normalized = Object.assign({}, settings);
+    try {
+      if (normalized.stylusSettings && !normalized.stylus) {
+        normalized.stylus = normalized.stylusSettings;
+        delete normalized.stylusSettings;
+      }
+      if (normalized.fileSettings && !normalized.files) {
+        normalized.files = normalized.fileSettings;
+        delete normalized.fileSettings;
+      }
+      if (normalized.appSettings && !normalized.app) {
+        normalized.app = normalized.appSettings;
+        delete normalized.appSettings;
+      }
+      if (normalized.designSettings && !normalized.design) {
+        normalized.design = normalized.designSettings;
+        delete normalized.designSettings;
+      }
+    } catch (normErr) {
+      console.warn('[config:save] Normalization error:', normErr && normErr.message);
+    }
+
+    // Deep merge helper: objects are merged, arrays and primitives are replaced by source
+    function deepMerge(target, source) {
+      if (!source || typeof source !== 'object') return source;
+      if (Array.isArray(source)) return source.slice();
+      const out = Object.assign({}, target || {});
+      for (const key of Object.keys(source)) {
+        try {
+          if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+            out[key] = deepMerge(out[key], source[key]);
+          } else {
+            out[key] = source[key];
+          }
+        } catch (err) {
+          out[key] = source[key];
+        }
+      }
+      return out;
+    }
+
+    const merged = deepMerge(existing, normalized);
+
+    // Remove legacy renderer keys from the merged config to keep a single canonical shape
+    try {
+      delete merged.stylusSettings;
+      delete merged.fileSettings;
+      delete merged.appSettings;
+      delete merged.designSettings;
+    } catch (cleanupErr) {
+      console.warn('[config:save] Cleanup of legacy keys failed:', cleanupErr && cleanupErr.message);
+    }
+
+    // Determine final rootPath from merged config and ensure directory exists
+    const finalRoot = (merged.files && merged.files.rootPath) || merged.rootPath || (settings.files && settings.files.rootPath) || null;
+    try {
+      if (finalRoot && !fs.existsSync(finalRoot)) {
+        fs.mkdirSync(finalRoot, { recursive: true });
+        console.log('[config:save] Created rootPath directory:', finalRoot);
+      }
+    } catch (mkdirErr) {
+      console.warn('[config:save] Could not create rootPath directory:', mkdirErr.message);
+    }
+
+    fs.writeFileSync(configPath, JSON.stringify(merged, null, 2), 'utf-8');
+    console.log('[config:save] Configuration saved successfully (merged)');
     return true;
   } catch (err) {
     console.error('[config:save] Error:', err);

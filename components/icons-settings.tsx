@@ -11,6 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { ChevronDown, ChevronRight, Search, Palette, Check } from "lucide-react"
 
+// Config preview removed: buttons that exposed or copied raw config were removed per request.
+
 type MappingItem = {
   key: string
   label: string
@@ -113,7 +115,7 @@ const DEFAULT_SECTIONS: IconSection[] = [
   { key: "ext_jsx", label: "Fichier JSX", currentIcon: "FileCode", library: "Lucide" },
   { key: "ext_ts", label: "Fichier TypeScript", currentIcon: "FileCode", library: "Lucide" },
   { key: "ext_tsx", label: "Fichier TSX", currentIcon: "FileCode", library: "Lucide" },
-  { key: "ext_py", label: "Fichier Python", currentIcon: "FileCode", library: "Lucide" },
+  
   { key: "ext_rb", label: "Fichier Ruby", currentIcon: "FileCode", library: "Lucide" },
   { key: "ext_go", label: "Fichier Go", currentIcon: "FileCode", library: "Lucide" },
   { key: "ext_rs", label: "Fichier Rust", currentIcon: "FileCode", library: "Lucide" },
@@ -506,10 +508,23 @@ export const IconsSettings: React.FC = () => {
 
       console.log('icons-settings: flattened mappings', allMappings.length, 'mappings', { expanded: expandedMappings.length, collapsed: collapsedMappings.length })
 
+      // Sanitize mappings to ensure only plain JSON-serializable fields are written
+      const sanitize = (m: any) => ({
+        key: String(m.key || ""),
+        label: String(m.label || m.key || ""),
+        currentIcon: String(m.currentIcon || ""),
+        library: String(m.library || "Lucide"),
+        customization: m.customization ? JSON.parse(JSON.stringify(m.customization)) : undefined,
+        context: m.context || undefined
+      })
+
+      const sanitizedExpanded = expandedMappings.map(sanitize)
+      const sanitizedCollapsed = collapsedMappings.map(sanitize)
+
       // Add/update icons section: keep backward-compatible `mappings` for expanded/general
       const newSettings = {
         ...existingSettings,
-        icons: { mappings: expandedMappings, collapsedMappings }
+        icons: { mappings: sanitizedExpanded, collapsedMappings: sanitizedCollapsed }
       }
       console.log('icons-settings: new settings to save', newSettings)
 
@@ -687,6 +702,37 @@ export const IconsSettings: React.FC = () => {
     setOpenSections(newOpenSections)
   }
 
+  useEffect(() => {
+    const testAPI = async () => {
+      try {
+        console.log('icons-settings: testAPI called')
+        window.dispatchEvent(new Event('iconMappingsUpdated'))
+      } catch (e) {
+        console.warn('icons-settings: testAPI failed', e)
+      }
+    }
+
+    const testLoad = async () => {
+      try {
+        console.log('icons-settings: testLoad called')
+        window.dispatchEvent(new Event('iconMappingsUpdated'))
+      } catch (e) {
+        console.warn('icons-settings: testLoad failed', e)
+      }
+    }
+
+    ;(window as any).iconsSettings = ((window as any).iconsSettings || {})
+    ;(window as any).iconsSettings.testAPI = testAPI
+    ;(window as any).iconsSettings.testLoad = testLoad
+
+    return () => {
+      if ((window as any).iconsSettings) {
+        try { delete (window as any).iconsSettings.testAPI } catch (e) {}
+        try { delete (window as any).iconsSettings.testLoad } catch (e) {}
+      }
+    }
+  }, [])
+
   return (
     <div className="space-y-4">
       {/* Removed Lucide quick preview to simplify the settings UI */}
@@ -697,55 +743,7 @@ export const IconsSettings: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {/* Debug button for testing Electron API */}
-            <div className="flex gap-2">
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={async () => {
-                  console.log('Testing Electron API availability...')
-                  console.log('window.electronAPI:', window.electronAPI)
-                  if (window.electronAPI?.saveSettings) {
-                    try {
-                      const testData = { test: 'icons-api-test', timestamp: Date.now() }
-                      console.log('Calling saveSettings with:', testData)
-                      await window.electronAPI.saveSettings(testData)
-                      console.log('saveSettings succeeded')
-                      alert('API test successful!')
-                    } catch (err) {
-                      console.error('saveSettings failed:', err)
-                      alert('API test failed: ' + err)
-                    }
-                  } else {
-                    console.log('window.electronAPI.saveSettings not available')
-                    alert('Electron API not available')
-                  }
-                }}
-              >
-                Test API
-              </Button>
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={async () => {
-                  console.log('Testing loadSettings...')
-                  if (window.electronAPI?.loadSettings) {
-                    try {
-                      const data = await window.electronAPI.loadSettings()
-                      console.log('loadSettings result:', data)
-                      alert('Load successful: ' + JSON.stringify(data, null, 2))
-                    } catch (err) {
-                      console.error('loadSettings failed:', err)
-                      alert('Load failed: ' + err)
-                    }
-                  } else {
-                    alert('Load API not available')
-                  }
-                }}
-              >
-                Test Load
-              </Button>
-            </div>
+            {/* Config preview removed (buttons to show/reload/copy config were removed) */}
 
             {/* Save status indicator */}
             {saveStatus !== 'idle' && (

@@ -75,6 +75,8 @@ export default function NoteTakingApp() {
   const [fileManagerViewMode, setFileManagerViewMode] = useState<"grid" | "list">("grid")
   const [isGPUFluidBackground, setIsGPUFluidBackground] = useState(false)
   const [gpuBackgroundParams, setGpuBackgroundParams] = useState<{ speed?: number; scale?: number; tint?: string; opacity?: number } | null>(null)
+  const [isFixedBackground, setIsFixedBackground] = useState(false)
+  const [fixedBackgroundParams, setFixedBackgroundParams] = useState<{ brightness?: number; contrast?: number; saturation?: number; hue?: number; blur?: number; gradientEnabled?: boolean; gradientColor1?: string; gradientColor2?: string; gradientDirection?: string } | null>(null)
   const handleAudioRename = useCallback(() => {
     if (audioViewerPath && audioViewerName) {
       const renameNodeForDialog = {
@@ -352,12 +354,41 @@ export default function NoteTakingApp() {
 
           // If design settings specify the GPU fluid background, enable it on startup
           try {
-            if (config && config.design && config.design.backgroundImage === "__gpu_fluid_background__") {
+            const design = config && config.design ? config.design : null;
+            if (design && design.backgroundImage === "__gpu_fluid_background__") {
               console.log('📱 Detected GPU fluid background in config, enabling on startup');
               setIsGPUFluidBackground(true);
-              if (config.design.backgroundParams) {
-                setGpuBackgroundParams(config.design.backgroundParams)
+              setIsFixedBackground(false);
+              setFixedBackgroundParams(null);
+              if (design.backgroundParams) {
+                setGpuBackgroundParams(design.backgroundParams)
               }
+            } else if (design && design.backgroundImage && design.backgroundImage !== "__gpu_fluid_background__") {
+              // uploaded background image (base64 or url)
+              console.log('📱 Detected uploaded background image in config, enabling on startup');
+              setIsGPUFluidBackground(false);
+              setIsFixedBackground(true);
+              setFixedBackgroundParams(design.backgroundParams || { backgroundImage: design.backgroundImage });
+            } else if (design && design.fixedImage) {
+              // built-in color or path stored in fixedImage
+              console.log('📱 Detected fixedImage in config, enabling fixed background on startup');
+              setIsGPUFluidBackground(false);
+              setIsFixedBackground(true);
+              setFixedBackgroundParams(Object.assign({}, design.backgroundParams || {}, { backgroundColor: design.fixedImage }));
+            } else {
+              console.log('📱 No background in config, disabling all backgrounds');
+              setIsGPUFluidBackground(false);
+              setIsFixedBackground(false);
+              setGpuBackgroundParams(null);
+              setFixedBackgroundParams(null);
+            }
+            // Notify renderer components about loaded design so they can apply it
+            try {
+              if (typeof window !== 'undefined' && design) {
+                window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { design } }));
+              }
+            } catch (e) {
+              console.warn('Could not dispatch settingsUpdated on startup (checkConfigAndInitialize):', e);
             }
           } catch (err) {
             console.warn('Error checking design background in config', err);
@@ -416,10 +447,37 @@ export default function NoteTakingApp() {
 
             const config = JSON.parse(configString);
             try {
-              if (config && config.design && config.design.backgroundImage === "__gpu_fluid_background__") {
+              const design = config && config.design ? config.design : null;
+              if (design && design.backgroundImage === "__gpu_fluid_background__") {
                 console.log('📱 Detected GPU fluid background in config.json, enabling on startup');
                 setIsGPUFluidBackground(true);
-                if (config.design.backgroundParams) setGpuBackgroundParams(config.design.backgroundParams)
+                setIsFixedBackground(false);
+                setFixedBackgroundParams(null);
+                if (design.backgroundParams) setGpuBackgroundParams(design.backgroundParams)
+              } else if (design && design.backgroundImage && design.backgroundImage !== "__gpu_fluid_background__") {
+                console.log('📱 Detected uploaded background image in config.json, enabling on startup');
+                setIsGPUFluidBackground(false);
+                setIsFixedBackground(true);
+                setFixedBackgroundParams(design.backgroundParams || { backgroundImage: design.backgroundImage });
+              } else if (design && design.fixedImage) {
+                console.log('📱 Detected fixedImage in config.json, enabling fixed background on startup');
+                setIsGPUFluidBackground(false);
+                setIsFixedBackground(true);
+                setFixedBackgroundParams(Object.assign({}, design.backgroundParams || {}, { backgroundColor: design.fixedImage }));
+              } else {
+                console.log('📱 No background in config.json, disabling all backgrounds');
+                setIsGPUFluidBackground(false);
+                setIsFixedBackground(false);
+                setGpuBackgroundParams(null);
+                setFixedBackgroundParams(null);
+              }
+              // Dispatch settingsUpdated so components like LandingPage update their local design state
+              try {
+                if (typeof window !== 'undefined' && design) {
+                  window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { design } }));
+                }
+              } catch (e) {
+                console.warn('Could not dispatch settingsUpdated on startup (loadInitialConfig):', e);
               }
             } catch (err) {
               console.warn('Error checking design background in config.json', err);
@@ -535,14 +593,32 @@ export default function NoteTakingApp() {
     const handleSettingsUpdate = (event: CustomEvent) => {
       console.log('📱 Settings update event received:', event.detail);
       const { design } = event.detail;
-      if (design?.backgroundImage === "__gpu_fluid_background__") {
+      if (!design) {
+        console.log('📱 settingsUpdated received with no design payload');
+        return;
+      }
+      if (design.backgroundImage === "__gpu_fluid_background__") {
         console.log('📱 GPU fluid background detected, enabling GPU fluid background');
         setIsGPUFluidBackground(true);
+        setIsFixedBackground(false);
+        setFixedBackgroundParams(null);
         if (design.backgroundParams) setGpuBackgroundParams(design.backgroundParams)
-      } else {
-        console.log('📱 Non-GPU fluid background detected, disabling GPU fluid background');
+      } else if (design.backgroundImage && design.backgroundImage !== "__gpu_fluid_background__") {
+        console.log('📱 Uploaded background detected, enabling fixed background');
         setIsGPUFluidBackground(false);
-        setGpuBackgroundParams(null)
+        setIsFixedBackground(true);
+        setFixedBackgroundParams(design.backgroundParams || { backgroundImage: design.backgroundImage });
+      } else if (design.fixedImage) {
+        console.log('📱 Detected fixedImage in settings update, enabling fixed background');
+        setIsGPUFluidBackground(false);
+        setIsFixedBackground(true);
+        setFixedBackgroundParams(Object.assign({}, design.backgroundParams || {}, { backgroundColor: design.fixedImage }));
+      } else {
+        console.log('📱 No background detected, disabling all backgrounds');
+        setIsGPUFluidBackground(false);
+        setIsFixedBackground(false);
+        setGpuBackgroundParams(null);
+        setFixedBackgroundParams(null);
       }
     };
 
@@ -689,6 +765,19 @@ export default function NoteTakingApp() {
           scale={gpuBackgroundParams?.scale ?? 1.0}
           tint={gpuBackgroundParams?.tint ?? '#2463ff'}
           opacity={gpuBackgroundParams?.opacity ?? 0.8}
+        />
+      )}
+      {isFixedBackground && activeView === "landing" && fixedBackgroundParams && (
+        <div
+          className="fixed inset-0 z-0"
+          style={{
+            background: fixedBackgroundParams.backgroundImage
+              ? `url(${fixedBackgroundParams.backgroundImage}) center/cover no-repeat`
+              : (fixedBackgroundParams.gradientEnabled
+                ? `linear-gradient(${fixedBackgroundParams.gradientDirection || 'to bottom'}, ${fixedBackgroundParams.gradientColor1 || '#ffffff'}, ${fixedBackgroundParams.gradientColor2 || '#000000'})`
+                : (fixedBackgroundParams.backgroundColor || '#ffffff')),
+            filter: `brightness(${fixedBackgroundParams.brightness ?? 100}%) contrast(${fixedBackgroundParams.contrast ?? 100}%) saturate(${fixedBackgroundParams.saturation ?? 100}%) hue-rotate(${fixedBackgroundParams.hue ?? 0}deg) blur(${fixedBackgroundParams.blur ?? 0}px)`
+          }}
         />
       )}
       {activeView !== "landing" && (
