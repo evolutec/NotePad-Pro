@@ -47,6 +47,56 @@ const DEFAULT_SECTIONS: IconSection[] = [
     ]
   },
   {
+    title: "Icônes de dossiers (Landing Page)",
+    description: "Icônes utilisées pour les dossiers sur la page d'accueil",
+    mappings: [
+      { key: "landing_folder", label: "Dossier (arborescence)", currentIcon: "Folder", library: "Lucide" }
+    ]
+  },
+  {
+    title: "Icônes de fichiers récents (Treefolder)",
+    description: "Icônes utilisées pour les fichiers récents dans l'arborescence",
+    mappings: [
+      { key: "treefolder_recents", label: "Fichiers récents", currentIcon: "Clock", library: "Lucide" }
+    ]
+  },
+  {
+    title: "Icônes de fichiers récents (Landing Page)",
+    description: "Icônes utilisées pour les fichiers récents sur la page d'accueil",
+    mappings: [
+      { key: "landing_recents_md", label: "Fichier Markdown", currentIcon: "FileText", library: "Lucide" },
+      { key: "landing_recents_txt", label: "Fichier texte", currentIcon: "FileText", library: "Lucide" },
+      { key: "landing_recents_doc", label: "Document Word", currentIcon: "FileText", library: "Lucide" },
+      { key: "landing_recents_docx", label: "Document Word", currentIcon: "FileText", library: "Lucide" },
+      { key: "landing_recents_xls", label: "Feuille Excel", currentIcon: "FileSpreadsheet", library: "Lucide" },
+      { key: "landing_recents_xlsx", label: "Feuille Excel", currentIcon: "FileSpreadsheet", library: "Lucide" },
+      { key: "landing_recents_ppt", label: "Présentation PowerPoint", currentIcon: "Presentation", library: "Lucide" },
+      { key: "landing_recents_pptx", label: "Présentation PowerPoint", currentIcon: "Presentation", library: "Lucide" },
+      { key: "landing_recents_image", label: "Image (jpg/png)", currentIcon: "FileImage", library: "Lucide" },
+      { key: "landing_recents_jpg", label: "Image JPG", currentIcon: "FileImage", library: "Lucide" },
+      { key: "landing_recents_jpeg", label: "Image JPEG", currentIcon: "FileImage", library: "Lucide" },
+      { key: "landing_recents_png", label: "Image PNG", currentIcon: "FileImage", library: "Lucide" },
+      { key: "landing_recents_gif", label: "Image GIF", currentIcon: "FileImage", library: "Lucide" },
+      { key: "landing_recents_svg", label: "Image SVG", currentIcon: "FileImage", library: "Lucide" },
+      { key: "landing_recents_video", label: "Vidéo", currentIcon: "FileVideo", library: "Lucide" },
+      { key: "landing_recents_mp4", label: "Vidéo MP4", currentIcon: "FileVideo", library: "Lucide" },
+      { key: "landing_recents_avi", label: "Vidéo AVI", currentIcon: "FileVideo", library: "Lucide" },
+      { key: "landing_recents_mov", label: "Vidéo MOV", currentIcon: "FileVideo", library: "Lucide" },
+      { key: "landing_recents_audio", label: "Audio", currentIcon: "FileAudio", library: "Lucide" },
+      { key: "landing_recents_mp3", label: "Audio MP3", currentIcon: "FileAudio", library: "Lucide" },
+      { key: "landing_recents_wav", label: "Audio WAV", currentIcon: "FileAudio", library: "Lucide" },
+      { key: "landing_recents_draw", label: "Dessin (draw)", currentIcon: "FileImage", library: "Lucide" },
+      { key: "landing_recents_zip", label: "Archive ZIP", currentIcon: "Archive", library: "Lucide" },
+      { key: "landing_recents_rar", label: "Archive RAR", currentIcon: "Archive", library: "Lucide" },
+      { key: "landing_recents_pdf", label: "Fichier PDF", currentIcon: "FileText", library: "Lucide" },
+      { key: "landing_recents_json", label: "Fichier JSON", currentIcon: "FileCode", library: "Lucide" },
+      { key: "landing_recents_js", label: "Fichier JavaScript", currentIcon: "FileCode", library: "Lucide" },
+      { key: "landing_recents_ts", label: "Fichier TypeScript", currentIcon: "FileCode", library: "Lucide" },
+      { key: "landing_recents_html", label: "Fichier HTML", currentIcon: "FileCode", library: "Lucide" },
+      { key: "landing_recents_css", label: "Fichier CSS", currentIcon: "FileCode", library: "Lucide" }
+    ]
+  },
+  {
     title: "Icônes d'ajout (Sidebar)",
     description: "Icônes des boutons d'ajout dans la barre latérale",
     mappings: [

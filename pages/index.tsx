@@ -882,6 +882,7 @@ export default function NoteTakingApp() {
           tree={folderTree}
           isCollapsed={sidebarCollapsed}
           onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+          editMode={editMode}
           onDelete={async (node) => {
             console.log('=== DELETE DEBUG START ===');
             console.log('Delete node object:', node);
@@ -1472,6 +1473,11 @@ export default function NoteTakingApp() {
               }}
               selectedNote={selectedNote}
               viewMode={fileManagerViewMode}
+              editMode={editMode}
+              onOpenIconSettings={() => {
+                setIconSettingsModalContext('filemanager');
+                setIconSettingsModalOpen(true);
+              }}
             />
           )}
         </main>
@@ -1755,8 +1761,16 @@ export default function NoteTakingApp() {
               try {
                 const existing = await window.electronAPI.loadSettings();
                 const next = Object.assign({}, existing || {});
-                // ensure design object exists
-                next.design = Object.assign({}, next.design || {}, settings || {});
+                
+                // Handle context-specific settings properly
+                if (backgroundModalContext !== 'landing' && settings.elements) {
+                  // For context-specific settings (like filemanager), merge into design.elements
+                  next.design = Object.assign({}, next.design || {});
+                  next.design.elements = Object.assign({}, next.design.elements || {}, settings.elements);
+                } else {
+                  // For landing/global settings, merge directly into design
+                  next.design = Object.assign({}, next.design || {}, settings || {});
+                }
 
                 if (window.electronAPI.saveSettings) {
                   await window.electronAPI.saveSettings(next);

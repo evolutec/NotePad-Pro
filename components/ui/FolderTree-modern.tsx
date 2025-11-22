@@ -443,7 +443,8 @@ const TreeItem = React.memo(({
   onMove,
   onNewFolder,
   onNewFile,
-  setFileConflict
+  setFileConflict,
+  editMode = false
 }: {
   node: EnhancedFolderNode;
   depth?: number;
@@ -467,6 +468,7 @@ const TreeItem = React.memo(({
     oldPath?: string;
     newPath?: string;
   } | null) => void;
+  editMode?: boolean;
 }) => {
   const fileType = getFileType(node);
   const isNoteFile = fileType === 'note' || fileType === 'draw';
@@ -743,7 +745,7 @@ const TreeItem = React.memo(({
                 let mappedComp: any = null
                 let mappingKey = ''
                 if (node.type === 'folder') {
-                  mappingKey = isExpanded ? 'folder_open' : 'folder_default'
+                  mappingKey = isExpanded ? 'tree_folder_open' : 'tree_folder_default'
                   mappedComp = getMappedIconComponent(mappingKey)
                 } else {
                   const ext = node.name.split('.').pop()?.toLowerCase() || ''
@@ -848,7 +850,7 @@ const TreeItem = React.memo(({
           )}
 
           {/* Actions */}
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className={editMode ? (fileType === 'folder' ? "opacity-100" : "opacity-0") : "opacity-0 group-hover:opacity-100 transition-opacity"}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -916,6 +918,7 @@ export function ModernFolderTree({
   onNewFolder,
   onNewFile,
   initialExpandedPaths = [],
+  editMode = false,
 }: {
   tree: EnhancedFolderNode | null;
   onFolderSelect?: (path: string) => void;
@@ -930,6 +933,7 @@ export function ModernFolderTree({
   onNewFolder?: (parentPath: string) => void;
   onNewFile?: (parentPath: string) => void;
   initialExpandedPaths?: string[];
+  editMode?: boolean;
 }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set(initialExpandedPaths));
   const [treeVersion, setTreeVersion] = useState(0);
@@ -1351,6 +1355,7 @@ export function ModernFolderTree({
           onNewFolder={() => onNewFolder?.(node.path)}
           onNewFile={() => onNewFile?.(node.path)}
           setFileConflict={setFileConflict}
+          editMode={editMode}
         />
         
         <AnimatePresence>

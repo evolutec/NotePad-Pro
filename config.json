@@ -25,7 +25,7 @@
   "design": {
     "backgroundImage": null,
     "fixedImage": null,
-    "animatedIndex": 8,
+    "animatedIndex": 9,
     "elements": {
       "recents": {
         "visible": true,
@@ -68,6 +68,38 @@
         "backgroundImage": null,
         "fixedImage": null,
         "animatedIndex": 9
+      },
+      "filemanager": {
+        "backgroundImage": null,
+        "fixedImage": "#000000",
+        "animatedIndex": 0,
+        "backgroundParams": {
+          "brightness": 100,
+          "contrast": 100,
+          "saturation": 100,
+          "hue": 0,
+          "blur": 0,
+          "gradientEnabled": false,
+          "gradientColor1": "#000000",
+          "gradientColor2": "#000000",
+          "gradientDirection": "to right"
+        }
+      },
+      "sidebar": {
+        "backgroundImage": null,
+        "fixedImage": "#000000",
+        "animatedIndex": 0,
+        "backgroundParams": {
+          "brightness": 100,
+          "contrast": 100,
+          "saturation": 100,
+          "hue": 0,
+          "blur": 0,
+          "gradientEnabled": false,
+          "gradientColor1": "#000000",
+          "gradientColor2": "#000000",
+          "gradientDirection": "to right"
+        }
       }
     },
     "backgroundParams": {

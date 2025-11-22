@@ -1,6 +1,6 @@
 "use client";
 /// <reference path="../../global.d.ts" />
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Search, 
@@ -30,7 +30,8 @@ import {
   Palette,
   Table,
   Presentation,
-  Sheet
+  Sheet,
+  MoreVertical
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 // Runtime cache for dynamically loaded MUI icons (loaded only at runtime)
@@ -376,6 +377,7 @@ interface ModernSidebarProps {
   className?: string;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  editMode?: boolean;
 }
 
 export function ModernSidebar({
@@ -395,6 +397,7 @@ export function ModernSidebar({
   className,
   isCollapsed = false,
   onToggleCollapse,
+  editMode = false,
 }: ModernSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeView, setActiveView] = useState<'files' | 'recent' | 'starred' | 'shared'>('files');
@@ -407,6 +410,14 @@ export function ModernSidebar({
   const [showPowerpointDialog, setShowPowerpointDialog] = useState(false);
   const [showPdfDialog, setShowPdfDialog] = useState(false);
   const [recentFilesVersion, setRecentFilesVersion] = useState(0);
+
+  // Background settings state
+  const [backgroundSettings, setBackgroundSettings] = useState<{
+    backgroundImage?: string | null;
+    fixedImage?: string | null;
+    animatedIndex?: number;
+    backgroundParams?: any;
+  } | null>(null);
 
   // Use useEffect to detect Electron mode on client side only
   React.useEffect(() => {
@@ -745,12 +756,87 @@ export function ModernSidebar({
     }
   }, []);
 
+  // Load background settings for sidebar
+  useEffect(() => {
+    const loadBackgroundSettings = async () => {
+      try {
+        if (window.electronAPI?.loadSettings) {
+          const settings = await window.electronAPI.loadSettings();
+          console.log('sidebar: loaded settings from config.json:', settings);
+          if (settings?.design?.elements?.sidebar) {
+            console.log('sidebar: loaded background settings from config.json:', settings.design.elements.sidebar);
+            setBackgroundSettings(settings.design.elements.sidebar);
+          } else {
+            console.log('sidebar: no background settings found in config.json for sidebar');
+          }
+        } else {
+          console.log('sidebar: window.electronAPI.loadSettings not available');
+        }
+      } catch (error) {
+        console.warn('sidebar: Failed to load background settings:', error);
+      }
+    };
+
+    loadBackgroundSettings();
+
+    // Listen for settings updates (including background changes)
+    const handleSettingsUpdated = (event: any) => {
+      console.log('sidebar: received settingsUpdated event:', event.detail);
+      if (event.detail?.design?.elements?.sidebar) {
+        console.log('sidebar: updating background settings from event:', event.detail.design.elements.sidebar);
+        setBackgroundSettings(event.detail.design.elements.sidebar);
+      }
+    };
+
+    window.addEventListener('settingsUpdated', handleSettingsUpdated);
+
+    return () => {
+      window.removeEventListener('settingsUpdated', handleSettingsUpdated);
+    };
+  }, []);
+
+  // Apply background settings to create dynamic styles
+  const backgroundStyle = useMemo(() => {
+    if (!backgroundSettings) return {};
+
+    const style: React.CSSProperties = {};
+
+    if (backgroundSettings.backgroundImage) {
+      style.backgroundImage = `url(${backgroundSettings.backgroundImage})`;
+      style.backgroundSize = 'cover';
+      style.backgroundPosition = 'center';
+      style.backgroundRepeat = 'no-repeat';
+    } else if (backgroundSettings.fixedImage) {
+      if (backgroundSettings.fixedImage.startsWith('#')) {
+        style.backgroundColor = backgroundSettings.fixedImage;
+      } else {
+        style.backgroundImage = `url(${backgroundSettings.fixedImage})`;
+        style.backgroundSize = 'cover';
+        style.backgroundPosition = 'center';
+        style.backgroundRepeat = 'no-repeat';
+      }
+    } else if (backgroundSettings.animatedIndex !== undefined && backgroundSettings.animatedIndex >= 0) {
+      // Handle animated backgrounds using SVG files
+      style.backgroundImage = `url(/backgrounds/bg${((backgroundSettings.animatedIndex ?? 0) % 20) + 1}.svg)`;
+      style.backgroundSize = 'cover';
+      style.backgroundPosition = 'center';
+      style.backgroundRepeat = 'no-repeat';
+    }
+
+    // Apply backgroundParams if they exist
+    if (backgroundSettings.backgroundParams) {
+      Object.assign(style, backgroundSettings.backgroundParams);
+    }
+
+    return style;
+  }, [backgroundSettings]);
+
   return (
     <aside className={cn(
       "relative h-screen flex flex-col bg-card border-r border-border transition-all duration-300 overflow-hidden z-10",
       isCollapsed ? "w-12 min-w-[3rem]" : "w-80 min-w-[20rem] max-w-[30rem]",
       className
-    )}>
+    )} style={backgroundStyle}>
       {/* Header */}
       <div className="p-4 border-b border-border/50 flex-shrink-0">
         <div className="flex items-center justify-end mb-4">
@@ -1091,6 +1177,45 @@ export function ModernSidebar({
                 </>
               )}
             </div>
+            {editMode && (
+              <div className="flex items-center">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      title="Personnaliser la barre latérale"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (typeof window !== 'undefined' && window.dispatchEvent) {
+                          window.dispatchEvent(new CustomEvent('openBackgroundConfigModal', { detail: { context: 'sidebar' } }));
+                        }
+                      }}
+                    >
+                      <Palette className="mr-2 h-4 w-4" />
+                      Arrière-plan
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        // Open icon settings modal for sidebar context
+                        if (typeof window !== 'undefined' && window.dispatchEvent) {
+                          window.dispatchEvent(new CustomEvent('openIconSettingsModal', { detail: { context: 'sidebar' } }));
+                        }
+                      }}
+                    >
+                      <Settings className="mr-2 h-4 w-4" />
+                      Icônes
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
           </div>
 
 
@@ -1206,6 +1331,7 @@ export function ModernSidebar({
                         onDuplicate={onDuplicate}
                         onNewFolder={onNewFolder}
                         onNewFile={onNewFile}
+                        editMode={editMode}
                       />
                     </>
                   )}

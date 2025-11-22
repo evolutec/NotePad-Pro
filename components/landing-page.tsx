@@ -501,6 +501,7 @@ export function LandingPage({
           selectedFolder={null} // No selection in landing page
           selectedNote={null} // No selection in landing page
           initialExpandedPaths={folderTree ? [folderTree.path] : []} // Expand root folder by default
+          editMode={editMode}
         />
       </div>
     )
@@ -512,9 +513,9 @@ export function LandingPage({
     const config = getFileTypeConfig(fileType || 'generic')
     const Icon = config.icon
 
-    // Determine extension mapping key
+    // Determine extension mapping key for recents
     const ext = file.name.split('.').pop()?.toLowerCase() || ''
-    const mappingKey = 'ext_' + ext
+    const mappingKey = 'landing_recents_' + ext
 
     return (
       <motion.div

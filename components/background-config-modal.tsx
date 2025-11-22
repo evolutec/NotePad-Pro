@@ -27,7 +27,7 @@ interface BackgroundConfigModalProps {
     animatedIndex?: number
     backgroundParams?: any
   }
-  onSave: (settings: { backgroundImage?: string | null; fixedImage?: string | null; animatedIndex?: number; backgroundParams?: any }) => void
+  onSave: (settings: { backgroundImage?: string | null; fixedImage?: string | null; animatedIndex?: number; backgroundParams?: any; elements?: any }) => void
   context?: string
 };
 

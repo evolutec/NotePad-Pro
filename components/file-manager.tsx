@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Archive, Copy, Download, Edit, Eye, File, FileCode, FileText, FileWarning, Folder, FolderOpen, ImageIcon, Link, MoreHorizontal, Move, Music, NotebookText, Palette, Plus, Scissors, Search, SearchX, Share, Trash, Upload, UploadCloud, Video, FilePlus, ChevronLeft, ChevronRight, Home, FileImage, FileVideo, FileAudio, Sheet, Presentation, List, LayoutGrid } from "lucide-react"
+import { Archive, Copy, Download, Edit, Eye, File, FileCode, FileText, FileWarning, Folder, FolderOpen, ImageIcon, Link, MoreHorizontal, MoreVertical, Move, Music, NotebookText, Palette, Plus, Scissors, Search, SearchX, Share, Trash, Upload, UploadCloud, Video, FilePlus, ChevronLeft, ChevronRight, Home, FileImage, FileVideo, FileAudio, Sheet, Presentation, List, LayoutGrid, Settings } from "lucide-react"
 import * as LucideIcons from "lucide-react"
 import { cn } from "@/lib/utils"
 import { normalizeIconForThumbnail } from "@/lib/utils"
@@ -163,6 +163,8 @@ interface FileManagerProps {
   searchQuery?: string;
   onSearchQueryChange?: (query: string) => void;
   viewMode?: "grid" | "list";
+  editMode?: boolean;
+  onOpenIconSettings?: () => void;
 }
 
 type FileType = "image" | "document" | "draw" | "audio" | "video" | "archive" | "link" | "other" | "code" | "note" | "folder" | "pdf"
@@ -271,7 +273,7 @@ const FileListRow = React.memo(({
     >
       {/* Icon */}
         <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center">
-        {file.isDirectory ? renderMappedIcon('folder_default', Folder, 24) : renderMappedIcon(('ext_' + (file.name.split('.').pop() || '')).toLowerCase(), Icon, 24)}
+        {file.isDirectory ? renderMappedIcon(viewMode === 'grid' ? 'fm_folder_grid' : 'fm_folder_list', Folder, 24) : renderMappedIcon(('ext_' + (file.name.split('.').pop() || '')).toLowerCase(), Icon, 24)}
       </div>
 
       {/* Name */}
@@ -625,6 +627,8 @@ export function FileManager({
   searchQuery: externalSearchQuery = "",
   onSearchQueryChange,
   viewMode: externalViewMode = "grid",
+  editMode = false,
+  onOpenIconSettings
 }: FileManagerProps) {
   console.log("FileManager: Component re-rendered with selectedNote", selectedNote);
   console.log("FileManager: externalViewMode =", externalViewMode);
@@ -651,6 +655,14 @@ export function FileManager({
   // Icon mappings state
   const [iconMappings, setIconMappings] = useState<IconMapping[]>([]);
   const [iconMappingsCollapsed, setIconMappingsCollapsed] = useState<IconMapping[]>([]);
+
+  // Background settings state
+  const [backgroundSettings, setBackgroundSettings] = useState<{
+    backgroundImage?: string | null;
+    fixedImage?: string | null;
+    animatedIndex?: number;
+    backgroundParams?: any;
+  } | null>(null);
 
   // Load icon mappings from config.json
   useEffect(() => {
@@ -708,6 +720,14 @@ export function FileManager({
             console.log('file-manager: preloaded collapsed icon libraries');
           } else {
             console.log('file-manager: no collapsed icon mappings found in config.json');
+          }
+
+          // Load background settings for filemanager
+          if (settings?.design?.elements?.filemanager) {
+            console.log('file-manager: loaded background settings from config.json:', settings.design.elements.filemanager);
+            setBackgroundSettings(settings.design.elements.filemanager);
+          } else {
+            console.log('file-manager: no background settings found in config.json for filemanager');
           }
           // Legacy fallback: some modules store the last mappings on window
           if ((!settings?.icons || !settings.icons.mappings) && (window as any).__lastIconMappings) {
@@ -774,8 +794,20 @@ export function FileManager({
 
     window.addEventListener('iconMappingsUpdated', handleIconMappingsUpdate);
 
+    // Listen for settings updates (including background changes)
+    const handleSettingsUpdated = (event: any) => {
+      console.log('file-manager: received settingsUpdated event:', event.detail);
+      if (event.detail?.design?.elements?.filemanager) {
+        console.log('file-manager: updating background settings from event:', event.detail.design.elements.filemanager);
+        setBackgroundSettings(event.detail.design.elements.filemanager);
+      }
+    };
+
+    window.addEventListener('settingsUpdated', handleSettingsUpdated);
+
     return () => {
       window.removeEventListener('iconMappingsUpdated', handleIconMappingsUpdate);
+      window.removeEventListener('settingsUpdated', handleSettingsUpdated);
     };
   }, []);
 
@@ -1472,8 +1504,44 @@ export function FileManager({
     return <Icon className={cn('h-10 w-10', color)} />
   };
 
+  // Apply background settings to create dynamic styles
+  const backgroundStyle = useMemo(() => {
+    if (!backgroundSettings) return {};
+
+    const style: React.CSSProperties = {};
+
+    if (backgroundSettings.backgroundImage) {
+      style.backgroundImage = `url(${backgroundSettings.backgroundImage})`;
+      style.backgroundSize = 'cover';
+      style.backgroundPosition = 'center';
+      style.backgroundRepeat = 'no-repeat';
+    } else if (backgroundSettings.fixedImage) {
+      if (backgroundSettings.fixedImage.startsWith('#')) {
+        style.backgroundColor = backgroundSettings.fixedImage;
+      } else {
+        style.backgroundImage = `url(${backgroundSettings.fixedImage})`;
+        style.backgroundSize = 'cover';
+        style.backgroundPosition = 'center';
+        style.backgroundRepeat = 'no-repeat';
+      }
+    } else if (backgroundSettings.animatedIndex !== undefined && backgroundSettings.animatedIndex >= 0) {
+      // Handle animated backgrounds using SVG files
+      style.backgroundImage = `url(/backgrounds/bg${((backgroundSettings.animatedIndex ?? 0) % 20) + 1}.svg)`;
+      style.backgroundSize = 'cover';
+      style.backgroundPosition = 'center';
+      style.backgroundRepeat = 'no-repeat';
+    }
+
+    // Apply backgroundParams if they exist
+    if (backgroundSettings.backgroundParams) {
+      Object.assign(style, backgroundSettings.backgroundParams);
+    }
+
+    return style;
+  }, [backgroundSettings]);
+
   return (
-    <Card className="flex flex-col h-full">
+    <Card className="flex flex-col h-full" style={backgroundStyle}>
       <div 
         className="flex flex-col h-full w-full"
         onDragOver={(e: React.DragEvent) => {
@@ -1715,6 +1783,40 @@ export function FileManager({
               });
             })()}
           </div>
+
+          {/* Edit mode customization menu */}
+          {editMode && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Personnaliser le gestionnaire de fichiers"
+                  className="h-8 w-8"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (typeof window !== 'undefined' && window.dispatchEvent) {
+                      window.dispatchEvent(new CustomEvent('openBackgroundConfigModal', { detail: { context: 'filemanager' } }));
+                    }
+                  }}
+                >
+                  <Palette className="mr-2 h-4 w-4" />
+                  Arrière-plan
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={onOpenIconSettings}
+                >
+                  <Settings className="mr-2 h-4 w-4" />
+                  Icônes
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
       <input
