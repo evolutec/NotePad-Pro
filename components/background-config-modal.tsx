@@ -28,15 +28,14 @@ interface BackgroundConfigModalProps {
     backgroundParams?: any
   }
   onSave: (settings: { backgroundImage?: string | null; fixedImage?: string | null; animatedIndex?: number; backgroundParams?: any }) => void
+  context?: string
 };
 
 export function BackgroundConfigModal(props: BackgroundConfigModalProps) {
-  const { open, onOpenChange, currentSettings, onSave } = props
-  const [selectedAnimated, setSelectedAnimated] = useState(currentSettings.animatedIndex)
-  const [selectedFixed, setSelectedFixed] = useState(currentSettings.fixedImage)
-  const [uploadedImage, setUploadedImage] = useState<string | null>(
-    currentSettings.backgroundImage === "__gpu_fluid_background__" ? null : (currentSettings.backgroundImage ?? null)
-  )
+  const { open, onOpenChange, currentSettings, onSave, context = 'landing' } = props
+  const [selectedAnimated, setSelectedAnimated] = useState<number>(0)
+  const [selectedFixed, setSelectedFixed] = useState<string | null>(null)
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   // On ne garde que le générateur triangle
   const [selectedGenerator] = useState<string>("triangle")
   const [selectedFluidEffect, setSelectedFluidEffect] = useState<string>(
@@ -63,59 +62,101 @@ export function BackgroundConfigModal(props: BackgroundConfigModalProps) {
 
   // Initialize fluid params from currentSettings if provided
   React.useEffect(() => {
-    try {
-      if (currentSettings && currentSettings.backgroundParams) {
-        const p = currentSettings.backgroundParams
-        if (typeof p.speed === 'number') setFluidSpeed(p.speed)
-        if (typeof p.scale === 'number') setFluidScale(p.scale)
-        if (typeof p.opacity === 'number') setFluidOpacity(p.opacity)
-        if (typeof p.tint === 'string') setFluidTint(p.tint)
-        // Fixed params
-        if (typeof p.brightness === 'number') setFixedBrightness(p.brightness)
-        if (typeof p.contrast === 'number') setFixedContrast(p.contrast)
-        if (typeof p.saturation === 'number') setFixedSaturation(p.saturation)
-        if (typeof p.hue === 'number') setFixedHue(p.hue)
-        if (typeof p.blur === 'number') setFixedBlur(p.blur)
-        if (typeof p.gradientEnabled === 'boolean') setGradientEnabled(p.gradientEnabled)
-        if (typeof p.gradientColor1 === 'string') setGradientColor1(p.gradientColor1)
-        if (typeof p.gradientColor2 === 'string') setGradientColor2(p.gradientColor2)
-        if (typeof p.gradientDirection === 'string') setGradientDirection(p.gradientDirection)
+    const loadSettingsForContext = async () => {
+      try {
+        if (context && context !== 'landing' && window.electronAPI?.loadSettings) {
+          const config = await window.electronAPI.loadSettings();
+          const design = config?.design;
+          const elementSettings = design?.elements?.[context];
+          
+          if (elementSettings) {
+            console.log('Loading settings for context:', context, elementSettings);
+            setSelectedAnimated(elementSettings.animatedIndex ?? 0);
+            setSelectedFixed(elementSettings.fixedImage ?? null);
+            setUploadedImage(elementSettings.backgroundImage === "__gpu_fluid_background__" ? null : (elementSettings.backgroundImage ?? null));
+            setSelectedFluidEffect(elementSettings.backgroundImage === "__gpu_fluid_background__" ? "gpu-fluid" : "");
+            
+            // Load background params
+            if (elementSettings.backgroundParams) {
+              const p = elementSettings.backgroundParams;
+              if (typeof p.speed === 'number') setFluidSpeed(p.speed);
+              if (typeof p.scale === 'number') setFluidScale(p.scale);
+              if (typeof p.opacity === 'number') setFluidOpacity(p.opacity);
+              if (typeof p.tint === 'string') setFluidTint(p.tint);
+              if (typeof p.brightness === 'number') setFixedBrightness(p.brightness);
+              if (typeof p.contrast === 'number') setFixedContrast(p.contrast);
+              if (typeof p.saturation === 'number') setFixedSaturation(p.saturation);
+              if (typeof p.hue === 'number') setFixedHue(p.hue);
+              if (typeof p.blur === 'number') setFixedBlur(p.blur);
+              if (typeof p.gradientEnabled === 'boolean') setGradientEnabled(p.gradientEnabled);
+              if (typeof p.gradientColor1 === 'string') setGradientColor1(p.gradientColor1);
+              if (typeof p.gradientColor2 === 'string') setGradientColor2(p.gradientColor2);
+              if (typeof p.gradientDirection === 'string') setGradientDirection(p.gradientDirection);
+            }
+          } else {
+            // No element settings found, initialize with defaults
+            console.log('No settings found for context:', context, 'using defaults');
+            setSelectedAnimated(0);
+            setSelectedFixed(null);
+            setUploadedImage(null);
+            setSelectedFluidEffect('');
+          }
+        } else if (context === 'landing' && currentSettings) {
+          // Load global landing settings
+          console.log('Loading global landing settings');
+          setSelectedAnimated(currentSettings.animatedIndex ?? 0);
+          setSelectedFixed(currentSettings.fixedImage ?? null);
+          setUploadedImage(currentSettings.backgroundImage === "__gpu_fluid_background__" ? null : (currentSettings.backgroundImage ?? null));
+          setSelectedFluidEffect(currentSettings.backgroundImage === "__gpu_fluid_background__" ? "gpu-fluid" : "");
+          
+          // Load background params from currentSettings
+          if (currentSettings.backgroundParams) {
+            const p = currentSettings.backgroundParams;
+            if (typeof p.speed === 'number') setFluidSpeed(p.speed);
+            if (typeof p.scale === 'number') setFluidScale(p.scale);
+            if (typeof p.opacity === 'number') setFluidOpacity(p.opacity);
+            if (typeof p.tint === 'string') setFluidTint(p.tint);
+            if (typeof p.brightness === 'number') setFixedBrightness(p.brightness);
+            if (typeof p.contrast === 'number') setFixedContrast(p.contrast);
+            if (typeof p.saturation === 'number') setFixedSaturation(p.saturation);
+            if (typeof p.hue === 'number') setFixedHue(p.hue);
+            if (typeof p.blur === 'number') setFixedBlur(p.blur);
+            if (typeof p.gradientEnabled === 'boolean') setGradientEnabled(p.gradientEnabled);
+            if (typeof p.gradientColor1 === 'string') setGradientColor1(p.gradientColor1);
+            if (typeof p.gradientColor2 === 'string') setGradientColor2(p.gradientColor2);
+            if (typeof p.gradientDirection === 'string') setGradientDirection(p.gradientDirection);
+          }
+        }
+      } catch (e) {
+        console.warn('Error loading settings for context:', context, e);
       }
-      if (currentSettings && currentSettings.backgroundImage === "__gpu_fluid_background__") {
-        setSelectedFluidEffect('gpu-fluid')
-      }
-    } catch (e) {
-      // ignore
+    };
+    
+    if (open) {
+      loadSettingsForContext();
     }
-  }, [currentSettings])
+  }, [currentSettings, context, open])
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    let payload: any = {}
+    
     if (selectedFluidEffect === "gpu-fluid") {
       // Set special value for GPU fluid background
-      const payload = { backgroundImage: "__gpu_fluid_background__", fixedImage: null, animatedIndex: 0, backgroundParams: { speed: fluidSpeed, scale: fluidScale, tint: fluidTint, opacity: fluidOpacity } }
-      onSave(payload)
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { design: payload } }))
-      }
+      payload = { backgroundImage: "__gpu_fluid_background__", fixedImage: null, animatedIndex: 0, backgroundParams: { speed: fluidSpeed, scale: fluidScale, tint: fluidTint, opacity: fluidOpacity } }
     } else if (uploadedImage) {
-      const payload = { backgroundImage: uploadedImage, fixedImage: null, animatedIndex: 0 }
-      onSave(payload)
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { design: payload } }))
-      }
+      payload = { backgroundImage: uploadedImage, fixedImage: null, animatedIndex: 0 }
     } else if (selectedFixed) {
-      const payload = { backgroundImage: null, fixedImage: selectedFixed, animatedIndex: 0, backgroundParams: { brightness: fixedBrightness, contrast: fixedContrast, saturation: fixedSaturation, hue: fixedHue, blur: fixedBlur, gradientEnabled, gradientColor1, gradientColor2, gradientDirection } }
-      onSave(payload)
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { design: payload } }))
-      }
+      payload = { backgroundImage: null, fixedImage: selectedFixed, animatedIndex: 0, backgroundParams: { brightness: fixedBrightness, contrast: fixedContrast, saturation: fixedSaturation, hue: fixedHue, blur: fixedBlur, gradientEnabled, gradientColor1, gradientColor2, gradientDirection } }
     } else {
-      const payload = { backgroundImage: null, fixedImage: null, animatedIndex: selectedAnimated }
-      onSave(payload)
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { design: payload } }))
-      }
+      payload = { backgroundImage: null, fixedImage: null, animatedIndex: selectedAnimated }
     }
+
+    // If context is not 'landing', save under design.elements.{context}
+    if (context !== 'landing') {
+      payload = { elements: { [context]: payload } }
+    }
+
+    await onSave(payload)
     onOpenChange(false)
   }
 
@@ -189,13 +230,21 @@ export function BackgroundConfigModal(props: BackgroundConfigModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={(newOpen) => {
-      // Only allow opening, prevent closing from outside clicks
-      if (newOpen) {
-        onOpenChange(true);
-      }
-      // Ignore close requests (newOpen = false) to prevent outside click closing
+      // Propagate open/close requests to parent so the controlled state stays consistent.
+      // We prevent closing via outside clicks below using `onPointerDownOutside` on the content,
+      // but still allow programmatic closes (parent/state) to fully close the dialog and
+      // remove overlays to avoid blocking UI elements.
+      onOpenChange(newOpen);
     }}>
-      <DialogContent className="fixed top-14 left-0 right-0 bottom-0 w-screen h-[calc(100vh-3.5rem)] m-0 p-0 flex flex-col overflow-hidden" showCloseButton={false}>
+      <DialogContent
+        className="fixed top-14 left-0 right-0 bottom-0 w-screen h-[calc(100vh-3.5rem)] m-0 p-0 flex flex-col overflow-hidden"
+        showCloseButton={false}
+        onPointerDownOutside={(e) => {
+          // Prevent closing the dialog when user clicks outside the content,
+          // but do not swallow programmatic close events.
+          e.preventDefault()
+        }}
+      >
         <Tabs defaultValue="animated" className="w-full flex flex-col flex-1 min-h-0">
         <DialogHeader className="sticky top-0 z-30 bg-background/80 backdrop-blur-sm items-center gap-0 py-6">
           <div className="relative w-full mb-4">
@@ -250,7 +299,7 @@ export function BackgroundConfigModal(props: BackgroundConfigModalProps) {
                   key={bg.id}
                   className={`cursor-pointer ${selectedFixed === (bg.src || bg.color) && !uploadedImage ? 'ring-2 ring-primary' : ''}`}
                   onClick={() => {
-                    setSelectedFixed(bg.src || bg.color)
+                    setSelectedFixed(bg.src ?? bg.color ?? null)
                     setSelectedAnimated(0)
                     setUploadedImage(null)
                     setSelectedFluidEffect('')

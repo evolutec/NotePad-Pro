@@ -96,7 +96,14 @@ export function SettingsDialog({ children, onBackgroundSaved }: SettingsDialogPr
   const saveSettings = useCallback(async () => {
     try {
       // Send canonical key names to the main process to avoid legacy key duplication
-      const payload = { stylus: stylusSettings, files: fileSettings, app: appSettings, design: designSettings };
+      // Do not persist background fields here — background persistence is handled by the landing-page modal (context: 'landing')
+      const designToSave = { ...designSettings } as any;
+      delete designToSave.backgroundImage;
+      delete designToSave.fixedImage;
+      delete designToSave.animatedIndex;
+      delete designToSave.backgroundParams;
+
+      const payload = { stylus: stylusSettings, files: fileSettings, app: appSettings, design: designToSave };
       if (typeof window !== 'undefined' && (window as any).electronAPI && (window as any).electronAPI.saveSettings) {
         await (window as any).electronAPI.saveSettings(payload);
       } else if (typeof localStorage !== 'undefined') {
@@ -162,7 +169,7 @@ export function SettingsDialog({ children, onBackgroundSaved }: SettingsDialogPr
           // Electron dialog returns an object with filePaths (array)
           const folderPath = result && result.filePaths && result.filePaths[0];
           if (folderPath) {
-            setFileSettings((prev) => ({ ...prev, rootPath: folderPath }));
+            setFileSettings((prev: any) => ({ ...prev, rootPath: folderPath }));
           } else {
             toast({
               title: "Sélection annulée",
@@ -191,7 +198,7 @@ export function SettingsDialog({ children, onBackgroundSaved }: SettingsDialogPr
     if (files.length > 0) {
       const firstFile = files[0];
       const folderName = firstFile.webkitRelativePath.split("/")[0];
-      setFileSettings((prev) => ({ ...prev, rootPath: folderName }));
+        setFileSettings((prev: any) => ({ ...prev, rootPath: folderName }));
     }
     setShowFolderPicker(false);
   }
@@ -200,7 +207,7 @@ export function SettingsDialog({ children, onBackgroundSaved }: SettingsDialogPr
   const [backgroundModalOpen, setBackgroundModalOpen] = useState(false)
 
   const handleSaveBackground = (settings: { backgroundImage?: string | null; fixedImage?: string | null; animatedIndex?: number; backgroundParams?: any }) => {
-    setDesignSettings(prev => {
+    setDesignSettings((prev: any) => {
       const updated = { ...prev, ...settings } as any
       // Notify other components immediately so previews update without saving the whole dialog
       if (typeof window !== 'undefined') {
@@ -238,7 +245,7 @@ export function SettingsDialog({ children, onBackgroundSaved }: SettingsDialogPr
               <X className="h-4 w-4" />
             </Button>
           </div>
-          <TabsList className="grid w-full grid-cols-6 py-1">
+          <TabsList className="grid w-full grid-cols-4 py-1">
               <TabsTrigger value="stylus" className="flex items-center gap-2 data-[state=active]:underline data-[state=active]:underline-offset-4 data-[state=active]:decoration-2 data-[state=active]:decoration-white hover:underline hover:decoration-white">
                 <Pen className="h-4 w-4" /> Stylet
               </TabsTrigger>
@@ -248,10 +255,6 @@ export function SettingsDialog({ children, onBackgroundSaved }: SettingsDialogPr
               <TabsTrigger value="app" className="flex items-center gap-2 data-[state=active]:underline data-[state=active]:underline-offset-4 data-[state=active]:decoration-2 data-[state=active]:decoration-white hover:underline hover:decoration-white">
                 <Monitor className="h-4 w-4" /> Application
               </TabsTrigger>
-              <TabsTrigger value="design" className="flex items-center gap-2 data-[state=active]:underline data-[state=active]:underline-offset-4 data-[state=active]:decoration-2 data-[state=active]:decoration-white hover:underline hover:decoration-white">
-                <Image className="h-4 w-4" /> Design
-              </TabsTrigger>
-              <TabsTrigger value="icons" className="flex items-center gap-2 data-[state=active]:underline data-[state=active]:underline-offset-4 data-[state=active]:decoration-2 data-[state=active]:decoration-white hover:underline hover:decoration-white"><Palette className="h-4 w-4" /> Icônes</TabsTrigger>
               <TabsTrigger value="about" className="data-[state=active]:underline data-[state=active]:decoration-white hover:underline hover:decoration-white">À propos</TabsTrigger>
             </TabsList>
           </DialogHeader>
@@ -277,7 +280,7 @@ export function SettingsDialog({ children, onBackgroundSaved }: SettingsDialogPr
                     </div>
                     <Switch
                       checked={stylusSettings.palmRejection}
-                      onCheckedChange={(checked) => setStylusSettings((prev) => ({ ...prev, palmRejection: checked }))}
+                      onCheckedChange={(checked) => setStylusSettings((prev: any) => ({ ...prev, palmRejection: checked }))}
                     />
                   </div>
                 </CardContent>
@@ -311,7 +314,7 @@ export function SettingsDialog({ children, onBackgroundSaved }: SettingsDialogPr
                     </div>
                     <Switch
                       checked={fileSettings.autoSave}
-                      onCheckedChange={(checked) => setFileSettings((prev) => ({ ...prev, autoSave: checked }))}
+                      onCheckedChange={(checked) => setFileSettings((prev: any) => ({ ...prev, autoSave: checked }))}
                     />
                   </div>
 
@@ -320,7 +323,7 @@ export function SettingsDialog({ children, onBackgroundSaved }: SettingsDialogPr
                       <Label>Intervalle de sauvegarde: {fileSettings.autoSaveInterval}s</Label>
                       <Slider
                         value={[fileSettings.autoSaveInterval]}
-                        onValueChange={([value]) => setFileSettings((prev) => ({ ...prev, autoSaveInterval: value }))}
+                        onValueChange={([value]) => setFileSettings((prev: any) => ({ ...prev, autoSaveInterval: value }))}
                         min={10}
                         max={300}
                         step={10}
@@ -333,7 +336,7 @@ export function SettingsDialog({ children, onBackgroundSaved }: SettingsDialogPr
                     <Label>Taille maximale des fichiers: {fileSettings.maxFileSize} MB</Label>
                     <Slider
                       value={[fileSettings.maxFileSize]}
-                      onValueChange={([value]) => setFileSettings((prev) => ({ ...prev, maxFileSize: value }))}
+                      onValueChange={([value]) => setFileSettings((prev: any) => ({ ...prev, maxFileSize: value }))}
                       min={1}
                       max={500}
                       step={1}
@@ -357,7 +360,7 @@ export function SettingsDialog({ children, onBackgroundSaved }: SettingsDialogPr
                     </div>
                     <Switch
                       checked={appSettings.startWithWindows}
-                      onCheckedChange={(checked) => setAppSettings((prev) => ({ ...prev, startWithWindows: checked }))}
+                      onCheckedChange={(checked) => setAppSettings((prev: any) => ({ ...prev, startWithWindows: checked }))}
                     />
                   </div>
 
@@ -368,143 +371,22 @@ export function SettingsDialog({ children, onBackgroundSaved }: SettingsDialogPr
                     </div>
                     <Switch
                       checked={appSettings.minimizeToTray}
-                      onCheckedChange={(checked) => setAppSettings((prev) => ({ ...prev, minimizeToTray: checked }))}
+                      onCheckedChange={(checked) => setAppSettings((prev: any) => ({ ...prev, minimizeToTray: checked }))}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Sidebar réduite par défaut</Label>
+                      <p className="text-sm text-muted-foreground">La sidebar sera réduite au lancement de l'interface principale</p>
+                    </div>
+                    <Switch
+                      checked={appSettings.sidebarCollapsed}
+                      onCheckedChange={(checked) => setAppSettings((prev: any) => ({ ...prev, sidebarCollapsed: checked }))}
                     />
                   </div>
                 </CardContent>
               </Card>
-            </TabsContent>
-            <TabsContent value="design" className="space-y-4">
-              <Accordion type="multiple" defaultValue={["landing-page"]} className="w-full">
-                <AccordionItem value="landing-page" className="border border-border rounded-lg bg-card/50 backdrop-blur-sm">
-                  <AccordionTrigger className="px-4 py-3 hover:bg-muted/50 transition-colors duration-200 [&[data-state=open]>svg]:rotate-180 [&>svg]:h-6 [&>svg]:w-6">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-primary/10 rounded-lg">
-                        <Home className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="text-left">
-                        <div className="font-semibold text-foreground">Page d'accueil</div>
-                        <div className="text-sm text-muted-foreground">Personnalisez l'apparence et les éléments de la page d'accueil</div>
-                      </div>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Aperçu de la page d'accueil</CardTitle>
-                        <CardDescription>Cliquez sur l'arrière-plan pour changer l'image de fond, ou ajustez la visibilité des éléments à droite.</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-12 gap-4 items-start">
-                          {/* Preview left */}
-                          <div className="col-span-7">
-                            <div className="relative border rounded-lg overflow-hidden bg-muted/30 mx-auto" style={{ width: '100%', height: '300px' }}>
-                              <div className="absolute inset-0">
-                                {designSettings.backgroundImage === "__gpu_fluid_background__" ? (
-                                  <div className="w-full h-full cursor-pointer" onClick={() => setBackgroundModalOpen(true)}>
-                                    <GPUFluidBackground
-                                      className="w-full h-full"
-                                      speed={(designSettings as any).backgroundParams?.speed ?? 1.0}
-                                      scale={(designSettings as any).backgroundParams?.scale ?? 1.0}
-                                      tint={(designSettings as any).backgroundParams?.tint ?? '#2463ff'}
-                                      opacity={(designSettings as any).backgroundParams?.opacity ?? 0.8}
-                                    />
-                                  </div>
-                                ) : (
-                                  designSettings.fixedImage && designSettings.fixedImage.startsWith('#') ? (
-                                    <div 
-                                      className="w-full h-full cursor-pointer" 
-                                      style={{ 
-                                        background: (designSettings as any).backgroundParams?.gradientEnabled ? 
-                                          `linear-gradient(${(designSettings as any).backgroundParams.gradientDirection ?? 'to right'}, ${(designSettings as any).backgroundParams.gradientColor1 ?? designSettings.fixedImage}, ${(designSettings as any).backgroundParams.gradientColor2 ?? designSettings.fixedImage})` : 
-                                          designSettings.fixedImage,
-                                        filter: (designSettings as any).backgroundParams ? 
-                                          `brightness(${(designSettings as any).backgroundParams.brightness ?? 100}%) contrast(${(designSettings as any).backgroundParams.contrast ?? 100}%) saturate(${(designSettings as any).backgroundParams.saturation ?? 100}%) hue-rotate(${(designSettings as any).backgroundParams.hue ?? 0}deg) blur(${(designSettings as any).backgroundParams.blur ?? 0}px)` : undefined
-                                      }}
-                                      onClick={() => setBackgroundModalOpen(true)}
-                                    />
-                                  ) : (
-                                    <img 
-                                      src={designSettings.backgroundImage || designSettings.fixedImage || `/backgrounds/bg${((designSettings.animatedIndex ?? 0) % 20) + 1}.svg`} 
-                                      alt="landing preview" 
-                                      className="w-full h-full object-cover cursor-pointer" 
-                                      style={{
-                                        filter: designSettings.fixedImage && (designSettings as any).backgroundParams ? 
-                                          `brightness(${(designSettings as any).backgroundParams.brightness ?? 100}%) contrast(${(designSettings as any).backgroundParams.contrast ?? 100}%) saturate(${(designSettings as any).backgroundParams.saturation ?? 100}%) hue-rotate(${(designSettings as any).backgroundParams.hue ?? 0}deg) blur(${(designSettings as any).backgroundParams.blur ?? 0}px)` : undefined
-                                      }}
-                                      onClick={() => setBackgroundModalOpen(true)}
-                                    />
-                                  )
-                                )}
-
-                                {/* Logo, Folder, Recents, Create previews */}
-                                <div className="absolute" style={{ left: '3%', top: '4%', width: '9%', height: '18%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.8)', borderRadius: 8, boxShadow: '0 2px 6px rgba(0,0,0,0.12)', opacity: designSettings.elements?.logo?.visible === false ? 0.25 : 1 }}>
-                                  <img src="/icon-512.png" alt="logo" style={{ width: '70%', height: '70%' }} />
-                                </div>
-
-                                <div className="absolute" style={{ left: '5%', bottom: '10%', width: '25%', height: '35%', background: 'rgba(255,255,255,0.9)', borderRadius: 8, padding: 8, opacity: designSettings.elements?.folder?.visible === false ? 0.25 : 1 }}>
-                                  <div className="font-medium text-xs">Arborescence</div>
-                                  <div className="text-xs text-muted-foreground">Aperçu structure</div>
-                                </div>
-
-                                <div className="absolute" style={{ left: '37.5%', bottom: '10%', width: '25%', height: '35%', background: 'rgba(255,255,255,0.9)', borderRadius: 8, padding: 8, opacity: designSettings.elements?.recents?.visible === false ? 0.25 : 1 }}>
-                                  <div className="font-medium text-sm">Fichiers Récents</div>
-                                  <div className="text-xs text-muted-foreground">Aperçu</div>
-                                </div>
-
-                                <div className="absolute" style={{ right: '5%', bottom: '10%', width: '25%', height: '35%', background: 'rgba(255,255,255,0.9)', borderRadius: 8, padding: 8, opacity: designSettings.elements?.create?.visible === false ? 0.25 : 1 }}>
-                                  <div className="font-medium text-sm">Créer</div>
-                                  <div className="text-xs text-muted-foreground">Boutons rapides</div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Visibility controls right */}
-                          <div className="col-span-5">
-                            <Card>
-                              <CardHeader>
-                                <CardTitle>Visibilité des éléments</CardTitle>
-                                <CardDescription>Contrôlez quels éléments sont affichés sur la page d'accueil.</CardDescription>
-                              </CardHeader>
-                              <CardContent className="space-y-4">
-                                {[
-                                  { id: 'logo', name: 'Logo' },
-                                  { id: 'folder', name: 'Arborescence' },
-                                  { id: 'recents', name: 'Fichiers Récents' },
-                                  { id: 'create', name: 'Boutons Créer' }
-                                ].map(element => (
-                                  <div key={element.id} className="flex items-center justify-between">
-                                    <Label>{element.name}</Label>
-                                    <div className="flex items-center gap-2">
-                                      <Switch
-                                        checked={designSettings.elements?.[element.id]?.visible !== false}
-                                        onCheckedChange={(checked) => setDesignSettings(prev => ({
-                                          ...prev,
-                                          elements: {
-                                            ...(prev.elements || {}),
-                                            [element.id]: {
-                                              ...(prev.elements?.[element.id] || {}),
-                                              visible: checked
-                                            }
-                                          }
-                                        }))}
-                                      />
-                                    </div>
-                                  </div>
-                                ))}
-                              </CardContent>
-                            </Card>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </TabsContent>
-            <TabsContent value="icons" className="space-y-4">
-              <IconsSettings />
             </TabsContent>
             <TabsContent value="about" className="space-y-4">
               <Card>

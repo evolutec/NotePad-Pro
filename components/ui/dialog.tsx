@@ -43,6 +43,8 @@ const DialogOverlay = React.forwardRef<
     data-slot="dialog-overlay"
     className={cn(
       'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50',
+      // Ensure closed state truly disables pointer events even if an inline style was applied
+      'data-[state=closed]:[pointer-events:none!important] data-[state=open]:[pointer-events:auto!important]',
       className,
     )}
     {...props}
@@ -66,14 +68,46 @@ const DialogContent = React.forwardRef<
     : 'bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg'
 
   const appliedStyle = isFullscreen ? { ...style } : { ...style, maxWidth: '93%' }
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const sweepAndRemove = () => {
+      try {
+        const nodes = Array.from(document.querySelectorAll('[data-slot="dialog-portal"]'))
+        nodes.forEach((n) => {
+          try {
+            if (n.getAttribute && n.getAttribute('data-state') === 'closed') {
+              n.remove()
+            }
+          } catch (err) {
+          }
+        })
+      } catch (err) {
+      }
+    }
+
+    sweepAndRemove()
+
+    const observer = new MutationObserver(() => {
+      sweepAndRemove()
+    })
+
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-state'] })
+
+    return () => observer.disconnect()
+  }, [])
 
   return (
-    <DialogPortal data-slot="dialog-portal">
+      <DialogPortal data-slot="dialog-portal">
       <DialogOverlay className={isFullscreen ? 'top-14' : ''} />
       <DialogPrimitive.Content
         ref={ref}
         data-slot="dialog-content"
-        className={cn(baseClass, className)}
+        className={cn(
+          baseClass,
+          className,
+          'data-[state=closed]:[pointer-events:none!important] data-[state=open]:[pointer-events:auto!important]'
+        )}
         style={appliedStyle}
         {...rest}
       >

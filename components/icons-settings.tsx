@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { ChevronDown, ChevronRight, Search, Palette, Check } from "lucide-react"
+import { ChevronDown, ChevronRight, Search, Palette, Check, X } from "lucide-react"
 
 // Config preview removed: buttons that exposed or copied raw config were removed per request.
 
@@ -75,6 +75,15 @@ const DEFAULT_SECTIONS: IconSection[] = [
       { key: "add_image", label: "Ajouter image (réduit)", currentIcon: "FileImage", library: "Lucide", context: 'collapsed' },
       { key: "add_video", label: "Ajouter vidéo (réduit)", currentIcon: "FileVideo", library: "Lucide", context: 'collapsed' },
       { key: "add_audio", label: "Ajouter audio (réduit)", currentIcon: "FileAudio", library: "Lucide", context: 'collapsed' }
+    ]
+  },
+  {
+    title: "Icônes de la page d'accueil",
+    description: "Icônes utilisées pour les cartes de la page d'accueil",
+    mappings: [
+      { key: "landing_folder", label: "Carte Arborescence", currentIcon: "FolderTree", library: "Lucide" },
+      { key: "landing_recents", label: "Carte Fichiers Récents", currentIcon: "Clock", library: "Lucide" },
+      { key: "landing_create", label: "Carte Créer Nouveau", currentIcon: "Plus", library: "Lucide" }
     ]
   },
   {
@@ -202,7 +211,14 @@ const renderIcon = (iconComp: any, className = "w-8 h-8", sizePx?: number) => {
   }
 }
 
-export const IconsSettings: React.FC = () => {
+interface IconsSettingsProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSave?: () => void
+  context?: string
+}
+
+export const IconsSettings: React.FC<IconsSettingsProps> = ({ open, onOpenChange, onSave, context }) => {
   const [sections, setSections] = useState<IconSection[]>(DEFAULT_SECTIONS)
   // By default keep all sections collapsed when opening the Icons tab
   const [openSections, setOpenSections] = useState<Set<string>>(new Set())
@@ -215,7 +231,22 @@ export const IconsSettings: React.FC = () => {
   const [search, setSearch] = useState("")
   const [selectedLibrary, setSelectedLibrary] = useState<string>('Lucide')
 
-  console.log('IconsSettings: component mounted, window.electronAPI available:', !!window.electronAPI)
+  // Filter sections based on context
+  const filteredSections = useMemo(() => {
+    if (!context) return sections
+    if (context === 'folder') {
+      return sections.filter(s => s.title === "Icônes de dossiers (FolderTree)" || s.title === "Icônes de fichiers (Extensions)")
+    }
+    if (context === 'recents') {
+      return sections.filter(s => s.title === "Icônes de fichiers (Extensions)")
+    }
+    if (context === 'create') {
+      return sections.filter(s => s.title === "Icônes d'ajout (Sidebar)")
+    }
+    return sections
+  }, [sections, context])
+
+  console.log('IconsSettings: component mounted, window.electronAPI available:', typeof window !== 'undefined' && !!window.electronAPI)
 
   // Known working Lucide icons - whitelist to avoid rendering issues
   const lucideKeys = useMemo(() => {
@@ -629,6 +660,8 @@ export const IconsSettings: React.FC = () => {
     saveMappings(updatedSections)
     setCustomizationTarget(null)
     setOpenCustomization(false)
+    // Call onSave to exit edit mode after saving
+    if (onSave) onSave()
   }
 
   const resolveIconCompForMapping = (m?: MappingItem) => {
@@ -734,183 +767,204 @@ export const IconsSettings: React.FC = () => {
   }, [])
 
   return (
-    <div className="space-y-4">
-      {/* Removed Lucide quick preview to simplify the settings UI */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Palette className="h-5 w-5" /> Icônes</CardTitle>
-          <CardDescription>Personnalisez les icônes utilisées dans l'application.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {/* Config preview removed (buttons to show/reload/copy config were removed) */}
-
-            {/* Save status indicator */}
-            {saveStatus !== 'idle' && (
-              <div className={`text-sm p-2 rounded-md ${
-                saveStatus === 'saving' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-300' :
-                saveStatus === 'saved' ? 'bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-300' :
-                'bg-red-50 text-red-700 dark:bg-red-900 dark:text-red-300'
-              }`}>
-                {saveStatus === 'saving' && 'Sauvegarde en cours...'}
-                {saveStatus === 'saved' && '✓ Icônes sauvegardées'}
-                {saveStatus === 'error' && '✗ Erreur de sauvegarde'}
-              </div>
-            )}
-            
-            {sections.map((section, idx) => (
-              <div key={section.title}>
-                {idx > 0 && <div className="my-3 border-t border-white/6" />}
-                <Collapsible
-                  open={openSections.has(section.title)}
-                  onOpenChange={() => toggleSection(section.title)}
-                >
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-between p-4 h-auto">
-                    <div className="text-left">
-                      <div className="font-medium">{section.title}</div>
-                      <div className="text-sm text-muted-foreground">{section.description}</div>
-                    </div>
-                    {openSections.has(section.title) ? 
-                      <ChevronDown className="h-4 w-4" /> : 
-                      <ChevronRight className="h-4 w-4" />
-                    }
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="grid grid-cols-2 gap-3 mt-3">
-                    {(section.mappings || []).map(m => {
-                      // Resolve icon component based on mapping.library
-                      let comp: any = null
-                      try {
-                        if (m.library === 'Phosphor' && phosphorModule && (phosphorModule as any)[m.currentIcon]) comp = (phosphorModule as any)[m.currentIcon]
-                        else if (m.library === 'Tabler' && tablerModule && (tablerModule as any)[m.currentIcon]) comp = (tablerModule as any)[m.currentIcon]
-                        else if (m.library === 'ReactIcons' && reactIconsModule && (reactIconsModule as any)[m.currentIcon]) comp = (reactIconsModule as any)[m.currentIcon]
-                        else if ((LucideIcons as any)[m.currentIcon]) comp = (LucideIcons as any)[m.currentIcon]
-                      } catch (e) {
-                        comp = (LucideIcons as any).Folder
-                      }
-
-                      const customization = m.customization
-                      const bg = customization?.bgColor || 'rgba(0,0,0,0.04)'
-                      const iconColor = customization?.iconColor || 'currentColor'
-                      const shape = customization?.shape || 'rounded'
-                      const size = customization?.size || 32
-                      const borderWidth = customization?.borderWidth ?? 0
-                      const borderColor = customization?.borderColor || 'transparent'
-                      const opacity = customization?.opacity ?? 100
-                      const shadowEnabled = customization?.shadowEnabled ?? false
-                      const shadowColor = customization?.shadowColor || '#000000'
-                      const shadowBlur = customization?.shadowBlur ?? 8
-                      const shadowOffsetY = customization?.shadowOffsetY ?? 2
-                      const shadowSpread = customization?.shadowSpread ?? 0
-                      const padding = customization?.padding ?? 6
-                      const rotate = customization?.rotate ?? 0
-                      const gradientEnabled = customization?.gradientEnabled ?? false
-                      const gradientFrom = customization?.gradientFrom || bg
-                      const gradientTo = customization?.gradientTo || bg
-                      const gradientAngle = customization?.gradientAngle ?? 90
-
-                      // Calculate background with gradient if enabled
-                      const finalBg = gradientEnabled
-                        ? `linear-gradient(${gradientAngle}deg, ${gradientFrom}, ${gradientTo})`
-                        : bg
-
-                      // Calculate box shadow if enabled
-                      const boxShadow = shadowEnabled
-                        ? `${shadowOffsetY}px ${shadowOffsetY}px ${shadowBlur}px ${shadowSpread}px ${shadowColor}`
-                        : undefined
-
-                      // Make the preview wrapper match the configured size so the preview is accurate.
-                      // Account for padding when sizing the wrapper so the inner SVG fits as expected.
-                      // Use explicit wrapperSize when provided to match customization modal preview
-                      const wrapperOuterSize = customization?.wrapperSize ?? Math.max(12, size + (padding * 2))
-                      const wrapperStyle: React.CSSProperties = {
-                        background: finalBg,
-                        width: wrapperOuterSize,
-                        height: wrapperOuterSize,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: shape === 'circle' ? 9999 : shape === 'rounded' ? 18 : 6,
-                        color: iconColor,
-                        border: borderWidth ? `${borderWidth}px solid ${borderColor}` : undefined,
-                        opacity: opacity / 100,
-                        boxShadow,
-                        padding: shape === 'none' ? 0 : padding,
-                        transform: `rotate(${rotate}deg)`
-                      }
-
-                      // When sizePx is provided to renderIcon, it will handle sizing via inline styles
-                      // Don't pass conflicting Tailwind width/height classes
-                      const iconSizePx = size
-
-                      return (
-                        <div key={m.key} className="flex items-center gap-3 p-3 border rounded-md hover:bg-muted/50 transition-colors">
-                          {shape === 'none' ? (
-                            <div
-                              className="flex-shrink-0"
-                              style={{
-                                width: wrapperOuterSize,
-                                height: wrapperOuterSize,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: iconColor,
-                                opacity: opacity / 100,
-                                transform: `rotate(${rotate}deg)`,
-                                border: borderWidth ? `${borderWidth}px solid ${borderColor}` : undefined,
-                                borderRadius: 4,
-                                padding: borderWidth ? 4 : 0
-                              }}
-                            >
-                              {renderIcon(comp, "text-black dark:text-white", iconSizePx) || renderIcon((LucideIcons as any).Folder, "w-8 h-8", iconSizePx)}
-                            </div>
-                          ) : (
-                            <div style={wrapperStyle} className="flex-shrink-0">
-                              {renderIcon(comp, "text-black dark:text-white", iconSizePx) || renderIcon((LucideIcons as any).Folder, "w-8 h-8", iconSizePx)}
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">{m.label}</div>
-                            {/* Show the mapping key (extension identifier) so users can see ext_xls / ext_docx etc. */}
-                              <div className="mt-1 flex items-center gap-2">
-                                {/* Show the extension without the 'ext_' prefix when applicable */}
-                                {(() => {
-                                  const displayKey = (m.key || '').startsWith('ext_') ? (m.key || '').replace(/^ext_/, '') : (m.key || '')
-                                  return (
-                                    <>
-                                      <div className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-muted text-muted-foreground">{displayKey}</div>
-                                      <div className="text-xs text-muted-foreground truncate">
-                                        Icône actuelle: <span className="font-mono text-primary">{m.currentIcon}</span>
-                                      </div>
-                                    </>
-                                  )
-                                })()}
-                              </div>
-                          </div>
-                          <div className="shrink-0 flex items-center gap-2">
-                            <Button size="sm" variant="outline" onClick={() => openFor(m)}>
-                              Changer
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => openCustomizationFor(m)}>
-                              Personnaliser
-                            </Button>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </CollapsibleContent>
-                </Collapsible>
-              </div>
-            ))}
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="fixed top-14 left-0 right-0 bottom-0 w-screen h-[calc(100vh-3.5rem)] m-0 p-0 flex flex-col overflow-hidden">
+        <DialogHeader className="sticky top-0 z-30 bg-background/80 backdrop-blur-sm items-center gap-0 py-6">
+          <div className="relative w-full mb-4">
+            <DialogTitle className="text-lg leading-none font-semibold text-center">
+              <Palette className="h-5 w-5 inline-block mr-2" />
+              Paramètres des icônes
+            </DialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onOpenChange(false)}
+              className="absolute right-0 top-0 h-8 w-8 hover:bg-muted"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        </DialogHeader>
+        <div className="flex-1 min-h-0 overflow-y-auto hide-scrollbar p-6">
+          <div className="space-y-4">
+            {/* Removed Lucide quick preview to simplify the settings UI */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Palette className="h-5 w-5" /> Icônes</CardTitle>
+                <CardDescription>Personnalisez les icônes utilisées dans l'application.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Config preview removed (buttons to show/reload/copy config were removed) */}
 
+                  {/* Save status indicator */}
+                  {saveStatus !== 'idle' && (
+                    <div className={`text-sm p-2 rounded-md ${
+                      saveStatus === 'saving' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-300' :
+                      saveStatus === 'saved' ? 'bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-300' :
+                      'bg-red-50 text-red-700 dark:bg-red-900 dark:text-red-300'
+                    }`}>
+                      {saveStatus === 'saving' && 'Sauvegarde en cours...'}
+                      {saveStatus === 'saved' && '✓ Icônes sauvegardées'}
+                      {saveStatus === 'error' && '✗ Erreur de sauvegarde'}
+                    </div>
+                  )}
+                  
+                  {filteredSections.map((section, idx) => (
+                    <div key={section.title}>
+                      {idx > 0 && <div className="my-3 border-t border-white/6" />}
+                      <Collapsible
+                        open={openSections.has(section.title)}
+                        onOpenChange={() => toggleSection(section.title)}
+                      >
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" className="w-full justify-between p-4 h-auto">
+                          <div className="text-left">
+                            <div className="font-medium">{section.title}</div>
+                            <div className="text-sm text-muted-foreground">{section.description}</div>
+                          </div>
+                          {openSections.has(section.title) ? 
+                            <ChevronDown className="h-4 w-4" /> : 
+                            <ChevronRight className="h-4 w-4" />
+                          }
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="grid grid-cols-2 gap-3 mt-3">
+                          {(section.mappings || []).map(m => {
+                            // Resolve icon component based on mapping.library
+                            let comp: any = null
+                            try {
+                              if (m.library === 'Phosphor' && phosphorModule && (phosphorModule as any)[m.currentIcon]) comp = (phosphorModule as any)[m.currentIcon]
+                              else if (m.library === 'Tabler' && tablerModule && (tablerModule as any)[m.currentIcon]) comp = (tablerModule as any)[m.currentIcon]
+                              else if (m.library === 'ReactIcons' && reactIconsModule && (reactIconsModule as any)[m.currentIcon]) comp = (reactIconsModule as any)[m.currentIcon]
+                              else if ((LucideIcons as any)[m.currentIcon]) comp = (LucideIcons as any)[m.currentIcon]
+                            } catch (e) {
+                              comp = (LucideIcons as any).Folder
+                            }
+
+                            const customization = m.customization
+                            const bg = customization?.bgColor || 'rgba(0,0,0,0.04)'
+                            const iconColor = customization?.iconColor || 'currentColor'
+                            const shape = customization?.shape || 'rounded'
+                            const size = customization?.size || 32
+                            const borderWidth = customization?.borderWidth ?? 0
+                            const borderColor = customization?.borderColor || 'transparent'
+                            const opacity = customization?.opacity ?? 100
+                            const shadowEnabled = customization?.shadowEnabled ?? false
+                            const shadowColor = customization?.shadowColor || '#000000'
+                            const shadowBlur = customization?.shadowBlur ?? 8
+                            const shadowOffsetY = customization?.shadowOffsetY ?? 2
+                            const shadowSpread = customization?.shadowSpread ?? 0
+                            const padding = customization?.padding ?? 6
+                            const rotate = customization?.rotate ?? 0
+                            const gradientEnabled = customization?.gradientEnabled ?? false
+                            const gradientFrom = customization?.gradientFrom || bg
+                            const gradientTo = customization?.gradientTo || bg
+                            const gradientAngle = customization?.gradientAngle ?? 90
+
+                            // Calculate background with gradient if enabled
+                            const finalBg = gradientEnabled
+                              ? `linear-gradient(${gradientAngle}deg, ${gradientFrom}, ${gradientTo})`
+                              : bg
+
+                            // Calculate box shadow if enabled
+                            const boxShadow = shadowEnabled
+                              ? `${shadowOffsetY}px ${shadowOffsetY}px ${shadowBlur}px ${shadowSpread}px ${shadowColor}`
+                              : undefined
+
+                            // Make the preview wrapper match the configured size so the preview is accurate.
+                            // Account for padding when sizing the wrapper so the inner SVG fits as expected.
+                            // Use explicit wrapperSize when provided to match customization modal preview
+                            const wrapperOuterSize = customization?.wrapperSize ?? Math.max(12, size + (padding * 2))
+                            const wrapperStyle: React.CSSProperties = {
+                              background: finalBg,
+                              width: wrapperOuterSize,
+                              height: wrapperOuterSize,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              borderRadius: shape === 'circle' ? 9999 : shape === 'rounded' ? 18 : 6,
+                              color: iconColor,
+                              border: borderWidth ? `${borderWidth}px solid ${borderColor}` : undefined,
+                              opacity: opacity / 100,
+                              boxShadow,
+                              padding: shape === 'none' ? 0 : padding,
+                              transform: `rotate(${rotate}deg)`
+                            }
+
+                            // When sizePx is provided to renderIcon, it will handle sizing via inline styles
+                            // Don't pass conflicting Tailwind width/height classes
+                            const iconSizePx = size
+
+                            return (
+                              <div key={m.key} className="flex items-center gap-3 p-3 border rounded-md hover:bg-muted/50 transition-colors">
+                                {shape === 'none' ? (
+                                  <div
+                                    className="flex-shrink-0"
+                                    style={{
+                                      width: wrapperOuterSize,
+                                      height: wrapperOuterSize,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      color: iconColor,
+                                      opacity: opacity / 100,
+                                      transform: `rotate(${rotate}deg)`,
+                                      border: borderWidth ? `${borderWidth}px solid ${borderColor}` : undefined,
+                                      borderRadius: 4,
+                                      padding: borderWidth ? 4 : 0
+                                    }}
+                                  >
+                                    {renderIcon(comp, "text-black dark:text-white", iconSizePx) || renderIcon((LucideIcons as any).Folder, "w-8 h-8", iconSizePx)}
+                                  </div>
+                                ) : (
+                                  <div style={wrapperStyle} className="flex-shrink-0">
+                                    {renderIcon(comp, "text-black dark:text-white", iconSizePx) || renderIcon((LucideIcons as any).Folder, "w-8 h-8", iconSizePx)}
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-medium truncate">{m.label}</div>
+                                  {/* Show the mapping key (extension identifier) so users can see ext_xls / ext_docx etc. */}
+                                    <div className="mt-1 flex items-center gap-2">
+                                      {/* Show the extension without the 'ext_' prefix when applicable */}
+                                      {(() => {
+                                        const displayKey = (m.key || '').startsWith('ext_') ? (m.key || '').replace(/^ext_/, '') : (m.key || '')
+                                        return (
+                                          <>
+                                            <div className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-muted text-muted-foreground">{displayKey}</div>
+                                            <div className="text-xs text-muted-foreground truncate">
+                                              Icône actuelle: <span className="font-mono text-primary">{m.currentIcon}</span>
+                                            </div>
+                                          </>
+                                        )
+                                      })()}
+                                    </div>
+                                </div>
+                                <div className="shrink-0 flex items-center gap-2">
+                                  <Button size="sm" variant="outline" onClick={() => openFor(m)}>
+                                    Changer
+                                  </Button>
+                                  <Button size="sm" variant="ghost" onClick={() => openCustomizationFor(m)}>
+                                    Personnaliser
+                                  </Button>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </CollapsibleContent>
+                      </Collapsible>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </DialogContent>
       <Dialog open={openPicker} onOpenChange={setOpenPicker}>
-  <DialogContent className="h-[90vh] max-w-[96vw] sm:max-w-4xl flex flex-col overflow-hidden">
+        <DialogContent className="h-[90vh] max-w-[96vw] sm:max-w-4xl flex flex-col overflow-hidden">
           <DialogHeader className="sticky top-0 z-30 bg-background/80 backdrop-blur-sm">
             <DialogTitle>Choisir une icône pour {selected?.label}</DialogTitle>
           </DialogHeader>
@@ -948,14 +1002,14 @@ export const IconsSettings: React.FC = () => {
             </div>
           </div>
 
-            <div className="border-t pt-4 flex-1 min-h-0">
+          <div className="border-t pt-4 flex-1 min-h-0">
             <ScrollArea className="h-full hide-scrollbar">
               <div className="grid grid-cols-4 gap-3 p-3">
                 {availableIcons.map(ic => {
                   // mark current only when both name and library match the selected mapping
                   const isCurrent = selected && ic.name === selected.currentIcon && ic.library === selected.library
-                      return (
-                        <Button 
+                  return (
+                    <Button 
                       key={`${ic.library}-${ic.name}`} 
                       variant={isCurrent ? "default" : "ghost"} 
                       className={`flex flex-col items-center gap-1 p-3 h-auto relative ${
@@ -978,7 +1032,6 @@ export const IconsSettings: React.FC = () => {
               </div>
             </ScrollArea>
           </div>
-
         </DialogContent>
       </Dialog>
       <IconCustomizationModal
@@ -986,11 +1039,11 @@ export const IconsSettings: React.FC = () => {
         onOpenChange={setOpenCustomization}
         mappingKey={customizationTarget?.key}
         mappingLabel={customizationTarget?.label}
-  iconComp={resolveIconCompForMapping(customizationTarget ?? undefined)}
+        iconComp={resolveIconCompForMapping(customizationTarget ?? undefined)}
         initial={customizationTarget?.customization}
         onSave={handleSaveCustomization}
       />
-    </div>
+    </Dialog>
   )
 }
 

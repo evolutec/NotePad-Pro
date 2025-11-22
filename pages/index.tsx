@@ -11,7 +11,7 @@ import { SettingsDialog } from "@/components/settings-dialog"
 import { FirstRunSetup } from "@/components/first-run-setup"
 import { toast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
-import { Settings, X, ExternalLink, List, LayoutGrid, Home } from "lucide-react"
+import { Settings, X, ExternalLink, List, LayoutGrid, Home, Wrench } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { BrightnessControl } from "@/components/brightness-control"
 import type { EnhancedFolderNode } from "@/components/ui/FolderTree-modern"
@@ -27,6 +27,8 @@ import { ImageViewer } from "@/components/image-viewer"
 import { VideoViewer } from "@/components/video-viewer"
 import { LandingPage } from "@/components/landing-page"
 import { AudioViewer } from "@/components/audio-viewer"
+import { BackgroundConfigModal } from "@/components/background-config-modal"
+import { IconsSettings } from "@/components/icons-settings"
 
 // Charger dynamiquement les composants qui utilisent RecordRTC et navigator.mediaDevices
 const AddAudioDialog = dynamic(() => import("@/components/add-audio_dialog").then(m => ({ default: m.AddAudioDialog })), { ssr: false })
@@ -36,10 +38,22 @@ const AddVideoDialog = dynamic(() => import("@/components/add-video_dialog").the
 import { GPUFluidBackground } from "@/components/gpu-fluid-background"
 
 export default function NoteTakingApp() {
+  const [editMode, setEditMode] = useState(false);
   const [showFirstRunSetup, setShowFirstRunSetup] = useState(false)
   const [activeView, setActiveView] = useState<"canvas" | "editor" | "files" | "pdf_viewer" | "image_viewer" | "video_viewer" | "document_viewer" | "audio_viewer" | "landing">("landing")
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    // Try to load from config.json synchronously if available
+    try {
+      if (typeof window !== 'undefined' && window.electronAPI?.loadSettings) {
+        // This is async, so we'll set it later in useEffect
+        return true; // Default value
+      }
+      return true; // Default value
+    } catch {
+      return true; // Default value
+    }
+  })
   const [sidebarWidth, setSidebarWidth] = useState(256)
   const [isResizing, setIsResizing] = useState(false)
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null)
@@ -76,7 +90,11 @@ export default function NoteTakingApp() {
   const [isGPUFluidBackground, setIsGPUFluidBackground] = useState(false)
   const [gpuBackgroundParams, setGpuBackgroundParams] = useState<{ speed?: number; scale?: number; tint?: string; opacity?: number } | null>(null)
   const [isFixedBackground, setIsFixedBackground] = useState(false)
-  const [fixedBackgroundParams, setFixedBackgroundParams] = useState<{ brightness?: number; contrast?: number; saturation?: number; hue?: number; blur?: number; gradientEnabled?: boolean; gradientColor1?: string; gradientColor2?: string; gradientDirection?: string } | null>(null)
+  const [fixedBackgroundParams, setFixedBackgroundParams] = useState<{ brightness?: number; contrast?: number; saturation?: number; hue?: number; blur?: number; gradientEnabled?: boolean; gradientColor1?: string; gradientColor2?: string; gradientDirection?: string; backgroundImage?: string; backgroundColor?: string } | null>(null)
+  const [backgroundModalOpen, setBackgroundModalOpen] = useState(false)
+  const [backgroundModalContext, setBackgroundModalContext] = useState<string>('landing')
+  const [iconSettingsModalOpen, setIconSettingsModalOpen] = useState(false)
+  const [iconSettingsModalContext, setIconSettingsModalContext] = useState<string>('landing')
   const handleAudioRename = useCallback(() => {
     if (audioViewerPath && audioViewerName) {
       const renameNodeForDialog = {
@@ -402,6 +420,12 @@ export default function NoteTakingApp() {
           
           console.log('Configuration loaded successfully:', config);
           
+          // Set sidebar collapsed state from config
+          if (config.app?.sidebarCollapsed !== undefined) {
+            console.log('Setting sidebar collapsed from config:', config.app.sidebarCollapsed);
+            setSidebarCollapsed(config.app.sidebarCollapsed);
+          }
+          
           if (window.electronAPI?.foldersScan) {
             console.log('Initializing folder tree from config.json...');
 
@@ -484,6 +508,12 @@ export default function NoteTakingApp() {
             }
             console.log('📱 Config loaded:', config);
             
+            // Set sidebar collapsed state from config
+            if (config.app?.sidebarCollapsed !== undefined) {
+              console.log('📱 Setting sidebar collapsed from config.json:', config.app.sidebarCollapsed);
+              setSidebarCollapsed(config.app.sidebarCollapsed);
+            }
+            
             // Set selectedFolder to the root path from config
             if (config.files?.rootPath) {
               console.log('📱 Setting selectedFolder to root path:', config.files.rootPath);
@@ -545,6 +575,36 @@ export default function NoteTakingApp() {
   };
 
   useEffect(() => {
+    const handleOpenBackgroundModal = (event: CustomEvent) => {
+      const context = event.detail?.context || 'landing';
+      console.log('Opening background modal with context:', context);
+      // Close any open Radix menus/popovers before opening the modal
+      if (typeof document !== 'undefined') {
+        try {
+          document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        } catch (err) {
+          console.debug('Failed to dispatch Escape before opening modal', err);
+        }
+      }
+      setBackgroundModalContext(context);
+      setBackgroundModalOpen(true)
+    }
+
+    const handleOpenIconSettingsModal = (event: CustomEvent) => {
+      const context = event.detail?.context || 'landing';
+      console.log('Opening icon settings modal with context:', context);
+      // Close any open Radix menus/popovers before opening the modal
+      if (typeof document !== 'undefined') {
+        try {
+          document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        } catch (err) {
+          console.debug('Failed to dispatch Escape before opening modal', err);
+        }
+      }
+      setIconSettingsModalContext(context);
+      setIconSettingsModalOpen(true)
+    }
+
     const handleFileMoved = (event: CustomEvent) => {
       console.log('📱 File moved event received in main page:', event.detail);
 
@@ -627,12 +687,16 @@ export default function NoteTakingApp() {
       window.addEventListener('folderTreeRefresh', handleFolderTreeRefresh as EventListener);
       window.addEventListener('fileManagerRefresh', handleFileManagerRefresh as EventListener);
       window.addEventListener('settingsUpdated', handleSettingsUpdate as EventListener);
+      window.addEventListener('openBackgroundConfigModal', handleOpenBackgroundModal as EventListener);
+      window.addEventListener('openIconSettingsModal', handleOpenIconSettingsModal as EventListener);
 
       return () => {
         window.removeEventListener('fileMoved', handleFileMoved as EventListener);
         window.removeEventListener('folderTreeRefresh', handleFolderTreeRefresh as EventListener);
         window.removeEventListener('fileManagerRefresh', handleFileManagerRefresh as EventListener);
         window.removeEventListener('settingsUpdated', handleSettingsUpdate as EventListener);
+        window.removeEventListener('openBackgroundConfigModal', handleOpenBackgroundModal as EventListener);
+        window.removeEventListener('openIconSettingsModal', handleOpenIconSettingsModal as EventListener);
       };
     }
   }, []);
@@ -1109,10 +1173,10 @@ export default function NoteTakingApp() {
         />
       )}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="fixed top-0 left-0 right-0 z-[60] h-14 border-b border-border bg-card backdrop-blur-sm flex items-center px-4" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center min-w-[120px]">
-          <img src="/icon.ico" alt="Fusion Icon" style={{ width: 28, height: 28, marginRight: 8 }} />
-          <h1 className="text-lg font-semibold text-card-foreground">FUSION</h1>
+        <header className="fixed top-0 left-0 right-0 z-[60] h-12 md:h-14 border-b border-border bg-card backdrop-blur-sm flex items-center px-2 md:px-4" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center min-w-[120px] cursor-pointer hover:bg-muted/50 rounded px-2 py-1 transition-colors" onClick={() => setActiveView("landing")}>
+            <img src="/icon.ico" alt="Fusion Icon" style={{ width: 28, height: 28, marginRight: 8 }} />
+            <h1 className="text-lg font-semibold text-card-foreground">FUSION</h1>
           </div>
 
           <div className="flex-1 flex items-center justify-center px-4">
@@ -1172,6 +1236,19 @@ export default function NoteTakingApp() {
                 </Button>
               </>
             )}
+            <Button
+              variant={editMode ? "default" : "ghost"}
+              size="icon"
+              id="header-wrench-btn"
+              className="h-8 w-8"
+              title={editMode ? "Quitter le mode édition" : "Activer le mode édition"}
+              onClick={() => {
+                console.debug('Toolbar Wrench clicked - current editMode:', editMode)
+                setEditMode(!editMode)
+              }}
+            >
+              <Wrench className="h-4 w-4" />
+            </Button>
             <ThemeToggle />
             <BrightnessControl />
             <SettingsDialog onBackgroundSaved={() => setActiveView("landing") }>
@@ -1181,14 +1258,14 @@ export default function NoteTakingApp() {
             </SettingsDialog>
           </div>
         </header>
-        <main className="flex-1 overflow-hidden px-2 py-2 pt-14 min-w-0 flex flex-col">
+        <main className="flex-1 overflow-hidden px-2 py-2 pt-12 md:pt-14 min-w-0 flex flex-col">
           {activeView === "landing" && (
             <>
               {/* Header landing-page déplacé ici pour être toujours visible */}
               <motion.header
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="py-6 px-8 relative z-20"
+                className="py-4 px-6 md:py-6 md:px-8 relative z-20"
               >
                 <div className="max-w-7xl mx-auto">
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
@@ -1202,7 +1279,7 @@ export default function NoteTakingApp() {
                       <motion.img 
                         src="/icon-512.png" 
                         alt="Fusion Logo" 
-                        className="w-32 h-32 lg:w-40 lg:h-40 drop-shadow-2xl"
+                        className="w-24 h-24 md:w-32 md:h-32 lg:w-40 lg:h-40 drop-shadow-2xl"
                         animate={{ rotate: 360 }}
                         transition={{ 
                           duration: 20, 
@@ -1213,12 +1290,12 @@ export default function NoteTakingApp() {
                       />
                     </motion.div>
                     {/* Texte principal - Colonnes centrales et droite */}
-                    <div className="lg:col-span-9 space-y-3 text-center lg:text-left">
+                    <div className="lg:col-span-9 space-y-2 md:space-y-3 text-center lg:text-left">
                       <motion.h1
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2 }}
-                        className="text-3xl lg:text-4xl font-bold"
+                        className="text-2xl md:text-3xl lg:text-4xl font-bold"
                       >
                         Bienvenue dans FUSION
                       </motion.h1>
@@ -1226,7 +1303,7 @@ export default function NoteTakingApp() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 }}
-                        className="text-lg lg:text-xl text-muted-foreground"
+                        className="text-base md:text-lg lg:text-xl text-muted-foreground"
                       >
                         Votre espace de travail créatif vous attend
                       </motion.p>
@@ -1236,7 +1313,7 @@ export default function NoteTakingApp() {
                         transition={{ delay: 0.4 }}
                         className="space-y-1"
                       >
-                        <div className="text-base lg:text-lg font-semibold text-primary">
+                        <div className="text-sm md:text-base lg:text-lg font-semibold text-primary">
                           FUSION = FOCUS
                         </div>
                         <div className="text-sm text-muted-foreground">
@@ -1319,6 +1396,8 @@ export default function NoteTakingApp() {
                   }
                 }}
                 folderTree={folderTree}
+                editMode={editMode}
+                onEditModeChange={setEditMode}
               />
             </>
           )}
@@ -1621,6 +1700,167 @@ export default function NoteTakingApp() {
         onRefreshTree={async () => {
           await refreshTreeAndOpenFile();
         }}
+      />
+      <BackgroundConfigModal
+        open={backgroundModalOpen}
+        onOpenChange={setBackgroundModalOpen}
+        currentSettings={(() => {
+          // Load card-specific settings if context is not 'landing'
+          if (backgroundModalContext !== 'landing') {
+            // We need to load from config.json synchronously or use a cached version
+            // For now, return default empty settings - the modal will load them
+            return {
+              backgroundImage: null,
+              fixedImage: null,
+              animatedIndex: 0,
+              backgroundParams: null
+            };
+          }
+          // For landing context, use global settings
+          return {
+            backgroundImage: isGPUFluidBackground ? "__gpu_fluid_background__" : (fixedBackgroundParams && (fixedBackgroundParams as any).backgroundImage) ? (fixedBackgroundParams as any).backgroundImage : null,
+            fixedImage: isFixedBackground ? (fixedBackgroundParams && ((fixedBackgroundParams as any).backgroundColor || (fixedBackgroundParams as any).backgroundImage)) : null,
+            animatedIndex: 0,
+            backgroundParams: isGPUFluidBackground ? gpuBackgroundParams : fixedBackgroundParams
+          };
+        })()}
+        context={backgroundModalContext}
+        onSave={async (settings) => {
+          try {
+            // Apply to local state first
+            if (settings.backgroundImage === "__gpu_fluid_background__") {
+              setIsGPUFluidBackground(true)
+              setIsFixedBackground(false)
+              setFixedBackgroundParams(null)
+              setGpuBackgroundParams(settings.backgroundParams || null)
+            } else if (settings.backgroundImage) {
+              setIsGPUFluidBackground(false)
+              setIsFixedBackground(true)
+              setFixedBackgroundParams(Object.assign({}, settings.backgroundParams || {}, { backgroundImage: settings.backgroundImage }))
+              setGpuBackgroundParams(null)
+            } else if (settings.fixedImage) {
+              setIsGPUFluidBackground(false)
+              setIsFixedBackground(true)
+              setFixedBackgroundParams(Object.assign({}, settings.backgroundParams || {}, { backgroundColor: settings.fixedImage }))
+              setGpuBackgroundParams(null)
+            } else {
+              setIsGPUFluidBackground(false)
+              setIsFixedBackground(false)
+              setGpuBackgroundParams(null)
+              setFixedBackgroundParams(null)
+            }
+
+            // Persist to config.json via electron API, merging with existing settings and marking context
+            if (typeof window !== 'undefined' && window.electronAPI && window.electronAPI.loadSettings) {
+              try {
+                const existing = await window.electronAPI.loadSettings();
+                const next = Object.assign({}, existing || {});
+                // ensure design object exists
+                next.design = Object.assign({}, next.design || {}, settings || {});
+
+                if (window.electronAPI.saveSettings) {
+                  await window.electronAPI.saveSettings(next);
+                  // Broadcast update so other components react (modal already dispatches but keep consistent)
+                  try { window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { design: next.design } })) } catch (e) {}
+                }
+              } catch (err) {
+                console.error('Failed to persist background settings to config.json', err);
+              }
+            }
+            // Ensure modal is closed and we exit edit mode after applying background
+            try {
+              setBackgroundModalOpen(false)
+            } catch (e) {}
+            try {
+              setEditMode(false)
+            } catch (e) {}
+            // Diagnostic: log any lingering dialog overlay/portal/content elements
+            try {
+              if (typeof document !== 'undefined') {
+                const nodes = Array.from(document.querySelectorAll('[data-slot="dialog-overlay"], [data-slot="dialog-portal"], [data-slot="dialog-content"]'))
+                console.debug('Dialog diagnostic - nodes count after save:', nodes.length, nodes)
+                nodes.forEach((n) => {
+                  try {
+                    const cs = window.getComputedStyle(n as Element)
+                    console.debug('Dialog node:', n, 'computed styles:', {
+                      display: cs.display,
+                      visibility: cs.visibility,
+                      pointerEvents: cs.pointerEvents,
+                      opacity: cs.opacity,
+                      zIndex: cs.zIndex,
+                    })
+                  } catch (e) {
+                    console.debug('Could not compute style for node', n, e)
+                  }
+                })
+              }
+            } catch (e) {
+              console.debug('Dialog diagnostic failed', e)
+            }
+            
+            // Fallback: if any overlay/popover/dialog keeps intercepting events after save,
+            // blur focused element, send Escape to close Radix menus, and remove aria-hidden
+            // attributes from header ancestors. This is a defensive fix for the toolbar
+            // becoming unresponsive in development when portals/overlays linger.
+            try {
+              if (typeof document !== 'undefined') {
+                setTimeout(() => {
+                  try { (document.activeElement as HTMLElement)?.blur(); } catch (err) {}
+                  try { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); } catch (err) {}
+
+                  // Force pointer-events off on lingering dialog nodes
+                  const lingering = Array.from(document.querySelectorAll('[data-slot="dialog-overlay"], [data-slot="dialog-content"]')) as HTMLElement[]
+                  lingering.forEach(n => {
+                    try { n.style.pointerEvents = 'none'; } catch (err) {}
+                  })
+
+                  // Remove aria-hidden on ancestors of header to avoid focus being trapped
+                  const headerEl = document.querySelector('header') as HTMLElement | null
+                  if (headerEl) {
+                    let ancestor = headerEl.parentElement
+                    while (ancestor) {
+                      try {
+                        if (ancestor.getAttribute && ancestor.getAttribute('aria-hidden') === 'true') {
+                          ancestor.removeAttribute('aria-hidden')
+                          ancestor.removeAttribute('data-aria-hidden')
+                        }
+                      } catch (err) {}
+                      ancestor = ancestor.parentElement
+                    }
+                  }
+                  // Attempt to restore focus to the Wrench button in header or toolbar
+                  try {
+                    const headerWrench = document.getElementById('header-wrench-btn') as HTMLElement | null
+                    const toolbarWrench = document.getElementById('toolbar-wrench-btn') as HTMLElement | null
+                    const toFocus = headerWrench || toolbarWrench
+                    if (toFocus) {
+                      try { toFocus.focus(); } catch (err) {}
+                    }
+                  } catch (err) {}
+                }, 50)
+              }
+            } catch (err) {
+              console.debug('Fallback close failed', err)
+            }
+          } catch (e) {
+            console.error('Error applying background settings from modal', e)
+          }
+        }}
+      />
+      <IconsSettings
+        open={iconSettingsModalOpen}
+        onOpenChange={setIconSettingsModalOpen}
+        onSave={async () => {
+          try {
+            // Exit edit mode after saving
+            console.log('Icon settings saved');
+            setIconSettingsModalOpen(false);
+            setEditMode(false);
+          } catch (e) {
+            console.error('Error applying icon settings from modal', e);
+          }
+        }}
+        context={iconSettingsModalContext}
       />
       <AddCodeDialog
         open={isAddCodeOpen}

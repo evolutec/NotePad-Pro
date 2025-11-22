@@ -21,8 +21,16 @@ import {
   Home,
   Zap,
   Layers,
-  Heart
+  Heart,
+  Wrench
 } from "lucide-react"
+import { MoreVertical } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -144,11 +152,13 @@ async function ensureMuiIconsLoaded() {
 }
 
 interface LandingPageProps {
-  onNavigateToFiles: () => void
-  onNavigateToEditor: (filePath: string) => void
-  onNoteSelect: (filePath: string) => void
-  onCreateNew: (type: FileType) => void
-  folderTree: EnhancedFolderNode | null
+  onNavigateToFiles: () => void;
+  onNavigateToEditor: (filePath: string) => void;
+  onNoteSelect: (filePath: string) => void;
+  onCreateNew: (type: FileType) => void;
+  folderTree: EnhancedFolderNode | null;
+  editMode: boolean;
+  onEditModeChange?: (edit: boolean) => void;
 }
 
 export function LandingPage({
@@ -156,7 +166,9 @@ export function LandingPage({
   onNavigateToEditor,
   onNoteSelect,
   onCreateNew,
-  folderTree
+  folderTree,
+  editMode,
+  onEditModeChange
 }: LandingPageProps) {
   const [mounted, setMounted] = useState(false)
   const [recentFilesVersion, setRecentFilesVersion] = useState(0)
@@ -255,7 +267,11 @@ export function LandingPage({
     const handleSettingsUpdate = (e: any) => {
       try {
         if (e?.detail?.design) {
-          setDesignSettings({ animatedIndex: e.detail.design.animatedIndex ?? 0, backgroundImage: e.detail.design.backgroundImage ?? null, fixedImage: e.detail.design.fixedImage ?? null, elements: e.detail.design.elements ?? {} })
+          setDesignSettings(prev => ({
+            ...prev,
+            ...e.detail.design,
+            elements: { ...prev.elements, ...e.detail.design.elements }
+          }))
         }
       } catch (err) {
         // ignore
@@ -674,36 +690,57 @@ export function LandingPage({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/20">
-      {/* Custom Background Image or Fixed or Animated Background */}
-      {designSettings.backgroundImage ? (
-        <div 
+      {/* Custom Background Image ou Fixed ou Animated Background, cliquable en mode édition */}
+      {designSettings?.backgroundImage ? (
+        <div
           className="fixed inset-0 bg-cover bg-center bg-no-repeat z-0"
-          style={{ 
+          style={{
             backgroundImage: `url(${designSettings.backgroundImage})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat'
           }}
         />
-      ) : designSettings.fixedImage ? (
-        <div 
+      ) : designSettings?.fixedImage ? (
+        <div
           className="fixed inset-0 z-0"
           style={{
-            ...(designSettings.fixedImage.startsWith('#') ? 
-              { backgroundColor: designSettings.fixedImage } : 
+            ...(designSettings?.fixedImage.startsWith('#') ?
+              { backgroundColor: designSettings.fixedImage } :
               { backgroundImage: `url(${designSettings.fixedImage})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }
             ),
-            filter: (designSettings as any).backgroundParams ? 
-              `brightness(${(designSettings as any).backgroundParams.brightness ?? 100}%) contrast(${(designSettings as any).backgroundParams.contrast ?? 100}%) saturate(${(designSettings as any).backgroundParams.saturation ?? 100}%) hue-rotate(${(designSettings as any).backgroundParams.hue ?? 0}deg) blur(${(designSettings as any).backgroundParams.blur ?? 0}px)` : undefined
+            filter: (designSettings as any).backgroundParams ?
+              `brightness(${(designSettings as any).backgroundParams.brightness ?? 100}%) contrast(${(designSettings as any).backgroundParams.contrast ?? 100}%) saturate(${(designSettings as any).backgroundParams.saturation ?? 100}%) hue-rotate(${(designSettings as any).backgroundParams.hue ?? 0}deg) blur(${(designSettings as any).backgroundParams.blur ?? 0}px)` : undefined,
           }}
         />
       ) : (
-        <motion.div 
+        <motion.div
           className="fixed inset-0 bg-cover bg-center bg-no-repeat z-0"
-          style={{ backgroundImage: `url(/backgrounds/bg${((designSettings.animatedIndex ?? 0) % 20) + 1}.svg)` }}
+          style={{ backgroundImage: `url(/backgrounds/bg${((designSettings?.animatedIndex ?? 0) % 20) + 1}.svg)` }}
           animate={{ scale: [1, 1.05, 1] }}
           transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
         />
+      )}
+
+      {/* Kebab menu (3 dots) shown only when editMode is active — opens background config */}
+      {editMode && (
+        <div className="fixed top-16 right-4 z-[70]">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 bg-white text-black p-0 rounded-full shadow-sm">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('openBackgroundConfigModal'))}>
+                Fond d'écran
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('openIconSettingsModal'))}>
+                Icônes
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       )}
 
       {/* Header déplacé dans le layout principal (pages/index.tsx) */}
@@ -711,45 +748,175 @@ export function LandingPage({
 
         {/* Main Content Grid */}
         <div className="max-w-7xl mx-auto px-8 pb-12">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <ScrollArea className="h-[calc(100vh-200px)] scrollbar-hide">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pr-4">
 
             {/* Folder Tree Section */}
-            { (designSettings.elements?.folder?.visible !== false) && (
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.8 }}
-              >
-              <Card className="h-[500px] bg-card/80 backdrop-blur-sm border-2 border-border/50">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.8 }}
+            >
+              { (designSettings?.elements?.folder?.visible !== false) ? (
+                <Card className="h-[500px] bg-card/80 backdrop-blur-sm border-2 border-border/50" style={{
+                  background: designSettings?.elements?.folder?.backgroundImage
+                    ? `url(${designSettings.elements.folder.backgroundImage}) center/cover no-repeat`
+                    : (designSettings?.elements?.folder?.fixedImage
+                      ? (designSettings.elements.folder.fixedImage.startsWith('#') 
+                        ? designSettings.elements.folder.fixedImage 
+                        : `url(${designSettings.elements.folder.fixedImage}) center/cover no-repeat`)
+                      : (designSettings?.elements?.folder?.animatedIndex !== undefined && designSettings.elements.folder.animatedIndex >= 0
+                        ? `url(/backgrounds/bg${((designSettings.elements.folder.animatedIndex ?? 0) % 20) + 1}.svg) center/cover no-repeat`
+                        : undefined)),
+                  filter: designSettings?.elements?.folder?.backgroundParams
+                    ? `brightness(${designSettings.elements.folder.backgroundParams.brightness ?? 100}%) contrast(${designSettings.elements.folder.backgroundParams.contrast ?? 100}%) saturate(${designSettings.elements.folder.backgroundParams.saturation ?? 100}%) hue-rotate(${designSettings.elements.folder.backgroundParams.hue ?? 0}deg) blur(${designSettings.elements.folder.backgroundParams.blur ?? 0}px)`
+                    : undefined
+                }}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        {renderMappedIcon('landing_folder', Layers, 20)}
+                        Arborescence
+                      </CardTitle>
+                      {editMode && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-accent">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('openBackgroundConfigModal', { detail: { context: 'folder' } }))}>
+                              Gérer le fond
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('openIconSettingsModal', { detail: { context: 'folder' } }))}>
+                              Personnaliser l'icône
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              // Toggle visibility of folder tree card
+                              const newElements = { ...designSettings?.elements, folder: { ...designSettings?.elements?.folder, visible: false } };
+                              setDesignSettings({ ...designSettings, elements: newElements });
+                              // Save to settings
+                              if (window.electronAPI?.saveSettings && window.electronAPI?.loadSettings) {
+                                window.electronAPI.loadSettings().then(existing => {
+                                  const next = { ...existing, design: { ...existing.design, elements: newElements } };
+                                  if (window.electronAPI?.saveSettings) {
+                                    window.electronAPI.saveSettings(next);
+                                  }
+                                  window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { design: next.design } }));
+                                });
+                              }
+                            }}>
+                              Masquer cette carte
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
+                    <CardDescription>
+                      Votre structure de dossiers
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex-1">
+                    {renderFolderTree()}
+                  </CardContent>
+                </Card>
+              ) : editMode ? (
+                <Card className="h-[500px] bg-card/40 backdrop-blur-sm border-2 border-dashed border-border/50 relative">
+                  <div className="absolute inset-0 flex items-center justify-center bg-card/20 backdrop-blur-sm rounded-lg">
+                    <div className="text-center space-y-4">
+                      <Layers className="w-12 h-12 mx-auto text-muted-foreground opacity-50" />
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Carte masquée</p>
+                        <p className="text-xs text-muted-foreground">Arborescence</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          // Show the folder tree card
+                          const newElements = { ...designSettings?.elements, folder: { ...designSettings?.elements?.folder, visible: true } };
+                          setDesignSettings({ ...designSettings, elements: newElements });
+                          // Save to settings
+                          if (window.electronAPI?.saveSettings && window.electronAPI?.loadSettings) {
+                            window.electronAPI.loadSettings().then(existing => {
+                              const next = { ...existing, design: { ...existing.design, elements: newElements } };
+                              if (window.electronAPI?.saveSettings) {
+                                window.electronAPI.saveSettings(next);
+                              }
+                              window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { design: next.design } }));
+                            });
+                          }
+                        }}
+                      >
+                        Afficher cette carte
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ) : null}
+            </motion.div>            {/* Recent Files Section */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.0 }}
+            >
+              { (designSettings?.elements?.recents?.visible !== false) ? (
+              <Card className="h-[500px] bg-card/80 backdrop-blur-sm border-2 border-border/50" style={{
+                background: designSettings.elements?.recents?.backgroundImage
+                  ? `url(${designSettings.elements.recents.backgroundImage}) center/cover no-repeat`
+                  : (designSettings.elements?.recents?.fixedImage
+                    ? (designSettings.elements.recents.fixedImage.startsWith('#') 
+                      ? designSettings.elements.recents.fixedImage 
+                      : `url(${designSettings.elements.recents.fixedImage}) center/cover no-repeat`)
+                    : (designSettings.elements?.recents?.animatedIndex !== undefined && designSettings.elements.recents.animatedIndex >= 0
+                      ? `url(/backgrounds/bg${((designSettings.elements.recents.animatedIndex ?? 0) % 20) + 1}.svg) center/cover no-repeat`
+                      : undefined)),
+                filter: designSettings.elements?.recents?.backgroundParams
+                  ? `brightness(${designSettings.elements.recents.backgroundParams.brightness ?? 100}%) contrast(${designSettings.elements.recents.backgroundParams.contrast ?? 100}%) saturate(${designSettings.elements.recents.backgroundParams.saturation ?? 100}%) hue-rotate(${designSettings.elements.recents.backgroundParams.hue ?? 0}deg) blur(${designSettings.elements.recents.backgroundParams.blur ?? 0}px)`
+                  : undefined
+              }}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Layers className="w-5 h-5" />
-                    Arborescence
-                  </CardTitle>
-                  <CardDescription>
-                    Votre structure de dossiers
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1">
-                  {renderFolderTree()}
-                </CardContent>
-              </Card>
-              </motion.div>
-            )}
-
-            {/* Recent Files Section */}
-            { (designSettings.elements?.recents?.visible !== false) && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.0 }}
-              >
-              <Card className="h-[500px] bg-card/80 backdrop-blur-sm border-2 border-border/50">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Clock className="w-5 h-5" />
-                    Fichiers Récents
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      {renderMappedIcon('landing_recents', Clock, 20)}
+                      Fichiers Récents
+                    </CardTitle>
+                    {editMode && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-6 w-6">
+                            <MoreVertical className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('openBackgroundConfigModal', { detail: { context: 'recents' } }))}>
+                            Gérer le fond
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('openIconSettingsModal', { detail: { context: 'recents' } }))}>
+                            Personnaliser l'icône
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            // Toggle visibility of recents card
+                            const newElements = { ...designSettings?.elements, recents: { ...designSettings?.elements?.recents, visible: false } };
+                            setDesignSettings({ ...designSettings, elements: newElements });
+                            // Save to settings
+                            if (window.electronAPI?.saveSettings && window.electronAPI?.loadSettings) {
+                              window.electronAPI.loadSettings().then(existing => {
+                                const next = { ...existing, design: { ...existing.design, elements: newElements } };
+                                if (window.electronAPI?.saveSettings) {
+                                  window.electronAPI.saveSettings(next);
+                                }
+                                window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { design: next.design } }));
+                              });
+                            }
+                          }}>
+                            Masquer cette carte
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
                   <CardDescription>
                     Vos derniers fichiers modifiés
                   </CardDescription>
@@ -777,22 +944,104 @@ export function LandingPage({
                   </ScrollArea>
                 </CardContent>
               </Card>
-              </motion.div>
-            )}
+              ) : editMode ? (
+                <Card className="h-[500px] bg-card/40 backdrop-blur-sm border-2 border-dashed border-border/50 relative">
+                  <div className="absolute inset-0 flex items-center justify-center bg-card/20 backdrop-blur-sm rounded-lg">
+                    <div className="text-center space-y-4">
+                      <Clock className="w-12 h-12 mx-auto text-muted-foreground opacity-50" />
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Carte masquée</p>
+                        <p className="text-xs text-muted-foreground">Fichiers Récents</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          // Show the recents card
+                          const newElements = { ...designSettings?.elements, recents: { ...designSettings?.elements?.recents, visible: true } };
+                          setDesignSettings({ ...designSettings, elements: newElements });
+                          // Save to settings
+                          if (window.electronAPI?.saveSettings && window.electronAPI?.loadSettings) {
+                            window.electronAPI.loadSettings().then(existing => {
+                              const next = { ...existing, design: { ...existing.design, elements: newElements } };
+                              if (window.electronAPI?.saveSettings) {
+                                window.electronAPI.saveSettings(next);
+                              }
+                              window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { design: next.design } }));
+                            });
+                          }
+                        }}
+                      >
+                        Afficher cette carte
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ) : null}
+            </motion.div>
 
             {/* Add Buttons Section */}
-            { (designSettings.elements?.create?.visible !== false) && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 1.2 }}
-              >
-              <Card className="h-[500px] bg-card/80 backdrop-blur-sm border-2 border-border/50">
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 1.2 }}
+            >
+              { (designSettings?.elements?.create?.visible !== false) ? (
+              <Card className="h-[500px] bg-card/80 backdrop-blur-sm border-2 border-border/50" style={{
+                background: designSettings.elements?.create?.backgroundImage
+                  ? `url(${designSettings.elements.create.backgroundImage}) center/cover no-repeat`
+                  : (designSettings.elements?.create?.fixedImage
+                    ? (designSettings.elements.create.fixedImage.startsWith('#') 
+                      ? designSettings.elements.create.fixedImage 
+                      : `url(${designSettings.elements.create.fixedImage}) center/cover no-repeat`)
+                    : (designSettings.elements?.create?.animatedIndex !== undefined && designSettings.elements.create.animatedIndex >= 0
+                      ? `url(/backgrounds/bg${((designSettings.elements.create.animatedIndex ?? 0) % 20) + 1}.svg) center/cover no-repeat`
+                      : undefined)),
+                filter: designSettings.elements?.create?.backgroundParams
+                  ? `brightness(${designSettings.elements.create.backgroundParams.brightness ?? 100}%) contrast(${designSettings.elements.create.backgroundParams.contrast ?? 100}%) saturate(${designSettings.elements.create.backgroundParams.saturation ?? 100}%) hue-rotate(${designSettings.elements.create.backgroundParams.hue ?? 0}deg) blur(${designSettings.elements.create.backgroundParams.blur ?? 0}px)`
+                  : undefined
+              }}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Plus className="w-5 h-5" />
-                    Créer Nouveau
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      {renderMappedIcon('landing_create', Plus, 20)}
+                      Créer Nouveau
+                    </CardTitle>
+                    {editMode && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-6 w-6">
+                            <MoreVertical className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('openBackgroundConfigModal', { detail: { context: 'create' } }))}>
+                            Gérer le fond
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('openIconSettingsModal', { detail: { context: 'create' } }))}>
+                            Personnaliser l'icône
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            // Toggle visibility of create card
+                            const newElements = { ...designSettings?.elements, create: { ...designSettings?.elements?.create, visible: false } };
+                            setDesignSettings({ ...designSettings, elements: newElements });
+                            // Save to settings
+                            if (window.electronAPI?.saveSettings && window.electronAPI?.loadSettings) {
+                              window.electronAPI.loadSettings().then(existing => {
+                                const next = { ...existing, design: { ...existing.design, elements: newElements } };
+                                if (window.electronAPI?.saveSettings) {
+                                  window.electronAPI.saveSettings(next);
+                                }
+                                window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { design: next.design } }));
+                              });
+                            }
+                          }}>
+                            Masquer cette carte
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
                   <CardDescription>
                     Commencez par créer quelque chose
                   </CardDescription>
@@ -826,21 +1075,58 @@ export function LandingPage({
                   </div>
                 </CardContent>
               </Card>
-              </motion.div>
-            )}
-          </div>
-
-          {/* Copyright */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.4 }}
-            className="mt-8 text-center"
-          >
-            <div className="text-sm text-muted-foreground">
-              © 2025 FUSION. Tous droits réservés.
+              ) : editMode ? (
+                <Card className="h-[500px] bg-card/40 backdrop-blur-sm border-2 border-dashed border-border/50 relative">
+                  <div className="absolute inset-0 flex items-center justify-center bg-card/20 backdrop-blur-sm rounded-lg">
+                    <div className="text-center space-y-4">
+                      <Plus className="w-12 h-12 mx-auto text-muted-foreground opacity-50" />
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Carte masquée</p>
+                        <p className="text-xs text-muted-foreground">Créer Nouveau</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          // Show the create card
+                          const newElements = { ...designSettings?.elements, create: { ...designSettings?.elements?.create, visible: true } };
+                          setDesignSettings({ ...designSettings, elements: newElements });
+                          // Save to settings
+                          if (window.electronAPI?.saveSettings && window.electronAPI?.loadSettings) {
+                            window.electronAPI.loadSettings().then(existing => {
+                              const next = { ...existing, design: { ...existing.design, elements: newElements } };
+                              if (window.electronAPI?.saveSettings) {
+                                window.electronAPI.saveSettings(next);
+                              }
+                              window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { design: next.design } }));
+                            });
+                          }
+                        }}
+                      >
+                        Afficher cette carte
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ) : null}
+            </motion.div>
             </div>
-          </motion.div>
+
+            {/* Copyright */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.4 }}
+              className="mt-8 text-center"
+            >
+              <div className="text-sm text-muted-foreground">
+                © 2025 FUSION. Tous droits réservés.
+              </div>
+            </motion.div>
+
+            {/* Bottom spacing for mobile scroll */}
+            <div className="h-32 md:h-16"></div>
+          </ScrollArea>
         </div>
       </div>
     </div>

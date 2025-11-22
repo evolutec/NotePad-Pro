@@ -19,21 +19,55 @@
     "theme": "system",
     "language": "fr",
     "startWithWindows": false,
-    "minimizeToTray": true
+    "minimizeToTray": true,
+    "sidebarCollapsed": false
   },
   "design": {
     "backgroundImage": null,
     "fixedImage": null,
-    "animatedIndex": 14,
+    "animatedIndex": 8,
     "elements": {
       "recents": {
-        "visible": true
+        "visible": true,
+        "backgroundImage": null,
+        "fixedImage": null,
+        "animatedIndex": 8,
+        "recentFilesCustomization": {
+          "shape": "square",
+          "backgroundColor": "rgba(255, 255, 255, 0.8)",
+          "opacity": 0.8,
+          "borderRadius": 8,
+          "borderWidth": 1,
+          "borderColor": "rgba(229, 231, 235, 1)",
+          "textColor": "rgba(0, 0, 0, 1)",
+          "hoverBackgroundColor": "rgba(243, 244, 246, 0.9)",
+          "hoverOpacity": 0.9
+        }
       },
       "logo": {
         "visible": true
       },
       "create": {
-        "visible": true
+        "visible": true,
+        "backgroundImage": null,
+        "fixedImage": null,
+        "animatedIndex": 8
+      },
+      "folder": {
+        "visible": true,
+        "backgroundImage": null,
+        "fixedImage": null,
+        "animatedIndex": 7
+      },
+      "folder-card": {
+        "backgroundImage": null,
+        "fixedImage": null,
+        "animatedIndex": 8
+      },
+      "recents-card": {
+        "backgroundImage": null,
+        "fixedImage": null,
+        "animatedIndex": 9
       }
     },
     "backgroundParams": {
@@ -50,7 +84,8 @@
       "scale": 1,
       "tint": "#0f1b38",
       "opacity": 0.8
-    }
+    },
+    "context": "recents"
   },
   "icons": {
     "mappings": [
@@ -85,8 +120,29 @@
       {
         "key": "folder_open",
         "label": "Dossier (ouvert)",
-        "currentIcon": "Folder",
+        "currentIcon": "FolderOpen",
         "library": "Lucide",
+        "customization": {
+          "shape": "none",
+          "bgColor": "transparent",
+          "iconColor": "#9b831d",
+          "size": 30,
+          "wrapperSize": 30,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000",
+          "shadowBlur": 0,
+          "shadowOffsetY": 0,
+          "shadowSpread": 0,
+          "padding": 0,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "transparent",
+          "gradientTo": "transparent",
+          "gradientAngle": 90
+        },
         "context": "expanded"
       },
       {
@@ -167,6 +223,27 @@
         "context": "expanded"
       },
       {
+        "key": "landing_folder",
+        "label": "Carte Arborescence",
+        "currentIcon": "FolderTree",
+        "library": "Lucide",
+        "context": "expanded"
+      },
+      {
+        "key": "landing_recents",
+        "label": "Carte Fichiers Récents",
+        "currentIcon": "Clock",
+        "library": "Lucide",
+        "context": "expanded"
+      },
+      {
+        "key": "landing_create",
+        "label": "Carte Créer Nouveau",
+        "currentIcon": "Plus",
+        "library": "Lucide",
+        "context": "expanded"
+      },
+      {
         "key": "ext_pdf",
         "label": "Fichier PDF",
         "currentIcon": "FaFilePdf",
@@ -197,15 +274,57 @@
       {
         "key": "ext_md",
         "label": "Fichier Markdown",
-        "currentIcon": "FileText",
-        "library": "Lucide",
+        "currentIcon": "AiFillFileMarkdown",
+        "library": "ReactIcons",
+        "customization": {
+          "shape": "square",
+          "bgColor": "#2B6CB0",
+          "iconColor": "#ffffff",
+          "size": 30,
+          "wrapperSize": 40,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000000",
+          "shadowBlur": 8,
+          "shadowOffsetY": 2,
+          "shadowSpread": 0,
+          "padding": 6,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "#2B6CB0",
+          "gradientTo": "#2C7A7B",
+          "gradientAngle": 90
+        },
         "context": "expanded"
       },
       {
         "key": "ext_txt",
         "label": "Fichier texte",
-        "currentIcon": "FileText",
-        "library": "Lucide",
+        "currentIcon": "AiFillFileText",
+        "library": "ReactIcons",
+        "customization": {
+          "shape": "square",
+          "bgColor": "#2B6CB0",
+          "iconColor": "#ffffff",
+          "size": 31,
+          "wrapperSize": 40,
+          "borderWidth": 0,
+          "borderColor": "transparent",
+          "opacity": 100,
+          "shadowEnabled": false,
+          "shadowColor": "#000000",
+          "shadowBlur": 8,
+          "shadowOffsetY": 2,
+          "shadowSpread": 0,
+          "padding": 6,
+          "rotate": 0,
+          "gradientEnabled": false,
+          "gradientFrom": "#2B6CB0",
+          "gradientTo": "#2C7A7B",
+          "gradientAngle": 90
+        },
         "context": "expanded"
       },
       {

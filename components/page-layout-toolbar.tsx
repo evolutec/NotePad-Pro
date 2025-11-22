@@ -15,7 +15,8 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCw,
-  Palette
+  Palette,
+  Wrench
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -36,6 +37,8 @@ interface PageLayoutToolbarProps {
   onZoomChange: (zoom: number) => void
   backgroundColor: string
   onBackgroundColorChange: (color: string) => void
+  editMode?: boolean
+  onEditModeChange?: (edit: boolean) => void
 }
 
 const BACKGROUND_COLORS = [
@@ -61,10 +64,41 @@ export function PageLayoutToolbar({
   onZoomChange,
   backgroundColor,
   onBackgroundColorChange,
+  editMode: editModeProp,
+  onEditModeChange,
 }: PageLayoutToolbarProps) {
+  const [editMode, setEditMode] = React.useState(editModeProp ?? false);
+
+  // Synchronise l'état local si la prop change
+  React.useEffect(() => {
+    if (typeof editModeProp === 'boolean') setEditMode(editModeProp);
+  }, [editModeProp]);
+
+  const handleToggleEditMode = () => {
+    const newValue = !editMode;
+    setEditMode(newValue);
+    if (onEditModeChange) onEditModeChange(newValue);
+  };
+
   return (
     <div className="border-b border-border bg-card p-3">
       <div className="flex items-center gap-4 flex-wrap">
+                <Separator orientation="vertical" className="h-8" />
+
+                {/* Mode édition du fond */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={editMode ? "default" : "outline"}
+                    size="sm"
+                    onClick={handleToggleEditMode}
+                    aria-pressed={editMode}
+                    id="toolbar-wrench-btn"
+                    className={editMode ? "bg-primary text-primary-foreground" : ""}
+                  >
+                    <Wrench className="h-4 w-4" />
+                    <span className="hidden sm:inline">Éditer le fond</span>
+                  </Button>
+                </div>
         {/* Orientation */}
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium">Orientation:</span>
