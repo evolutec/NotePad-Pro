@@ -850,7 +850,7 @@ const TreeItem = React.memo(({
           )}
 
           {/* Actions */}
-          <div className={editMode ? (fileType === 'folder' ? "opacity-100" : "opacity-0") : "opacity-0 group-hover:opacity-100 transition-opacity"}>
+          <div className={editMode ? "opacity-0" : "opacity-0 group-hover:opacity-100 transition-opacity"}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button

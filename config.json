@@ -20,7 +20,9 @@
     "language": "fr",
     "startWithWindows": false,
     "minimizeToTray": true,
-    "sidebarCollapsed": false
+    "sidebarCollapsed": false,
+    "sidebarPosition": "right",
+    "useConsolidatedAddButton": false
   },
   "design": {
     "backgroundImage": null,
@@ -71,17 +73,17 @@
       },
       "filemanager": {
         "backgroundImage": null,
-        "fixedImage": "#000000",
-        "animatedIndex": 0,
+        "fixedImage": null,
+        "animatedIndex": 14,
         "backgroundParams": {
           "brightness": 100,
-          "contrast": 100,
-          "saturation": 100,
+          "contrast": 46,
+          "saturation": 75,
           "hue": 0,
           "blur": 0,
           "gradientEnabled": false,
-          "gradientColor1": "#000000",
-          "gradientColor2": "#000000",
+          "gradientColor1": "#ffffff",
+          "gradientColor2": "#ffffff",
           "gradientDirection": "to right"
         }
       },

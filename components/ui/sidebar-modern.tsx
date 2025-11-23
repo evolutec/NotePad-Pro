@@ -31,7 +31,8 @@ import {
   Table,
   Presentation,
   Sheet,
-  MoreVertical
+  MoreVertical,
+  Plus
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 // Runtime cache for dynamically loaded MUI icons (loaded only at runtime)
@@ -158,6 +159,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AddExcelDialog } from '@/components/add-excel_dialog';
 import { AddPowerpointDialog } from '@/components/add-powerpoint_dialog';
 import { AddPdfDocumentDialog } from '@/components/add-pdf-document_dialog';
+import { AddOptionsModal } from '@/components/ui/add-options-modal';
 
 // Utility function to get mapped icon component (returns a React component that applies customization)
 // If options.collapsed is true, prefer icons from iconMappingsCollapsed (fallback to expanded mappings)
@@ -409,6 +411,8 @@ export function ModernSidebar({
   const [showExcelDialog, setShowExcelDialog] = useState(false);
   const [showPowerpointDialog, setShowPowerpointDialog] = useState(false);
   const [showPdfDialog, setShowPdfDialog] = useState(false);
+  const [showAddOptionsModal, setShowAddOptionsModal] = useState(false);
+  const [useConsolidatedAddButton, setUseConsolidatedAddButton] = useState(false);
   const [recentFilesVersion, setRecentFilesVersion] = useState(0);
 
   // Background settings state
@@ -758,7 +762,7 @@ export function ModernSidebar({
 
   // Load background settings for sidebar
   useEffect(() => {
-    const loadBackgroundSettings = async () => {
+    const loadSettings = async () => {
       try {
         if (window.electronAPI?.loadSettings) {
           const settings = await window.electronAPI.loadSettings();
@@ -769,15 +773,19 @@ export function ModernSidebar({
           } else {
             console.log('sidebar: no background settings found in config.json for sidebar');
           }
+          if (settings?.app?.useConsolidatedAddButton !== undefined) {
+            console.log('sidebar: loaded consolidated add button setting:', settings.app.useConsolidatedAddButton);
+            setUseConsolidatedAddButton(settings.app.useConsolidatedAddButton);
+          }
         } else {
           console.log('sidebar: window.electronAPI.loadSettings not available');
         }
       } catch (error) {
-        console.warn('sidebar: Failed to load background settings:', error);
+        console.warn('sidebar: Failed to load settings:', error);
       }
     };
 
-    loadBackgroundSettings();
+    loadSettings();
 
     // Listen for settings updates (including background changes)
     const handleSettingsUpdated = (event: any) => {
@@ -785,6 +793,10 @@ export function ModernSidebar({
       if (event.detail?.design?.elements?.sidebar) {
         console.log('sidebar: updating background settings from event:', event.detail.design.elements.sidebar);
         setBackgroundSettings(event.detail.design.elements.sidebar);
+      }
+      if (event.detail?.app?.useConsolidatedAddButton !== undefined) {
+        console.log('sidebar: updating consolidated add button setting from event:', event.detail.app.useConsolidatedAddButton);
+        setUseConsolidatedAddButton(event.detail.app.useConsolidatedAddButton);
       }
     };
 
@@ -843,182 +855,45 @@ export function ModernSidebar({
           {/* Header area left intentionally minimal; toggle moved to bottom */}
         </div>
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <div className={cn("flex items-center gap-2 mt-8", isCollapsed ? "flex-col" : "flex-col")}>
+            <div className={cn("flex items-center gap-2", useConsolidatedAddButton && !isCollapsed ? "flex-1" : "")}>
+              <div className={cn("flex items-center gap-2 mt-8 w-full", isCollapsed ? "flex-col" : "flex-col", useConsolidatedAddButton && !isCollapsed ? "justify-center" : "")}>
               {/* Collapsed layout - only essential buttons */}
               {isCollapsed ? (
-                <>
-                  {/* Dossier, Note, Dessin - une seule fois chacun */}
+                useConsolidatedAddButton ? (
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className={`${getButtonBgClassForKey('add_folder','bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700 text-white')} h-7 w-7 p-1`}
-                          onClick={handleNewFolder}
+                          className="h-7 w-7 p-1 rounded-lg overflow-hidden"
+                          style={{
+                            background: 'conic-gradient(from 0deg, #1E6FE8, #20A64A, #FF7A2D, #1E6FE8)',
+                            border: '1px solid rgba(255,255,255,0.2)'
+                          }}
+                          onClick={() => setShowAddOptionsModal(true)}
                         >
-                          {React.createElement(getMappedIconComponent('add_folder', { collapsed: true }), { className: "w-3 h-3 text-black dark:text-white", size: 28 })}
+                          <Plus className="w-3 h-3 text-white drop-shadow-sm" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="right">
-                        Nouveau dossier
+                        Ajouter...
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className={`${getButtonBgClassForKey('add_note','bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400 hover:text-blue-700')} h-7 w-7 p-1`}
-                          onClick={() => onNewFile?.('root', 'note')}
-                        >
-                          {React.createElement(getMappedIconComponent('add_note', { collapsed: true }), { className: "w-3 h-3 text-black dark:text-white", size: 28 })}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        Nouvelle note
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className={`${getButtonBgClassForKey('add_draw','bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 hover:text-purple-700')} h-7 w-7 p-1`}
-                          onClick={handleNewDraw}
-                        >
-                          {React.createElement(getMappedIconComponent('add_draw', { collapsed: true }), { className: "w-3 h-3 text-black dark:text-white", size: 28 })}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        Nouveau dessin
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className={`${getButtonBgClassForKey('add_excel','bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-600 dark:text-green-400 hover:text-green-700')} h-7 w-7 p-1`}
-                          onClick={() => setShowExcelDialog(true)}
-                        >
-                          {React.createElement(getMappedIconComponent('add_excel', { collapsed: true }), { className: "w-3 h-3 text-black dark:text-white", size: 28 })}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        Nouveau tableur
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className={`${getButtonBgClassForKey('add_powerpoint','bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-600 dark:text-orange-400 hover:text-orange-700')} h-7 w-7 p-1`}
-                            onClick={() => setShowPowerpointDialog(true)}
-                          >
-                            {React.createElement(getMappedIconComponent('add_powerpoint', { collapsed: true }), { className: "w-3 h-3 text-black dark:text-white", size: 28 })}
-                          </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        Nouvelle présentation
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className={`${getButtonBgClassForKey('add_pdf','bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-600 dark:text-red-400 hover:text-red-700')} h-7 w-7 p-1`}
-                            onClick={() => setShowPdfDialog(true)}
-                          >
-                            {React.createElement(getMappedIconComponent('add_pdf', { collapsed: true }), { className: "w-3 h-3 text-black dark:text-white", size: 28 })}
-                          </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        Nouveau PDF
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className={`${getButtonBgClassForKey('add_image','bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900 dark:hover:bg-yellow-800 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700')} h-7 w-7 p-1`}
-                            onClick={() => onNewFile?.('root', 'image')}
-                          >
-                            {React.createElement(getMappedIconComponent('add_image', { collapsed: true }), { className: "w-3 h-3 text-black dark:text-white", size: 28 })}
-                          </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        Nouvelle image
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className={`${getButtonBgClassForKey('add_video','bg-gray-100 hover:bg-gray-200 dark:bg-gray-900 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-700')} h-7 w-7 p-1`}
-                            onClick={() => onNewFile?.('root', 'video')}
-                          >
-                            {React.createElement(getMappedIconComponent('add_video', { collapsed: true }), { className: "w-3 h-3 text-black dark:text-white", size: 28 })}
-                          </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        Nouvelle vidéo
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className={`${getButtonBgClassForKey('add_audio','bg-pink-100 hover:bg-pink-200 dark:bg-pink-900 dark:hover:bg-pink-800 text-pink-600 dark:text-pink-400 hover:text-pink-700')} h-7 w-7 p-1`}
-                            onClick={() => onNewFile?.('root', 'audio')}
-                          >
-                            {React.createElement(getMappedIconComponent('add_audio', { collapsed: true }), { className: "w-3 h-3 text-black dark:text-white", size: 28 })}
-                          </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        Nouvel audio
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  {/* toggle removed from collapsed add-buttons - now at bottom */}
-                </>
-              ) : (
-                /* Expanded layout - original horizontal arrangement */
-                <>
-                  {/* First row - 4 buttons */}
-                  <div className="flex items-center gap-2">
+                ) : (
+                  <>
+                    {/* Dossier, Note, Dessin - une seule fois chacun */}
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
                             variant="ghost"
                             size="sm"
-                            className={`${getButtonBgClassForKey('add_folder','bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700 text-white')} h-12 w-12 p-0`}
+                            className={`${getButtonBgClassForKey('add_folder','bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700 text-white')} h-7 w-7 p-1`}
                             onClick={handleNewFolder}
                           >
-                            {React.createElement(getMappedIconComponent('add_folder'), { className: "w-4 h-4 text-black dark:text-white", size: 48 })}
+                            {React.createElement(getMappedIconComponent('add_folder', { collapsed: true }), { className: "w-3 h-3 text-black dark:text-white", size: 28 })}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="right">
@@ -1026,17 +901,16 @@ export function ModernSidebar({
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    {/* toggle removed from expanded add-buttons - now at bottom */}
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
                             variant="ghost"
                             size="sm"
-                            className={`${getButtonBgClassForKey('add_note','bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300')} h-12 w-12 p-0`}
+                            className={`${getButtonBgClassForKey('add_note','bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400 hover:text-blue-700')} h-7 w-7 p-1`}
                             onClick={() => onNewFile?.('root', 'note')}
                           >
-                            {React.createElement(getMappedIconComponent('add_note'), { className: "w-4 h-4 text-black dark:text-white", size: 48 })}
+                            {React.createElement(getMappedIconComponent('add_note', { collapsed: true }), { className: "w-3 h-3 text-black dark:text-white", size: 28 })}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="right">
@@ -1050,10 +924,10 @@ export function ModernSidebar({
                           <Button
                             variant="ghost"
                             size="sm"
-                            className={`${getButtonBgClassForKey('add_draw','bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300')} h-12 w-12 p-0`}
+                            className={`${getButtonBgClassForKey('add_draw','bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 hover:text-purple-700')} h-7 w-7 p-1`}
                             onClick={handleNewDraw}
                           >
-                            {React.createElement(getMappedIconComponent('add_draw'), { className: "w-4 h-4 text-black dark:text-white", size: 48 })}
+                            {React.createElement(getMappedIconComponent('add_draw', { collapsed: true }), { className: "w-3 h-3 text-black dark:text-white", size: 28 })}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="right">
@@ -1067,10 +941,10 @@ export function ModernSidebar({
                           <Button
                             variant="ghost"
                             size="sm"
-                            className={`${getButtonBgClassForKey('add_excel','bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300')} h-12 w-12 p-0`}
+                            className={`${getButtonBgClassForKey('add_excel','bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-600 dark:text-green-400 hover:text-green-700')} h-7 w-7 p-1`}
                             onClick={() => setShowExcelDialog(true)}
                           >
-                            {React.createElement(getMappedIconComponent('add_excel'), { className: "w-4 h-4 text-black dark:text-white", size: 48 })}
+                            {React.createElement(getMappedIconComponent('add_excel', { collapsed: true }), { className: "w-3 h-3 text-black dark:text-white", size: 28 })}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="right">
@@ -1084,10 +958,10 @@ export function ModernSidebar({
                           <Button
                             variant="ghost"
                             size="sm"
-                            className={`${getButtonBgClassForKey('add_powerpoint','bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300')} h-12 w-12 p-0`}
+                            className={`${getButtonBgClassForKey('add_powerpoint','bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-600 dark:text-orange-400 hover:text-orange-700')} h-7 w-7 p-1`}
                             onClick={() => setShowPowerpointDialog(true)}
                           >
-                            {React.createElement(getMappedIconComponent('add_powerpoint'), { className: "w-4 h-4 text-black dark:text-white", size: 48 })}
+                            {React.createElement(getMappedIconComponent('add_powerpoint', { collapsed: true }), { className: "w-3 h-3 text-black dark:text-white", size: 28 })}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="right">
@@ -1095,20 +969,33 @@ export function ModernSidebar({
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                  </div>
-
-                  {/* Second row - 3 buttons */}
-                  <div className="flex items-center gap-2">
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
                             variant="ghost"
                             size="sm"
-                            className={`${getButtonBgClassForKey('add_image','bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900 dark:hover:bg-yellow-800 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300')} h-12 w-12 p-0`}
+                            className={`${getButtonBgClassForKey('add_pdf','bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-600 dark:text-red-400 hover:text-red-700')} h-7 w-7 p-1`}
+                            onClick={() => setShowPdfDialog(true)}
+                          >
+                            {React.createElement(getMappedIconComponent('add_pdf', { collapsed: true }), { className: "w-3 h-3 text-black dark:text-white", size: 28 })}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">
+                          Nouveau PDF
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={`${getButtonBgClassForKey('add_image','bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900 dark:hover:bg-yellow-800 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700')} h-7 w-7 p-1`}
                             onClick={() => onNewFile?.('root', 'image')}
                           >
-                            {React.createElement(getMappedIconComponent('add_image'), { className: "w-4 h-4 text-black dark:text-white", size: 48 })}
+                            {React.createElement(getMappedIconComponent('add_image', { collapsed: true }), { className: "w-3 h-3 text-black dark:text-white", size: 28 })}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="right">
@@ -1122,10 +1009,10 @@ export function ModernSidebar({
                           <Button
                             variant="ghost"
                             size="sm"
-                            className={`${getButtonBgClassForKey('add_video','bg-gray-100 hover:bg-gray-200 dark:bg-gray-900 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300')} h-12 w-12 p-0`}
+                            className={`${getButtonBgClassForKey('add_video','bg-gray-100 hover:bg-gray-200 dark:bg-gray-900 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-700')} h-7 w-7 p-1`}
                             onClick={() => onNewFile?.('root', 'video')}
                           >
-                            {React.createElement(getMappedIconComponent('add_video'), { className: "w-4 h-4 text-black dark:text-white", size: 48 })}
+                            {React.createElement(getMappedIconComponent('add_video', { collapsed: true }), { className: "w-3 h-3 text-black dark:text-white", size: 28 })}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="right">
@@ -1139,10 +1026,10 @@ export function ModernSidebar({
                           <Button
                             variant="ghost"
                             size="sm"
-                            className={`${getButtonBgClassForKey('add_audio','bg-pink-100 hover:bg-pink-200 dark:bg-pink-900 dark:hover:bg-pink-800 text-pink-600 dark:text-pink-400 hover:text-pink-700 dark:hover:text-pink-300')} h-12 w-12 p-0`}
+                            className={`${getButtonBgClassForKey('add_audio','bg-pink-100 hover:bg-pink-200 dark:bg-pink-900 dark:hover:bg-pink-800 text-pink-600 dark:text-pink-400 hover:text-pink-700')} h-7 w-7 p-1`}
                             onClick={() => onNewFile?.('root', 'audio')}
                           >
-                            {React.createElement(getMappedIconComponent('add_audio'), { className: "w-4 h-4 text-black dark:text-white", size: 48 })}
+                            {React.createElement(getMappedIconComponent('add_audio', { collapsed: true }), { className: "w-3 h-3 text-black dark:text-white", size: 28 })}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent side="right">
@@ -1150,31 +1037,202 @@ export function ModernSidebar({
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className={`${getButtonBgClassForKey('add_pdf','bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300')} h-12 w-12 p-0`}
-                            onClick={() => setShowPdfDialog(true)}
-                          >
-                            {React.createElement(getMappedIconComponent('add_pdf'), { className: "w-4 h-4 text-black dark:text-white", size: 48 })}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="right">
-                          Nouveau PDF
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
+                    {/* toggle removed from collapsed add-buttons - now at bottom */}
+                  </>
+                )
+              ) : (
+                useConsolidatedAddButton ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-12 w-12 p-0 rounded-lg overflow-hidden"
+                          style={{
+                            background: 'conic-gradient(from 0deg, #1E6FE8, #20A64A, #FF7A2D, #1E6FE8)',
+                            border: '1px solid rgba(255,255,255,0.2)'
+                          }}
+                          onClick={() => setShowAddOptionsModal(true)}
+                        >
+                          <Plus className="w-5 h-5 text-white drop-shadow-sm" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        Ajouter...
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : (
+                  <>
+                    {/* First row - 5 buttons */}
+                    <div className="flex items-center gap-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={`${getButtonBgClassForKey('add_folder','bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700 text-white')} h-12 w-12 p-0`}
+                              onClick={handleNewFolder}
+                            >
+                              {React.createElement(getMappedIconComponent('add_folder'), { className: "w-4 h-4 text-black dark:text-white", size: 48 })}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            Nouveau dossier
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={`${getButtonBgClassForKey('add_note','bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300')} h-12 w-12 p-0`}
+                              onClick={() => onNewFile?.('root', 'note')}
+                            >
+                              {React.createElement(getMappedIconComponent('add_note'), { className: "w-4 h-4 text-black dark:text-white", size: 48 })}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            Nouvelle note
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={`${getButtonBgClassForKey('add_draw','bg-purple-100 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300')} h-12 w-12 p-0`}
+                              onClick={handleNewDraw}
+                            >
+                              {React.createElement(getMappedIconComponent('add_draw'), { className: "w-4 h-4 text-black dark:text-white", size: 48 })}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            Nouveau dessin
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={`${getButtonBgClassForKey('add_excel','bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300')} h-12 w-12 p-0`}
+                              onClick={() => setShowExcelDialog(true)}
+                            >
+                              {React.createElement(getMappedIconComponent('add_excel'), { className: "w-4 h-4 text-black dark:text-white", size: 48 })}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            Nouveau tableur
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={`${getButtonBgClassForKey('add_powerpoint','bg-orange-100 hover:bg-orange-200 dark:bg-orange-900 dark:hover:bg-orange-800 text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300')} h-12 w-12 p-0`}
+                              onClick={() => setShowPowerpointDialog(true)}
+                            >
+                              {React.createElement(getMappedIconComponent('add_powerpoint'), { className: "w-4 h-4 text-black dark:text-white", size: 48 })}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            Nouvelle présentation
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
 
-                  {isClient && !isElectronMode && (
-                    <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
-                      Mode navigateur
-                    </Badge>
-                  )}
-                </>
+                    {/* Second row - 4 buttons */}
+                    <div className="flex items-center gap-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={`${getButtonBgClassForKey('add_image','bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900 dark:hover:bg-yellow-800 text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300')} h-12 w-12 p-0`}
+                              onClick={() => onNewFile?.('root', 'image')}
+                            >
+                              {React.createElement(getMappedIconComponent('add_image'), { className: "w-4 h-4 text-black dark:text-white", size: 48 })}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            Nouvelle image
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={`${getButtonBgClassForKey('add_video','bg-gray-100 hover:bg-gray-200 dark:bg-gray-900 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300')} h-12 w-12 p-0`}
+                              onClick={() => onNewFile?.('root', 'video')}
+                            >
+                              {React.createElement(getMappedIconComponent('add_video'), { className: "w-4 h-4 text-black dark:text-white", size: 48 })}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            Nouvelle vidéo
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={`${getButtonBgClassForKey('add_audio','bg-pink-100 hover:bg-pink-200 dark:bg-pink-900 dark:hover:bg-pink-800 text-pink-600 dark:text-pink-400 hover:text-pink-700 dark:hover:text-pink-300')} h-12 w-12 p-0`}
+                              onClick={() => onNewFile?.('root', 'audio')}
+                            >
+                              {React.createElement(getMappedIconComponent('add_audio'), { className: "w-4 h-4 text-black dark:text-white", size: 48 })}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            Nouvel audio
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={`${getButtonBgClassForKey('add_pdf','bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300')} h-12 w-12 p-0`}
+                              onClick={() => setShowPdfDialog(true)}
+                            >
+                              {React.createElement(getMappedIconComponent('add_pdf'), { className: "w-4 h-4 text-black dark:text-white", size: 48 })}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            Nouveau PDF
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+
+                    {isClient && !isElectronMode && (
+                      <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
+                        Mode navigateur
+                      </Badge>
+                    )}
+                  </>
+                )
               )}
             </div>
             {editMode && (
@@ -1211,6 +1269,42 @@ export function ModernSidebar({
                     >
                       <Settings className="mr-2 h-4 w-4" />
                       Icônes
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        // Toggle sidebar position
+                        if (typeof window !== 'undefined' && window.dispatchEvent) {
+                          window.dispatchEvent(new CustomEvent('toggleSidebarPosition'));
+                        }
+                      }}
+                    >
+                      <ChevronRight className="mr-2 h-4 w-4" />
+                      Changer de côté
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        // Toggle consolidated add button
+                        const newValue = !useConsolidatedAddButton;
+                        setUseConsolidatedAddButton(newValue);
+                        // Save to config.json
+                        (async () => {
+                          try {
+                            if (window.electronAPI?.loadSettings && window.electronAPI?.saveSettings) {
+                              const existing = await window.electronAPI.loadSettings();
+                              const next = Object.assign({}, existing || {});
+                              next.app = Object.assign({}, next.app || {});
+                              next.app.useConsolidatedAddButton = newValue;
+                              await window.electronAPI.saveSettings(next);
+                              console.log('Consolidated add button setting saved to config.json:', newValue);
+                            }
+                          } catch (error) {
+                            console.error('Failed to save consolidated add button setting:', error);
+                          }
+                        })();
+                      }}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      {useConsolidatedAddButton ? 'Boutons séparés' : 'Bouton unique'}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -1581,6 +1675,16 @@ export function ModernSidebar({
         onDocumentCreated={(pdf) => {
           onNewFile?.('root', 'pdf');
         }}
+      />
+      <AddOptionsModal
+        open={showAddOptionsModal}
+        onOpenChange={setShowAddOptionsModal}
+        onNewFolder={handleNewFolder}
+        onNewFile={onNewFile}
+        onNewDraw={handleNewDraw}
+        onShowExcelDialog={() => setShowExcelDialog(true)}
+        onShowPowerpointDialog={() => setShowPowerpointDialog(true)}
+        onShowPdfDialog={() => setShowPdfDialog(true)}
       />
       {/* Bottom toggle placed here so it stays at the bottom of the sidebar */}
       <div className="mt-auto p-3 flex-shrink-0 flex justify-center">

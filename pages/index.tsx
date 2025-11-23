@@ -54,6 +54,7 @@ export default function NoteTakingApp() {
       return true; // Default value
     }
   })
+  const [sidebarPosition, setSidebarPosition] = useState<'left' | 'right'>('left')
   const [sidebarWidth, setSidebarWidth] = useState(256)
   const [isResizing, setIsResizing] = useState(false)
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null)
@@ -425,6 +426,12 @@ export default function NoteTakingApp() {
             console.log('Setting sidebar collapsed from config:', config.app.sidebarCollapsed);
             setSidebarCollapsed(config.app.sidebarCollapsed);
           }
+
+          // Set sidebar position from config
+          if (config.app?.sidebarPosition) {
+            console.log('Setting sidebar position from config:', config.app.sidebarPosition);
+            setSidebarPosition(config.app.sidebarPosition);
+          }
           
           if (window.electronAPI?.foldersScan) {
             console.log('Initializing folder tree from config.json...');
@@ -512,6 +519,12 @@ export default function NoteTakingApp() {
             if (config.app?.sidebarCollapsed !== undefined) {
               console.log('📱 Setting sidebar collapsed from config.json:', config.app.sidebarCollapsed);
               setSidebarCollapsed(config.app.sidebarCollapsed);
+            }
+
+            // Set sidebar position from config
+            if (config.app?.sidebarPosition) {
+              console.log('📱 Setting sidebar position from config.json:', config.app.sidebarPosition);
+              setSidebarPosition(config.app.sidebarPosition);
             }
             
             // Set selectedFolder to the root path from config
@@ -682,6 +695,31 @@ export default function NoteTakingApp() {
       }
     };
 
+    const handleToggleSidebarPosition = async () => {
+      setSidebarPosition(currentPosition => {
+        const newPosition = currentPosition === 'left' ? 'right' : 'left';
+        console.log('Toggling sidebar position from', currentPosition, 'to', newPosition);
+
+        // Save to config.json
+        (async () => {
+          try {
+            if (window.electronAPI?.loadSettings && window.electronAPI?.saveSettings) {
+              const existing = await window.electronAPI.loadSettings();
+              const next = Object.assign({}, existing || {});
+              next.app = Object.assign({}, next.app || {});
+              next.app.sidebarPosition = newPosition;
+              await window.electronAPI.saveSettings(next);
+              console.log('Sidebar position saved to config.json:', newPosition);
+            }
+          } catch (error) {
+            console.error('Failed to save sidebar position:', error);
+          }
+        })();
+
+        return newPosition;
+      });
+    };
+
     if (typeof window !== 'undefined') {
       window.addEventListener('fileMoved', handleFileMoved as EventListener);
       window.addEventListener('folderTreeRefresh', handleFolderTreeRefresh as EventListener);
@@ -689,6 +727,7 @@ export default function NoteTakingApp() {
       window.addEventListener('settingsUpdated', handleSettingsUpdate as EventListener);
       window.addEventListener('openBackgroundConfigModal', handleOpenBackgroundModal as EventListener);
       window.addEventListener('openIconSettingsModal', handleOpenIconSettingsModal as EventListener);
+      window.addEventListener('toggleSidebarPosition', handleToggleSidebarPosition as EventListener);
 
       return () => {
         window.removeEventListener('fileMoved', handleFileMoved as EventListener);
@@ -697,6 +736,7 @@ export default function NoteTakingApp() {
         window.removeEventListener('settingsUpdated', handleSettingsUpdate as EventListener);
         window.removeEventListener('openBackgroundConfigModal', handleOpenBackgroundModal as EventListener);
         window.removeEventListener('openIconSettingsModal', handleOpenIconSettingsModal as EventListener);
+        window.removeEventListener('toggleSidebarPosition', handleToggleSidebarPosition as EventListener);
       };
     }
   }, []);
@@ -821,7 +861,7 @@ export default function NoteTakingApp() {
   }, []);
   
   return (
-    <div className="flex h-screen bg-background">
+    <div className={`flex h-screen bg-background ${sidebarPosition === 'right' ? 'flex-row-reverse' : ''}`}>
       {isGPUFluidBackground && activeView === "landing" && (
         <GPUFluidBackground
           fullscreen
